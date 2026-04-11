@@ -1,13 +1,32 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
+  schemas  = ["kenyakugo"]
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  gmailId   String   @unique @map("gmail_id")
+  store     String
+  amount    Int
+  date      DateTime
+  category  String   @default("その他")
+  rawText   String   @map("raw_text")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("transactions")
+  @@schema("kenyakugo")
+}
+
+model Settings {
+  id            String   @id @default("singleton")
+  targetMonthly Int      @default(0) @map("target_monthly")
+  fixedCosts    Int      @default(0) @map("fixed_costs")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+  @@schema("kenyakugo")
 }

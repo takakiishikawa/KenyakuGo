@@ -1,65 +1,268 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useState, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from "recharts";
+import { RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
+import { toast } from "sonner";
+import { formatVND, formatDate } from "@/lib/format";
+
+const COLORS = ["#1B4332", "#2D6A4F", "#52B788", "#74C69D", "#95D5B2", "#B7E4C7", "#D8F3DC"];
+
+interface DashboardData {
+  thisMonthTotal: number;
+  thisWeekTotal: number;
+  lastWeekTotal: number;
+  weekDiff: number;
+  damBalance: number;
+  targetMonthly: number;
+  categoryBreakdown: { name: string; value: number }[];
+  recentTransactions: {
+    id: string;
+    store: string;
+    amount: number;
+    category: string;
+    date: string;
+  }[];
+}
+
+function CategoryBadge({ category }: { category: string }) {
+  const isUncategorized = category === "その他";
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <Badge
+      style={{
+        backgroundColor: isUncategorized ? "#F59E0B" : "#52B788",
+        color: "white",
+      }}
+    >
+      {isUncategorized ? "未分類" : category}
+    </Badge>
+  );
+}
+
+export default function Dashboard() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [comment, setComment] = useState<string>("");
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  const fetchDashboard = useCallback(async () => {
+    const res = await fetch("/api/dashboard");
+    const json = await res.json();
+    setData(json);
+
+    if (json.categoryBreakdown?.length > 0) {
+      setCommentLoading(true);
+      const commentRes = await fetch("/api/ai/comment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "dashboard",
+          data: Object.fromEntries(
+            json.categoryBreakdown.map((c: { name: string; value: number }) => [c.name, c.value])
+          ),
+        }),
+      });
+      const { comment: c } = await commentRes.json();
+      setComment(c);
+      setCommentLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/gmail/sync");
+      const json = await res.json();
+      toast.success(`${json.synced}件取得しました`);
+      fetchDashboard();
+    } catch {
+      toast.error("同期に失敗しました");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-2xl font-bold" style={{ color: "#1A1A2E" }}>
+          ダッシュボード
+        </h1>
+        <button
+          onClick={handleSync}
+          disabled={syncing}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-60"
+          style={{ backgroundColor: "#1B4332" }}
+        >
+          <RefreshCw size={16} className={syncing ? "animate-spin" : ""} />
+          {syncing ? "同期中..." : "同期"}
+        </button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-3 gap-6 mb-8">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium" style={{ color: "#6B7280" }}>
+              今月の総支出
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold" style={{ color: "#1A1A2E" }}>
+              {data ? formatVND(data.thisMonthTotal) : "—"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium" style={{ color: "#6B7280" }}>
+              先週比
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              {data && data.weekDiff < 0 ? (
+                <TrendingDown size={24} style={{ color: "#10B981" }} />
+              ) : (
+                <TrendingUp size={24} style={{ color: "#EF4444" }} />
+              )}
+              <p
+                className="text-3xl font-bold"
+                style={{ color: data && data.weekDiff <= 0 ? "#10B981" : "#EF4444" }}
+              >
+                {data ? `${data.weekDiff > 0 ? "+" : ""}${data.weekDiff}%` : "—"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium" style={{ color: "#6B7280" }}>
+              ダム残高
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p
+              className="text-3xl font-bold"
+              style={{ color: data && data.damBalance >= 0 ? "#10B981" : "#EF4444" }}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+              {data ? formatVND(data.damBalance) : "—"}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-2 gap-6 mb-8">
+        {/* Donut Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base" style={{ color: "#1A1A2E" }}>
+              今週のカテゴリ別支出
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {data?.categoryBreakdown && data.categoryBreakdown.length > 0 ? (
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={data.categoryBreakdown}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    dataKey="value"
+                  >
+                    {data.categoryBreakdown.map((_, index) => (
+                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value) => formatVND(value as number)}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-center py-12" style={{ color: "#6B7280" }}>
+                今週の取引データがありません
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* AI Comment */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base" style={{ color: "#1A1A2E" }}>
+              AIコメント
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {commentLoading ? (
+              <div className="space-y-2">
+                <div className="h-4 rounded animate-pulse" style={{ backgroundColor: "#E5E7EB" }} />
+                <div className="h-4 rounded animate-pulse w-3/4" style={{ backgroundColor: "#E5E7EB" }} />
+              </div>
+            ) : comment ? (
+              <p className="text-sm leading-relaxed" style={{ color: "#1A1A2E" }}>
+                {comment}
+              </p>
+            ) : (
+              <p className="text-sm" style={{ color: "#6B7280" }}>
+                取引データを同期するとAIコメントが表示されます
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Transactions */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base" style={{ color: "#1A1A2E" }}>
+            直近の取引
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {data?.recentTransactions && data.recentTransactions.length > 0 ? (
+            <div className="space-y-3">
+              {data.recentTransactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="flex items-center justify-between py-2 border-b last:border-0"
+                >
+                  <div className="flex items-center gap-3">
+                    <CategoryBadge category={tx.category} />
+                    <span className="text-sm font-medium" style={{ color: "#1A1A2E" }}>
+                      {tx.store}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold" style={{ color: "#1A1A2E" }}>
+                      {formatVND(tx.amount)}
+                    </p>
+                    <p className="text-xs" style={{ color: "#6B7280" }}>
+                      {formatDate(tx.date)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-center py-6" style={{ color: "#6B7280" }}>
+              取引データがありません。同期ボタンを押してください。
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

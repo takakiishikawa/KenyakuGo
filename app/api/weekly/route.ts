@@ -52,8 +52,8 @@ export async function GET() {
     先週: lastWeekMap[cat] ?? 0,
   }));
 
-  const thisWeekTotal = thisWeekTxs.reduce((s, t) => s + t.amount, 0);
-  const lastWeekTotal = lastWeekTxs.reduce((s, t) => s + t.amount, 0);
+  const thisWeekTotal = thisWeekTxs.reduce((s: number, t) => s + t.amount, 0);
+  const lastWeekTotal = lastWeekTxs.reduce((s: number, t) => s + t.amount, 0);
   const diff = thisWeekTotal - lastWeekTotal;
 
   const topCategory = Object.entries(thisWeekMap).sort(([, a], [, b]) => b - a)[0]?.[0] ?? "—";

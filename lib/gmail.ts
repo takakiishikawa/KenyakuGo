@@ -15,7 +15,7 @@ export async function fetchVietcombankEmails(
   do {
     const listResponse = await gmail.users.messages.list({
       userId: "me",
-      q: 'from:info@info.vietcombank.com.vn subject:"Thông báo giao dịch thẻ"',
+      q: 'from:info@info.vietcombank.com.vn subject:"Thông báo giao dịch"',
       maxResults: 500,
       ...(pageToken ? { pageToken } : {}),
     });

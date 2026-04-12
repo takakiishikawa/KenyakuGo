@@ -30,6 +30,20 @@ interface ReportData {
 
 type Period = "week" | "month" | "year";
 
+function getPeriodKey(p: Period): string {
+  const now = new Date();
+  if (p === "week") {
+    const d = new Date(now);
+    const day = d.getDay();
+    d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+    return `week-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  } else if (p === "month") {
+    return `month-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  } else {
+    return `year-${now.getFullYear()}`;
+  }
+}
+
 const PERIOD_LABELS: Record<Period, { current: string; prev: string }> = {
   week:  { current: "今週", prev: "先週" },
   month: { current: "今月", prev: "先月" },
@@ -61,8 +75,9 @@ export default function ReportPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: p === "week" ? "weekly" : "monthly",
+          type: p === "week" ? "weekly" : p === "month" ? "monthly" : "monthly",
           data: { thisWeek: current.byCategory, lastWeek: prev.byCategory },
+          periodKey: getPeriodKey(p),
         }),
       });
       const { comment: c } = await commentRes.json();

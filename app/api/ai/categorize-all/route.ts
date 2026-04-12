@@ -12,7 +12,7 @@ export async function POST() {
   // 「その他」の取引を全件取得
   const { data: uncategorized, error } = await db
     .from("transactions")
-    .select("id, store")
+    .select("id, store, amount")
     .eq("category", "その他");
 
   if (error) {
@@ -85,15 +85,19 @@ export async function POST() {
     }
   }
 
-  // 転送パターンのストアも storeMap に追加
+  // 転送パターン・家賃パターンのストアも storeMap に追加
   for (const tx of txs) {
-    const store = tx.store?.trim();
+    const store = tx.store?.trim() ?? "";
+    const amount = (tx as { store: string; amount?: number }).amount ?? 0;
     if (!store || /chuyen|transfer|remit|remittance/i.test(store)) {
-      if (!existingCategories.includes("転送")) {
-        await db.from("categories").insert({ name: "転送" });
-        existingCategories.push("転送");
+      // 9,000,000 または 8,000,000 VND の定期転送は家賃
+      const isRent = amount === 9000000 || amount === 8000000;
+      const cat = isRent ? "家賃" : "転送";
+      if (!existingCategories.includes(cat)) {
+        await db.from("categories").insert({ name: cat });
+        existingCategories.push(cat);
       }
-      if (!storeMap[store ?? ""]) storeMap[store ?? ""] = "転送";
+      if (!storeMap[store]) storeMap[store] = cat;
     }
   }
 

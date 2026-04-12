@@ -112,29 +112,12 @@ export async function GET() {
       return NextResponse.json({ error: `DB error: ${insertError}`, synced }, { status: 500 });
     }
 
-    // 未分類を AI 自動カテゴリ分類
-    const { data: uncategorized, error: fetchError } = await db
-      .from("transactions")
-      .select("id, store")
-      .eq("category", "その他");
-
-    if (fetchError) {
-      console.error("[sync] fetchUncategorized error:", fetchError);
-    }
-
+    // 未分類を AI 自動カテゴリ分類（同じ店名は過去の分類を再利用）
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-    for (const tx of (uncategorized ?? []) as Pick<Transaction, "id" | "store">[]) {
+    if (synced > 0) {
       try {
-        const res = await fetch(`${siteUrl}/api/ai/categorize`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ store: tx.store }),
-        });
-        if (res.ok) {
-          const { category } = await res.json();
-          await db.from("transactions").update({ category }).eq("id", tx.id);
-        }
+        await fetch(`${siteUrl}/api/ai/categorize-all`, { method: "POST" });
       } catch {
         // AI 分類失敗時はスキップ
       }

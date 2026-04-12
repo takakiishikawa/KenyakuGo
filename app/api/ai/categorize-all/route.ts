@@ -9,6 +9,7 @@ export const maxDuration = 300;
 export async function POST() {
   const db = createDb();
 
+  // 「その他」の取引を全件取得
   const { data: uncategorized, error } = await db
     .from("transactions")
     .select("id, store")
@@ -18,29 +19,34 @@ export async function POST() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const { data: rows } = await db
-    .from("categories")
-    .select("name")
-    .order("created_at");
+  const txs = uncategorized ?? [];
+  if (txs.length === 0) return NextResponse.json({ updated: 0, total: 0 });
 
-  const existing = (rows ?? []).map((r) => r.name);
-  let updated = 0;
+  // 既存カテゴリ一覧
+  const { data: categoryRows } = await db.from("categories").select("name").order("created_at");
+  const existingCategories = (categoryRows ?? []).map((r) => r.name);
 
-  for (const tx of uncategorized ?? []) {
-    const store = tx.store?.trim();
+  // すでに分類済みの店名→カテゴリ マップを構築（その他以外）
+  const { data: classified } = await db
+    .from("transactions")
+    .select("store, category")
+    .neq("category", "その他");
 
-    // 店名が空 or 転送っぽい場合
-    if (!store || /chuyen|transfer|remit|remittance/i.test(store)) {
-      let cat = "転送";
-      if (!existing.includes(cat)) {
-        await db.from("categories").insert({ name: cat });
-        existing.push(cat);
-      }
-      await db.from("transactions").update({ category: cat }).eq("id", tx.id);
-      updated++;
-      continue;
+  const storeMap: Record<string, string> = {};
+  for (const tx of classified ?? []) {
+    if (tx.store && !storeMap[tx.store]) {
+      storeMap[tx.store] = tx.category;
     }
+  }
 
+  // ユニーク店名のうち、未知のものだけAPIで分類
+  const unknownStores = [...new Set(
+    txs
+      .map((t) => t.store?.trim())
+      .filter((s): s is string => !!s && !storeMap[s] && !/chuyen|transfer|remit|remittance/i.test(s))
+  )];
+
+  for (const store of unknownStores) {
     try {
       const message = await client.messages.create({
         model: "claude-haiku-4-5-20251001",
@@ -50,7 +56,7 @@ export async function POST() {
             role: "user",
             content: `以下の店名に最も適切なカテゴリを1つ返してください。
 店名: ${store}
-既存カテゴリ: ${existing.join(", ")}
+既存カテゴリ: ${existingCategories.join(", ")}
 
 既存カテゴリのどれかが適切であればそれを使ってください。
 どれも合わない場合は新しいカテゴリ名を日本語で作ってください（簡潔に）。
@@ -65,21 +71,50 @@ export async function POST() {
       const jsonMatch = content.text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) continue;
 
-      const parsed = JSON.parse(jsonMatch[0]);
-      const category = parsed.category?.trim();
+      const category = JSON.parse(jsonMatch[0]).category?.trim();
       if (!category) continue;
 
-      if (!existing.includes(category)) {
+      if (!existingCategories.includes(category)) {
         await db.from("categories").insert({ name: category });
-        existing.push(category);
+        existingCategories.push(category);
       }
 
-      await db.from("transactions").update({ category }).eq("id", tx.id);
-      updated++;
+      storeMap[store] = category;
     } catch {
-      // 失敗した場合はスキップ
+      // スキップ
     }
   }
 
-  return NextResponse.json({ updated, total: (uncategorized ?? []).length });
+  // 転送パターンのストアも storeMap に追加
+  for (const tx of txs) {
+    const store = tx.store?.trim();
+    if (!store || /chuyen|transfer|remit|remittance/i.test(store)) {
+      if (!existingCategories.includes("転送")) {
+        await db.from("categories").insert({ name: "転送" });
+        existingCategories.push("転送");
+      }
+      if (!storeMap[store ?? ""]) storeMap[store ?? ""] = "転送";
+    }
+  }
+
+  // 一括更新：storeMap を使って取引を更新
+  let updated = 0;
+  for (const tx of txs) {
+    const store = tx.store?.trim() ?? "";
+    const category = storeMap[store] ?? "その他";
+    if (category === "その他") continue;
+
+    const { error: updateErr } = await db
+      .from("transactions")
+      .update({ category })
+      .eq("id", tx.id);
+
+    if (!updateErr) updated++;
+  }
+
+  return NextResponse.json({
+    updated,
+    total: txs.length,
+    apiCalls: unknownStores.length,
+  });
 }

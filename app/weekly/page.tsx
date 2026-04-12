@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -13,19 +13,30 @@ import {
 } from "recharts";
 import { formatVND } from "@/lib/format";
 
-interface ReportData {
-  chartData: Record<string, number | string>[];
-  currentTotal: number;
-  prevTotal: number;
-  diff: number;
-  topCategory: string;
-  currentMap: Record<string, number>;
-  prevMap: Record<string, number>;
-  currentLabel: string;
-  prevLabel: string;
+interface PeriodItem {
+  label: string;
+  total: number;
+  byCategory: Record<string, number>;
 }
 
-type Period = "week" | "month";
+interface ReportData {
+  periods: PeriodItem[];
+  topCategories: string[];
+  diff: number;
+  topCategory: string;
+  currentTotal: number;
+  showYearTab: boolean;
+}
+
+type Period = "week" | "month" | "year";
+
+const PERIOD_LABELS: Record<Period, { current: string; prev: string }> = {
+  week:  { current: "今週", prev: "先週" },
+  month: { current: "今月", prev: "先月" },
+  year:  { current: "今年", prev: "昨年" },
+};
+
+const LINE_COLORS = ["#1B4332", "#52B788", "#F59E0B", "#EF4444", "#8B5CF6"];
 
 export default function ReportPage() {
   const [period, setPeriod] = useState<Period>("week");
@@ -41,14 +52,17 @@ export default function ReportPage() {
     const json: ReportData = await res.json();
     setData(json);
 
-    if (json.chartData.length > 0) {
+    const periods = json.periods;
+    if (periods.length >= 2) {
       setCommentLoading(true);
+      const current = periods[periods.length - 1];
+      const prev = periods[periods.length - 2];
       const commentRes = await fetch("/api/ai/comment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: p === "week" ? "weekly" : "monthly",
-          data: { thisWeek: json.currentMap, lastWeek: json.prevMap },
+          data: { thisWeek: current.byCategory, lastWeek: prev.byCategory },
         }),
       });
       const { comment: c } = await commentRes.json();
@@ -61,9 +75,23 @@ export default function ReportPage() {
     fetchData(period);
   }, [period, fetchData]);
 
+  // recharts 用データ: x軸=期間ラベル、各カテゴリと合計をキーに
+  const chartData = data?.periods.map((p) => ({
+    label: p.label,
+    合計: p.total,
+    ...Object.fromEntries(
+      (data.topCategories ?? []).map((cat) => [cat, p.byCategory[cat] ?? 0])
+    ),
+  })) ?? [];
+
   const diffColor = data && data.diff <= 0 ? "#10B981" : "#EF4444";
-  const currentLabel = data?.currentLabel ?? (period === "week" ? "今週" : "今月");
-  const prevLabel = data?.prevLabel ?? (period === "week" ? "先週" : "先月");
+  const labels = PERIOD_LABELS[period];
+
+  const tabs: { value: Period; label: string }[] = [
+    { value: "week", label: "週" },
+    { value: "month", label: "月" },
+    ...(data?.showYearTab ? [{ value: "year" as Period, label: "年" }] : []),
+  ];
 
   return (
     <div>
@@ -72,12 +100,8 @@ export default function ReportPage() {
           レポート
         </h1>
 
-        {/* Period tabs */}
         <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: "#E5E7EB" }}>
-          {([
-            { value: "week", label: "週" },
-            { value: "month", label: "月" },
-          ] as { value: Period; label: string }[]).map((tab) => (
+          {tabs.map((tab) => (
             <button
               key={tab.value}
               onClick={() => setPeriod(tab.value)}
@@ -98,7 +122,7 @@ export default function ReportPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium" style={{ color: "#6B7280" }}>
-              {currentLabel}の総支出
+              {labels.current}の総支出
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -111,7 +135,7 @@ export default function ReportPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium" style={{ color: "#6B7280" }}>
-              {prevLabel}との差額
+              {labels.prev}との差額
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -135,31 +159,40 @@ export default function ReportPage() {
         </Card>
       </div>
 
-      {/* Bar Chart */}
+      {/* Line Chart */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base" style={{ color: "#1A1A2E" }}>
-            {currentLabel} vs {prevLabel} カテゴリ別比較
+            カテゴリ別推移（上位5カテゴリ）
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {data?.chartData && data.chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={data.chartData}>
-                <XAxis
-                  dataKey="category"
-                  tick={{ fontSize: 11 }}
-                  interval={0}
-                  angle={-15}
-                  textAnchor="end"
-                  height={60}
-                />
+          {chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={340}>
+              <LineChart data={chartData}>
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                 <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(value) => formatVND(value as number)} />
                 <Legend />
-                <Bar dataKey={currentLabel} fill="#1B4332" />
-                <Bar dataKey={prevLabel} fill="#95D5B2" />
-              </BarChart>
+                <Line
+                  type="monotone"
+                  dataKey="合計"
+                  stroke="#94A3B8"
+                  strokeWidth={2}
+                  strokeDasharray="4 4"
+                  dot={false}
+                />
+                {(data?.topCategories ?? []).map((cat, i) => (
+                  <Line
+                    key={cat}
+                    type="monotone"
+                    dataKey={cat}
+                    stroke={LINE_COLORS[i % LINE_COLORS.length]}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                ))}
+              </LineChart>
             </ResponsiveContainer>
           ) : (
             <p className="text-center py-12 text-sm" style={{ color: "#6B7280" }}>

@@ -1,101 +1,127 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createDb, type Transaction } from "@/lib/supabase/db";
 
-function getWeekRange(date: Date) {
-  const day = date.getDay();
-  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(date);
-  monday.setDate(diff);
-  monday.setHours(0, 0, 0, 0);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  sunday.setHours(23, 59, 59, 999);
-  return { start: monday, end: sunday };
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
-function getMonthRange(date: Date) {
-  const start = new Date(date.getFullYear(), date.getMonth(), 1);
-  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
-  return { start, end };
+function getWeekEnd(start: Date): Date {
+  const d = new Date(start);
+  d.setDate(d.getDate() + 6);
+  d.setHours(23, 59, 59, 999);
+  return d;
 }
+
+type PeriodItem = {
+  label: string;
+  total: number;
+  byCategory: Record<string, number>;
+};
 
 export async function GET(req: NextRequest) {
   const period = req.nextUrl.searchParams.get("period") ?? "week";
   const db = createDb();
-  const now = new Date();
 
-  let currentRange: { start: Date; end: Date };
-  let prevRange: { start: Date; end: Date };
-  let currentLabel: string;
-  let prevLabel: string;
+  const { data: allTxs } = await db
+    .from("transactions")
+    .select("category, amount, date")
+    .order("date");
 
-  if (period === "month") {
-    currentRange = getMonthRange(now);
-    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    prevRange = getMonthRange(prevMonth);
-    currentLabel = "今月";
-    prevLabel = "先月";
-  } else {
-    currentRange = getWeekRange(now);
-    const prevWeekStart = new Date(currentRange.start);
-    prevWeekStart.setDate(prevWeekStart.getDate() - 7);
-    const prevWeekEnd = new Date(currentRange.end);
-    prevWeekEnd.setDate(prevWeekEnd.getDate() - 7);
-    prevRange = { start: prevWeekStart, end: prevWeekEnd };
-    currentLabel = "今週";
-    prevLabel = "先週";
-  }
+  const txs = (allTxs ?? []) as Pick<Transaction, "category" | "amount" | "date">[];
 
-  const [currentRes, prevRes] = await Promise.all([
-    db
-      .from("transactions")
-      .select("category, amount")
-      .gte("date", currentRange.start.toISOString())
-      .lte("date", currentRange.end.toISOString()),
-    db
-      .from("transactions")
-      .select("category, amount")
-      .gte("date", prevRange.start.toISOString())
-      .lte("date", prevRange.end.toISOString()),
-  ]);
+  // データのスパンを確認して年タブを表示するか判定
+  const dates = txs.map((t) => new Date(t.date));
+  const minDate = dates.length ? new Date(Math.min(...dates.map((d) => d.getTime()))) : new Date();
+  const maxDate = dates.length ? new Date(Math.max(...dates.map((d) => d.getTime()))) : new Date();
+  const spanMonths =
+    (maxDate.getFullYear() - minDate.getFullYear()) * 12 +
+    (maxDate.getMonth() - minDate.getMonth());
+  const showYearTab = spanMonths >= 12;
 
-  const currentTxs = (currentRes.data ?? []) as Pick<Transaction, "category" | "amount">[];
-  const prevTxs = (prevRes.data ?? []) as Pick<Transaction, "category" | "amount">[];
-
-  const toCategoryMap = (txs: Pick<Transaction, "category" | "amount">[]) => {
-    const map: Record<string, number> = {};
-    for (const tx of txs) {
-      map[tx.category] = (map[tx.category] ?? 0) + tx.amount;
-    }
-    return map;
+  const groupByPeriod = (
+    buckets: { label: string; start: Date; end: Date }[]
+  ): PeriodItem[] => {
+    return buckets.map(({ label, start, end }) => {
+      const bucket = txs.filter((t) => {
+        const d = new Date(t.date);
+        return d >= start && d <= end;
+      });
+      const byCategory: Record<string, number> = {};
+      let total = 0;
+      for (const t of bucket) {
+        byCategory[t.category] = (byCategory[t.category] ?? 0) + t.amount;
+        total += t.amount;
+      }
+      return { label, total, byCategory };
+    });
   };
 
-  const currentMap = toCategoryMap(currentTxs);
-  const prevMap = toCategoryMap(prevTxs);
+  let periods: PeriodItem[] = [];
 
-  const allCategories = new Set([...Object.keys(currentMap), ...Object.keys(prevMap)]);
+  if (period === "week") {
+    // 直近4週
+    const now = new Date();
+    const buckets = Array.from({ length: 4 }, (_, i) => {
+      const offset = (3 - i) * 7;
+      const start = getWeekStart(new Date(now.getTime() - offset * 86400000));
+      const end = getWeekEnd(start);
+      const labels = ["3週前", "2週前", "先週", "今週"];
+      return { label: labels[i], start, end };
+    });
+    periods = groupByPeriod(buckets);
+  } else if (period === "month") {
+    // 全月
+    const monthSet = new Set(txs.map((t) => t.date.slice(0, 7)));
+    const months = [...monthSet].sort();
+    const buckets = months.map((ym) => {
+      const [y, m] = ym.split("-").map(Number);
+      const start = new Date(y, m - 1, 1);
+      const end = new Date(y, m, 0, 23, 59, 59, 999);
+      return { label: `${y}年${m}月`, start, end };
+    });
+    periods = groupByPeriod(buckets);
+  } else if (period === "year") {
+    // 全年
+    const yearSet = new Set(txs.map((t) => t.date.slice(0, 4)));
+    const years = [...yearSet].sort();
+    const buckets = years.map((y) => {
+      const yn = Number(y);
+      const start = new Date(yn, 0, 1);
+      const end = new Date(yn, 11, 31, 23, 59, 59, 999);
+      return { label: `${y}年`, start, end };
+    });
+    periods = groupByPeriod(buckets);
+  }
 
-  const chartData = Array.from(allCategories).map((cat) => ({
-    category: cat,
-    [currentLabel]: currentMap[cat] ?? 0,
-    [prevLabel]: prevMap[cat] ?? 0,
-  }));
+  // 全カテゴリ集計（合計上位5カテゴリをグラフに表示）
+  const categoryTotals: Record<string, number> = {};
+  for (const p of periods) {
+    for (const [cat, amt] of Object.entries(p.byCategory)) {
+      categoryTotals[cat] = (categoryTotals[cat] ?? 0) + amt;
+    }
+  }
+  const topCategories = Object.entries(categoryTotals)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([cat]) => cat);
 
-  const currentTotal = currentTxs.reduce((s, t) => s + t.amount, 0);
-  const prevTotal = prevTxs.reduce((s, t) => s + t.amount, 0);
-  const diff = currentTotal - prevTotal;
+  const currentPeriod = periods[periods.length - 1];
+  const prevPeriod = periods[periods.length - 2];
+  const diff = (currentPeriod?.total ?? 0) - (prevPeriod?.total ?? 0);
   const topCategory =
-    Object.entries(currentMap).sort(([, a], [, b]) => b - a)[0]?.[0] ?? "—";
+    Object.entries(currentPeriod?.byCategory ?? {}).sort(([, a], [, b]) => b - a)[0]?.[0] ?? "—";
 
   return NextResponse.json({
-    chartData,
-    currentTotal,
-    prevTotal,
+    periods,
+    topCategories,
     diff,
     topCategory,
-    currentMap,
-    prevMap,
-    currentLabel,
-    prevLabel,
+    currentTotal: currentPeriod?.total ?? 0,
+    showYearTab,
   });
 }

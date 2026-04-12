@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { fetchVietcombankEmails } from "@/lib/gmail";
 import { parseVietcombankEmail } from "@/lib/parser";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.accessToken) {
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.provider_token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const emails = await fetchVietcombankEmails(session.accessToken);
+  const emails = await fetchVietcombankEmails(session.provider_token);
   let synced = 0;
 
   for (const email of emails) {
@@ -36,7 +39,7 @@ export async function GET() {
     synced++;
   }
 
-  // AI categorize transactions with "その他"
+  // 未分類をAI自動カテゴリ分類
   const uncategorized = await prisma.transaction.findMany({
     where: { category: "その他" },
   });
@@ -44,7 +47,7 @@ export async function GET() {
   for (const tx of uncategorized) {
     try {
       const res = await fetch(
-        `${process.env.NEXTAUTH_URL}/api/ai/categorize`,
+        `${process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/api/ai/categorize`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -59,7 +62,7 @@ export async function GET() {
         });
       }
     } catch {
-      // Skip if AI categorization fails
+      // AI分類失敗時はスキップ
     }
   }
 

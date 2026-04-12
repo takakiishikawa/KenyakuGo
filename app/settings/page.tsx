@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
@@ -17,10 +18,15 @@ import {
 import { toast } from "sonner";
 
 export default function SettingsPage() {
-  const { data: session } = useSession();
+  const [user, setUser] = useState<User | null>(null);
   const [targetMonthly, setTargetMonthly] = useState("");
   const [fixedCosts, setFixedCosts] = useState("");
   const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return;
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+  }, []);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -115,22 +121,22 @@ export default function SettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {session ? (
+            {user ? (
               <div className="flex items-center gap-3">
-                {session.user?.image && (
+                {user.user_metadata?.avatar_url && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={session.user.image}
+                    src={user.user_metadata.avatar_url as string}
                     alt="avatar"
                     className="w-10 h-10 rounded-full"
                   />
                 )}
                 <div>
                   <p className="text-sm font-medium" style={{ color: "#1A1A2E" }}>
-                    {session.user?.name}
+                    {user.user_metadata?.full_name as string}
                   </p>
                   <p className="text-xs" style={{ color: "#6B7280" }}>
-                    {session.user?.email}
+                    {user.email}
                   </p>
                 </div>
               </div>

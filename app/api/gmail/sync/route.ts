@@ -10,8 +10,14 @@ export async function GET() {
     data: { session },
   } = await supabase.auth.getSession();
 
-  if (!session?.provider_token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json({ error: "No session" }, { status: 401 });
+  }
+  if (!session.provider_token) {
+    return NextResponse.json(
+      { error: "No provider_token: re-login required" },
+      { status: 401 }
+    );
   }
 
   const emails = await fetchVietcombankEmails(session.provider_token);

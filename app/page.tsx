@@ -50,6 +50,7 @@ export default function Dashboard() {
   const fetchDashboard = useCallback(async () => {
     const res = await fetch("/api/dashboard");
     const json = await res.json();
+    if (!res.ok) return; // エラー時は setData しない（クラッシュ防止）
     setData(json);
 
     if (json.categoryBreakdown?.length > 0) {

@@ -78,8 +78,12 @@ export default function DamPage() {
 
   useEffect(() => {
     fetch("/api/dam")
-      .then((r) => r.json())
-      .then(async (json: DamData) => {
+      .then(async (r) => {
+        if (!r.ok) return;
+        return r.json();
+      })
+      .then(async (json: DamData | undefined) => {
+        if (!json) return;
         setData(json);
         if (json.cumulativeBalance > 0) {
           setCommentLoading(true);

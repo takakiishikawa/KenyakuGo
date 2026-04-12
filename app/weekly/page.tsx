@@ -30,8 +30,12 @@ export default function WeeklyPage() {
 
   useEffect(() => {
     fetch("/api/weekly")
-      .then((r) => r.json())
-      .then(async (json: WeeklyData) => {
+      .then(async (r) => {
+        if (!r.ok) return;
+        return r.json();
+      })
+      .then(async (json: WeeklyData | undefined) => {
+        if (!json) return;
         setData(json);
         if (json.chartData.length > 0) {
           setCommentLoading(true);

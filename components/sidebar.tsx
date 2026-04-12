@@ -10,7 +10,7 @@ import type { User } from "@supabase/supabase-js";
 const navItems = [
   { href: "/", label: "ホーム", icon: Home },
   { href: "/transactions", label: "取引一覧", icon: List },
-  { href: "/weekly", label: "週次レポート", icon: BarChart2 },
+  { href: "/weekly", label: "レポート", icon: BarChart2 },
   { href: "/dam", label: "ダム", icon: Droplets },
   { href: "/settings", label: "設定", icon: Settings },
 ];

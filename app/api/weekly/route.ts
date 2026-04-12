@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createDb, type Transaction } from "@/lib/supabase/db";
 
 function getWeekRange(date: Date) {
@@ -13,30 +13,54 @@ function getWeekRange(date: Date) {
   return { start: monday, end: sunday };
 }
 
-export async function GET() {
+function getMonthRange(date: Date) {
+  const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+  return { start, end };
+}
+
+export async function GET(req: NextRequest) {
+  const period = req.nextUrl.searchParams.get("period") ?? "week";
   const db = createDb();
   const now = new Date();
-  const thisWeek = getWeekRange(now);
-  const lastWeekStart = new Date(thisWeek.start);
-  lastWeekStart.setDate(lastWeekStart.getDate() - 7);
-  const lastWeekEnd = new Date(thisWeek.end);
-  lastWeekEnd.setDate(lastWeekEnd.getDate() - 7);
 
-  const [thisWeekRes, lastWeekRes] = await Promise.all([
+  let currentRange: { start: Date; end: Date };
+  let prevRange: { start: Date; end: Date };
+  let currentLabel: string;
+  let prevLabel: string;
+
+  if (period === "month") {
+    currentRange = getMonthRange(now);
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    prevRange = getMonthRange(prevMonth);
+    currentLabel = "今月";
+    prevLabel = "先月";
+  } else {
+    currentRange = getWeekRange(now);
+    const prevWeekStart = new Date(currentRange.start);
+    prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+    const prevWeekEnd = new Date(currentRange.end);
+    prevWeekEnd.setDate(prevWeekEnd.getDate() - 7);
+    prevRange = { start: prevWeekStart, end: prevWeekEnd };
+    currentLabel = "今週";
+    prevLabel = "先週";
+  }
+
+  const [currentRes, prevRes] = await Promise.all([
     db
       .from("transactions")
       .select("category, amount")
-      .gte("date", thisWeek.start.toISOString())
-      .lte("date", thisWeek.end.toISOString()),
+      .gte("date", currentRange.start.toISOString())
+      .lte("date", currentRange.end.toISOString()),
     db
       .from("transactions")
       .select("category, amount")
-      .gte("date", lastWeekStart.toISOString())
-      .lte("date", lastWeekEnd.toISOString()),
+      .gte("date", prevRange.start.toISOString())
+      .lte("date", prevRange.end.toISOString()),
   ]);
 
-  const thisWeekTxs = (thisWeekRes.data ?? []) as Pick<Transaction, "category" | "amount">[];
-  const lastWeekTxs = (lastWeekRes.data ?? []) as Pick<Transaction, "category" | "amount">[];
+  const currentTxs = (currentRes.data ?? []) as Pick<Transaction, "category" | "amount">[];
+  const prevTxs = (prevRes.data ?? []) as Pick<Transaction, "category" | "amount">[];
 
   const toCategoryMap = (txs: Pick<Transaction, "category" | "amount">[]) => {
     const map: Record<string, number> = {};
@@ -46,33 +70,32 @@ export async function GET() {
     return map;
   };
 
-  const thisWeekMap = toCategoryMap(thisWeekTxs);
-  const lastWeekMap = toCategoryMap(lastWeekTxs);
+  const currentMap = toCategoryMap(currentTxs);
+  const prevMap = toCategoryMap(prevTxs);
 
-  const allCategories = new Set([
-    ...Object.keys(thisWeekMap),
-    ...Object.keys(lastWeekMap),
-  ]);
+  const allCategories = new Set([...Object.keys(currentMap), ...Object.keys(prevMap)]);
 
   const chartData = Array.from(allCategories).map((cat) => ({
     category: cat,
-    今週: thisWeekMap[cat] ?? 0,
-    先週: lastWeekMap[cat] ?? 0,
+    [currentLabel]: currentMap[cat] ?? 0,
+    [prevLabel]: prevMap[cat] ?? 0,
   }));
 
-  const thisWeekTotal = thisWeekTxs.reduce((s, t) => s + t.amount, 0);
-  const lastWeekTotal = lastWeekTxs.reduce((s, t) => s + t.amount, 0);
-  const diff = thisWeekTotal - lastWeekTotal;
+  const currentTotal = currentTxs.reduce((s, t) => s + t.amount, 0);
+  const prevTotal = prevTxs.reduce((s, t) => s + t.amount, 0);
+  const diff = currentTotal - prevTotal;
   const topCategory =
-    Object.entries(thisWeekMap).sort(([, a], [, b]) => b - a)[0]?.[0] ?? "—";
+    Object.entries(currentMap).sort(([, a], [, b]) => b - a)[0]?.[0] ?? "—";
 
   return NextResponse.json({
     chartData,
-    thisWeekTotal,
-    lastWeekTotal,
+    currentTotal,
+    prevTotal,
     diff,
     topCategory,
-    thisWeekMap,
-    lastWeekMap,
+    currentMap,
+    prevMap,
+    currentLabel,
+    prevLabel,
   });
 }

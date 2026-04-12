@@ -34,6 +34,7 @@ export default function TransactionsPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [selected, setSelected] = useState<Transaction | null>(null);
   const [newCategory, setNewCategory] = useState("");
+  const [categorizing, setCategorizing] = useState(false);
 
   useEffect(() => {
     fetch("/api/categories")
@@ -53,6 +54,18 @@ export default function TransactionsPage() {
     fetchTransactions();
   }, [fetchTransactions]);
 
+  const handleCategorizeAll = async () => {
+    setCategorizing(true);
+    const res = await fetch("/api/ai/categorize-all", { method: "POST" });
+    const { updated, total } = await res.json();
+    toast.success(`${total}件中${updated}件のカテゴリを更新しました`);
+    setCategorizing(false);
+    fetchTransactions();
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data) => setCategories((data as { name: string }[]).map((c) => c.name)));
+  };
+
   const handleCategoryUpdate = async () => {
     if (!selected || !newCategory) return;
     await fetch(`/api/transactions/${selected.id}`, {
@@ -67,9 +80,19 @@ export default function TransactionsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-8" style={{ color: "#1A1A2E" }}>
-        取引一覧
-      </h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-2xl font-bold" style={{ color: "#1A1A2E" }}>
+          取引一覧
+        </h1>
+        <button
+          onClick={handleCategorizeAll}
+          disabled={categorizing}
+          className="px-4 py-2 text-sm rounded-lg text-white font-medium disabled:opacity-50"
+          style={{ backgroundColor: "#52B788" }}
+        >
+          {categorizing ? "分類中..." : "カテゴリ一括適用"}
+        </button>
+      </div>
 
       {/* Filters */}
       <div className="flex gap-4 mb-6">

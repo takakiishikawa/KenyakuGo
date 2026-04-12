@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   BarChart,
@@ -13,66 +13,97 @@ import {
 } from "recharts";
 import { formatVND } from "@/lib/format";
 
-interface WeeklyData {
-  chartData: { category: string; 今週: number; 先週: number }[];
-  thisWeekTotal: number;
-  lastWeekTotal: number;
+interface ReportData {
+  chartData: Record<string, number | string>[];
+  currentTotal: number;
+  prevTotal: number;
   diff: number;
   topCategory: string;
-  thisWeekMap: Record<string, number>;
-  lastWeekMap: Record<string, number>;
+  currentMap: Record<string, number>;
+  prevMap: Record<string, number>;
+  currentLabel: string;
+  prevLabel: string;
 }
 
-export default function WeeklyPage() {
-  const [data, setData] = useState<WeeklyData | null>(null);
+type Period = "week" | "month";
+
+export default function ReportPage() {
+  const [period, setPeriod] = useState<Period>("week");
+  const [data, setData] = useState<ReportData | null>(null);
   const [comment, setComment] = useState("");
   const [commentLoading, setCommentLoading] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/weekly")
-      .then(async (r) => {
-        if (!r.ok) return;
-        return r.json();
-      })
-      .then(async (json: WeeklyData | undefined) => {
-        if (!json) return;
-        setData(json);
-        if (json.chartData.length > 0) {
-          setCommentLoading(true);
-          const res = await fetch("/api/ai/comment", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: "weekly",
-              data: { thisWeek: json.thisWeekMap, lastWeek: json.lastWeekMap },
-            }),
-          });
-          const { comment: c } = await res.json();
-          setComment(c);
-          setCommentLoading(false);
-        }
+  const fetchData = useCallback(async (p: Period) => {
+    setData(null);
+    setComment("");
+    const res = await fetch(`/api/weekly?period=${p}`);
+    if (!res.ok) return;
+    const json: ReportData = await res.json();
+    setData(json);
+
+    if (json.chartData.length > 0) {
+      setCommentLoading(true);
+      const commentRes = await fetch("/api/ai/comment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: p === "week" ? "weekly" : "monthly",
+          data: { thisWeek: json.currentMap, lastWeek: json.prevMap },
+        }),
       });
+      const { comment: c } = await commentRes.json();
+      setComment(c);
+      setCommentLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchData(period);
+  }, [period, fetchData]);
+
   const diffColor = data && data.diff <= 0 ? "#10B981" : "#EF4444";
+  const currentLabel = data?.currentLabel ?? (period === "week" ? "今週" : "今月");
+  const prevLabel = data?.prevLabel ?? (period === "week" ? "先週" : "先月");
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-8" style={{ color: "#1A1A2E" }}>
-        週次レポート
-      </h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-2xl font-bold" style={{ color: "#1A1A2E" }}>
+          レポート
+        </h1>
+
+        {/* Period tabs */}
+        <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: "#E5E7EB" }}>
+          {([
+            { value: "week", label: "週" },
+            { value: "month", label: "月" },
+          ] as { value: Period; label: string }[]).map((tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setPeriod(tab.value)}
+              className="px-5 py-2 text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: period === tab.value ? "#1B4332" : "white",
+                color: period === tab.value ? "white" : "#6B7280",
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-6 mb-8">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium" style={{ color: "#6B7280" }}>
-              今週の総支出
+              {currentLabel}の総支出
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold" style={{ color: "#1A1A2E" }}>
-              {data ? formatVND(data.thisWeekTotal) : "—"}
+              {data ? formatVND(data.currentTotal) : "—"}
             </p>
           </CardContent>
         </Card>
@@ -80,7 +111,7 @@ export default function WeeklyPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium" style={{ color: "#6B7280" }}>
-              先週との差額
+              {prevLabel}との差額
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -108,7 +139,7 @@ export default function WeeklyPage() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base" style={{ color: "#1A1A2E" }}>
-            今週 vs 先週 カテゴリ別比較
+            {currentLabel} vs {prevLabel} カテゴリ別比較
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -126,8 +157,8 @@ export default function WeeklyPage() {
                 <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(value) => formatVND(value as number)} />
                 <Legend />
-                <Bar dataKey="今週" fill="#1B4332" />
-                <Bar dataKey="先週" fill="#95D5B2" />
+                <Bar dataKey={currentLabel} fill="#1B4332" />
+                <Bar dataKey={prevLabel} fill="#95D5B2" />
               </BarChart>
             </ResponsiveContainer>
           ) : (

@@ -54,6 +54,13 @@ export async function GET() {
       db.from("settings").select("target_monthly").eq("id", "singleton").maybeSingle(),
     ]);
 
+  // エラーがあれば早期リターン（原因特定用）
+  const firstError = thisWeekRes.error ?? lastWeekRes.error ?? thisMonthRes.error ?? recentRes.error;
+  if (firstError) {
+    console.error("[dashboard] DB error:", firstError);
+    return NextResponse.json({ error: firstError.message }, { status: 500 });
+  }
+
   const thisWeekTxs = (thisWeekRes.data ?? []) as Pick<Transaction, "amount" | "category">[];
   const lastWeekTxs = (lastWeekRes.data ?? []) as Pick<Transaction, "amount">[];
   const thisMonthTxs = (thisMonthRes.data ?? []) as Pick<Transaction, "amount">[];

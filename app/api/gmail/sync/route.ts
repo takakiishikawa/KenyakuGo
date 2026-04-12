@@ -34,20 +34,26 @@ export async function GET() {
 
     const db = createDb();
     let synced = 0;
+    let insertError: string | null = null;
 
     for (const email of emails) {
       const parsed = parseVietcombankEmail(email.body);
       if (!parsed.isValid) continue;
 
-      const { data: existing } = await db
+      const { data: existing, error: findError } = await db
         .from("transactions")
         .select("id")
         .eq("gmail_id", email.id)
         .maybeSingle();
 
+      if (findError) {
+        console.error("[sync] findUnique error:", findError);
+        insertError = findError.message;
+        break;
+      }
       if (existing) continue;
 
-      await db.from("transactions").insert({
+      const { error: err } = await db.from("transactions").insert({
         id: crypto.randomUUID(),
         gmail_id: email.id,
         store: parsed.store,
@@ -57,14 +63,27 @@ export async function GET() {
         raw_text: email.body,
       } satisfies Omit<Transaction, "created_at">);
 
+      if (err) {
+        console.error("[sync] Insert error:", err);
+        insertError = err.message;
+        break;
+      }
       synced++;
     }
 
+    if (insertError) {
+      return NextResponse.json({ error: `DB error: ${insertError}`, synced }, { status: 500 });
+    }
+
     // 未分類を AI 自動カテゴリ分類
-    const { data: uncategorized } = await db
+    const { data: uncategorized, error: fetchError } = await db
       .from("transactions")
       .select("id, store")
       .eq("category", "その他");
+
+    if (fetchError) {
+      console.error("[sync] fetchUncategorized error:", fetchError);
+    }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 

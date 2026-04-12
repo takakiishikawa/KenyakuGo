@@ -79,10 +79,14 @@ export default function Dashboard() {
     try {
       const res = await fetch("/api/gmail/sync");
       const json = await res.json();
+      if (!res.ok) {
+        toast.error(`同期失敗: ${json.error ?? res.status}`);
+        return;
+      }
       toast.success(`${json.synced}件取得しました`);
       fetchDashboard();
-    } catch {
-      toast.error("同期に失敗しました");
+    } catch (e) {
+      toast.error(`同期失敗: ${e instanceof Error ? e.message : "network error"}`);
     } finally {
       setSyncing(false);
     }

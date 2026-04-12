@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { createDb } from "@/lib/supabase/db";
 
 export async function DELETE() {
-  await prisma.transaction.deleteMany();
+  const db = createDb();
+  // Supabase requires a filter — .not("id","is",null) matches all rows
+  await db.from("transactions").delete().not("id", "is", null);
   return NextResponse.json({ ok: true });
 }

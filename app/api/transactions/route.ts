@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { createDb, type Transaction } from "@/lib/supabase/db";
 
 function getWeekRange(date: Date) {
   const day = date.getDay();
@@ -24,26 +24,27 @@ export async function GET(req: NextRequest) {
   const period = searchParams.get("period") ?? "all";
   const category = searchParams.get("category");
 
-  const now = new Date();
-  let dateFilter = {};
+  const db = createDb();
+  let query = db
+    .from("transactions")
+    .select("id, store, amount, category, date")
+    .order("date", { ascending: false });
 
+  const now = new Date();
   if (period === "week") {
     const range = getWeekRange(now);
-    dateFilter = { date: { gte: range.start, lte: range.end } };
+    query = query.gte("date", range.start.toISOString()).lte("date", range.end.toISOString());
   } else if (period === "month") {
     const range = getMonthRange(now);
-    dateFilter = { date: { gte: range.start, lte: range.end } };
+    query = query.gte("date", range.start.toISOString()).lte("date", range.end.toISOString());
   }
 
-  const where = {
-    ...dateFilter,
-    ...(category && category !== "all" ? { category } : {}),
-  };
+  if (category && category !== "all") {
+    query = query.eq("category", category);
+  }
 
-  const transactions = await prisma.transaction.findMany({
-    where,
-    orderBy: { date: "desc" },
-  });
-
-  return NextResponse.json(transactions);
+  const { data } = await query;
+  return NextResponse.json(
+    (data ?? []) as Pick<Transaction, "id" | "store" | "amount" | "category" | "date">[]
+  );
 }

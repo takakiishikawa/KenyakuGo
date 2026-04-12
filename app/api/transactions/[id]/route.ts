@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { createDb } from "@/lib/supabase/db";
 
 export async function PATCH(
   req: NextRequest,
@@ -7,11 +7,14 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const { category } = await req.json();
+  const db = createDb();
 
-  const updated = await prisma.transaction.update({
-    where: { id },
-    data: { category },
-  });
+  const { data } = await db
+    .from("transactions")
+    .update({ category })
+    .eq("id", id)
+    .select("id, store, amount, category, date")
+    .single();
 
-  return NextResponse.json(updated);
+  return NextResponse.json(data);
 }

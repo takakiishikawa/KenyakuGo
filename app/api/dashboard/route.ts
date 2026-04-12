@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { createDb, type Transaction, type Settings } from "@/lib/supabase/db";
 
 function getWeekRange(date: Date) {
   const day = date.getDay();
@@ -20,6 +20,7 @@ function getMonthRange(date: Date) {
 }
 
 export async function GET() {
+  const db = createDb();
   const now = new Date();
   const thisWeek = getWeekRange(now);
   const lastWeekStart = new Date(thisWeek.start);
@@ -28,37 +29,49 @@ export async function GET() {
   lastWeekEnd.setDate(lastWeekEnd.getDate() - 7);
   const thisMonth = getMonthRange(now);
 
-  const [thisWeekTxs, lastWeekTxs, thisMonthTxs, recentTxs, settings] =
+  const [thisWeekRes, lastWeekRes, thisMonthRes, recentRes, settingsRes] =
     await Promise.all([
-      prisma.transaction.findMany({
-        where: { date: { gte: thisWeek.start, lte: thisWeek.end } },
-      }),
-      prisma.transaction.findMany({
-        where: { date: { gte: lastWeekStart, lte: lastWeekEnd } },
-      }),
-      prisma.transaction.findMany({
-        where: { date: { gte: thisMonth.start, lte: thisMonth.end } },
-      }),
-      prisma.transaction.findMany({
-        orderBy: { date: "desc" },
-        take: 5,
-      }),
-      prisma.settings.findUnique({ where: { id: "singleton" } }),
+      db
+        .from("transactions")
+        .select("amount, category")
+        .gte("date", thisWeek.start.toISOString())
+        .lte("date", thisWeek.end.toISOString()),
+      db
+        .from("transactions")
+        .select("amount")
+        .gte("date", lastWeekStart.toISOString())
+        .lte("date", lastWeekEnd.toISOString()),
+      db
+        .from("transactions")
+        .select("amount")
+        .gte("date", thisMonth.start.toISOString())
+        .lte("date", thisMonth.end.toISOString()),
+      db
+        .from("transactions")
+        .select("id, store, amount, category, date")
+        .order("date", { ascending: false })
+        .limit(5),
+      db.from("settings").select("target_monthly").eq("id", "singleton").maybeSingle(),
     ]);
 
-  const thisMonthTotal = thisMonthTxs.reduce((sum, t) => sum + t.amount, 0);
-  const thisWeekTotal = thisWeekTxs.reduce((sum, t) => sum + t.amount, 0);
-  const lastWeekTotal = lastWeekTxs.reduce((sum, t) => sum + t.amount, 0);
+  const thisWeekTxs = (thisWeekRes.data ?? []) as Pick<Transaction, "amount" | "category">[];
+  const lastWeekTxs = (lastWeekRes.data ?? []) as Pick<Transaction, "amount">[];
+  const thisMonthTxs = (thisMonthRes.data ?? []) as Pick<Transaction, "amount">[];
+  const recentTxs = (recentRes.data ?? []) as Pick<Transaction, "id" | "store" | "amount" | "category" | "date">[];
+  const settings = settingsRes.data as Pick<Settings, "target_monthly"> | null;
+
+  const thisMonthTotal = thisMonthTxs.reduce((s, t) => s + t.amount, 0);
+  const thisWeekTotal = thisWeekTxs.reduce((s, t) => s + t.amount, 0);
+  const lastWeekTotal = lastWeekTxs.reduce((s, t) => s + t.amount, 0);
 
   const weekDiff =
     lastWeekTotal > 0
       ? Math.round(((thisWeekTotal - lastWeekTotal) / lastWeekTotal) * 100)
       : 0;
 
-  const targetMonthly = settings?.targetMonthly ?? 0;
+  const targetMonthly = settings?.target_monthly ?? 0;
   const damBalance = targetMonthly - thisMonthTotal;
 
-  // Category breakdown for this week
   const categoryMap: Record<string, number> = {};
   for (const tx of thisWeekTxs) {
     categoryMap[tx.category] = (categoryMap[tx.category] ?? 0) + tx.amount;

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { createDb, type Transaction, type Settings } from "@/lib/supabase/db";
 
 function getMonthRange(date: Date) {
   const start = new Date(date.getFullYear(), date.getMonth(), 1);
@@ -8,25 +8,32 @@ function getMonthRange(date: Date) {
 }
 
 export async function GET() {
+  const db = createDb();
   const now = new Date();
   const thisMonth = getMonthRange(now);
 
-  const [thisMonthTxs, allTxs, settings] = await Promise.all([
-    prisma.transaction.findMany({
-      where: { date: { gte: thisMonth.start, lte: thisMonth.end } },
-    }),
-    prisma.transaction.findMany(),
-    prisma.settings.findUnique({ where: { id: "singleton" } }),
+  const [thisMonthRes, allRes, settingsRes] = await Promise.all([
+    db
+      .from("transactions")
+      .select("amount")
+      .gte("date", thisMonth.start.toISOString())
+      .lte("date", thisMonth.end.toISOString()),
+    db.from("transactions").select("amount, date"),
+    db.from("settings").select("target_monthly").eq("id", "singleton").maybeSingle(),
   ]);
 
-  const targetMonthly = settings?.targetMonthly ?? 0;
+  const thisMonthTxs = (thisMonthRes.data ?? []) as Pick<Transaction, "amount">[];
+  const allTxs = (allRes.data ?? []) as Pick<Transaction, "amount" | "date">[];
+  const settings = settingsRes.data as Pick<Settings, "target_monthly"> | null;
+
+  const targetMonthly = settings?.target_monthly ?? 0;
   const thisMonthTotal = thisMonthTxs.reduce((s, t) => s + t.amount, 0);
   const currentBalance = targetMonthly - thisMonthTotal;
 
-  // Cumulative: group all transactions by month
   const monthlyMap: Record<string, number> = {};
   for (const tx of allTxs) {
-    const key = `${tx.date.getFullYear()}-${tx.date.getMonth()}`;
+    const d = new Date(tx.date);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
     monthlyMap[key] = (monthlyMap[key] ?? 0) + tx.amount;
   }
 

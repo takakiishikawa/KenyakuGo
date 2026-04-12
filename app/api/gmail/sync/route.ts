@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createDb, type Transaction } from "@/lib/supabase/db";
 import { fetchVietcombankEmails } from "@/lib/gmail";
 import { parseVietcombankEmail } from "@/lib/parser";
-import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
@@ -32,38 +32,43 @@ export async function GET() {
       );
     }
 
+    const db = createDb();
     let synced = 0;
+
     for (const email of emails) {
       const parsed = parseVietcombankEmail(email.body);
       if (!parsed.isValid) continue;
 
-      const existing = await prisma.transaction.findUnique({
-        where: { gmailId: email.id },
-      });
+      const { data: existing } = await db
+        .from("transactions")
+        .select("id")
+        .eq("gmail_id", email.id)
+        .maybeSingle();
+
       if (existing) continue;
 
-      await prisma.transaction.create({
-        data: {
-          gmailId: email.id,
-          store: parsed.store,
-          amount: parsed.amount,
-          date: parsed.date,
-          category: "その他",
-          rawText: email.body,
-        },
-      });
+      await db.from("transactions").insert({
+        id: crypto.randomUUID(),
+        gmail_id: email.id,
+        store: parsed.store,
+        amount: parsed.amount,
+        date: parsed.date.toISOString(),
+        category: "その他",
+        raw_text: email.body,
+      } satisfies Omit<Transaction, "created_at">);
+
       synced++;
     }
 
-    // 未分類をAI自動カテゴリ分類
-    const uncategorized = await prisma.transaction.findMany({
-      where: { category: "その他" },
-    });
+    // 未分類を AI 自動カテゴリ分類
+    const { data: uncategorized } = await db
+      .from("transactions")
+      .select("id, store")
+      .eq("category", "その他");
 
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-    for (const tx of uncategorized) {
+    for (const tx of (uncategorized ?? []) as Pick<Transaction, "id" | "store">[]) {
       try {
         const res = await fetch(`${siteUrl}/api/ai/categorize`, {
           method: "POST",
@@ -72,13 +77,10 @@ export async function GET() {
         });
         if (res.ok) {
           const { category } = await res.json();
-          await prisma.transaction.update({
-            where: { id: tx.id },
-            data: { category },
-          });
+          await db.from("transactions").update({ category }).eq("id", tx.id);
         }
       } catch {
-        // AI分類失敗時はスキップ
+        // AI 分類失敗時はスキップ
       }
     }
 

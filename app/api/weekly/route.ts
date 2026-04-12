@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { createDb, type Transaction } from "@/lib/supabase/db";
 
 function getWeekRange(date: Date) {
   const day = date.getDay();
@@ -14,6 +14,7 @@ function getWeekRange(date: Date) {
 }
 
 export async function GET() {
+  const db = createDb();
   const now = new Date();
   const thisWeek = getWeekRange(now);
   const lastWeekStart = new Date(thisWeek.start);
@@ -21,16 +22,23 @@ export async function GET() {
   const lastWeekEnd = new Date(thisWeek.end);
   lastWeekEnd.setDate(lastWeekEnd.getDate() - 7);
 
-  const [thisWeekTxs, lastWeekTxs] = await Promise.all([
-    prisma.transaction.findMany({
-      where: { date: { gte: thisWeek.start, lte: thisWeek.end } },
-    }),
-    prisma.transaction.findMany({
-      where: { date: { gte: lastWeekStart, lte: lastWeekEnd } },
-    }),
+  const [thisWeekRes, lastWeekRes] = await Promise.all([
+    db
+      .from("transactions")
+      .select("category, amount")
+      .gte("date", thisWeek.start.toISOString())
+      .lte("date", thisWeek.end.toISOString()),
+    db
+      .from("transactions")
+      .select("category, amount")
+      .gte("date", lastWeekStart.toISOString())
+      .lte("date", lastWeekEnd.toISOString()),
   ]);
 
-  const toCategoryMap = (txs: { category: string; amount: number }[]) => {
+  const thisWeekTxs = (thisWeekRes.data ?? []) as Pick<Transaction, "category" | "amount">[];
+  const lastWeekTxs = (lastWeekRes.data ?? []) as Pick<Transaction, "category" | "amount">[];
+
+  const toCategoryMap = (txs: Pick<Transaction, "category" | "amount">[]) => {
     const map: Record<string, number> = {};
     for (const tx of txs) {
       map[tx.category] = (map[tx.category] ?? 0) + tx.amount;
@@ -55,8 +63,8 @@ export async function GET() {
   const thisWeekTotal = thisWeekTxs.reduce((s, t) => s + t.amount, 0);
   const lastWeekTotal = lastWeekTxs.reduce((s, t) => s + t.amount, 0);
   const diff = thisWeekTotal - lastWeekTotal;
-
-  const topCategory = Object.entries(thisWeekMap).sort(([, a], [, b]) => b - a)[0]?.[0] ?? "—";
+  const topCategory =
+    Object.entries(thisWeekMap).sort(([, a], [, b]) => b - a)[0]?.[0] ?? "—";
 
   return NextResponse.json({
     chartData,

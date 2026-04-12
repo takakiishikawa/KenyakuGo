@@ -30,13 +30,19 @@ export async function fetchVietcombankEmails(
     let body = "";
 
     if (payload?.parts) {
-      for (const part of payload.parts) {
-        if (part.mimeType === "text/plain" && part.body?.data) {
+      // Prefer text/html since Vietcombank emails are HTML-only
+      for (const mimeType of ["text/html", "text/plain"]) {
+        const part = payload.parts.find(
+          (p) => p.mimeType === mimeType && p.body?.data
+        );
+        if (part?.body?.data) {
           body = Buffer.from(part.body.data, "base64").toString("utf-8");
           break;
         }
       }
-    } else if (payload?.body?.data) {
+    }
+
+    if (!body && payload?.body?.data) {
       body = Buffer.from(payload.body.data, "base64").toString("utf-8");
     }
 

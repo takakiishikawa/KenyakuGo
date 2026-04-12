@@ -14,16 +14,52 @@ export async function GET() {
     if (!session) {
       return NextResponse.json({ error: "No session — please log in" }, { status: 401 });
     }
-    if (!session.provider_token) {
-      return NextResponse.json(
-        { error: "No provider_token — please log in again" },
-        { status: 401 }
-      );
+    let accessToken = session.provider_token;
+
+    if (!accessToken) {
+      // セッション更新後に provider_token が消えるため、DB のリフレッシュトークンで再取得
+      const db = createDb();
+      const { data: settings } = await db
+        .from("settings")
+        .select("google_refresh_token")
+        .eq("id", "singleton")
+        .maybeSingle();
+
+      const refreshToken = (settings as { google_refresh_token?: string } | null)
+        ?.google_refresh_token;
+
+      if (!refreshToken) {
+        return NextResponse.json(
+          { error: "No provider_token — please log in again" },
+          { status: 401 }
+        );
+      }
+
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          client_id: process.env.GOOGLE_CLIENT_ID!,
+          client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+          refresh_token: refreshToken,
+          grant_type: "refresh_token",
+        }),
+      });
+
+      if (!tokenRes.ok) {
+        return NextResponse.json(
+          { error: "Failed to refresh Google token — please log in again" },
+          { status: 401 }
+        );
+      }
+
+      const tokenData = await tokenRes.json();
+      accessToken = tokenData.access_token;
     }
 
     let emails: { id: string; body: string }[] = [];
     try {
-      emails = await fetchVietcombankEmails(session.provider_token);
+      emails = await fetchVietcombankEmails(accessToken!);
     } catch (e) {
       console.error("[sync] Gmail fetch error:", e);
       return NextResponse.json(
@@ -60,7 +96,6 @@ export async function GET() {
         amount: parsed.amount,
         date: parsed.date.toISOString(),
         category: "その他",
-        raw_text: email.body,
       } satisfies Omit<Transaction, "created_at">);
 
       if (err) {

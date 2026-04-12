@@ -19,16 +19,6 @@ import {
 import { formatVND, formatDate } from "@/lib/format";
 import { toast } from "sonner";
 
-const CATEGORIES = [
-  "食費（外食）",
-  "食費（自炊）",
-  "固定費",
-  "マッサージ・スパ",
-  "エンタメ",
-  "引き出し（現金）",
-  "その他",
-];
-
 interface Transaction {
   id: string;
   store: string;
@@ -39,10 +29,17 @@ interface Transaction {
 
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [period, setPeriod] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [selected, setSelected] = useState<Transaction | null>(null);
   const [newCategory, setNewCategory] = useState("");
+
+  useEffect(() => {
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data) => setCategories((data as { name: string }[]).map((c) => c.name)));
+  }, []);
 
   const fetchTransactions = useCallback(async () => {
     const params = new URLSearchParams({ period });
@@ -104,7 +101,7 @@ export default function TransactionsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">すべて</SelectItem>
-            {CATEGORIES.map((cat) => (
+            {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>
                 {cat}
               </SelectItem>
@@ -185,7 +182,7 @@ export default function TransactionsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((cat) => (
+                  {categories.map((cat) => (
                     <SelectItem key={cat} value={cat}>
                       {cat}
                     </SelectItem>

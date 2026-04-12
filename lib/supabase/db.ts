@@ -1,6 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
 // kenyakugo スキーマのテーブル型
+export interface Category {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface Transaction {
   id: string;
   gmail_id: string;
@@ -8,7 +14,6 @@ export interface Transaction {
   amount: number;
   date: string;
   category: string;
-  raw_text: string;
   created_at: string;
 }
 

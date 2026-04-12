@@ -26,8 +26,19 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      // provider_refresh_token はセッション更新後に消えるため DB に永続化
+      const refreshToken = data.session?.provider_refresh_token;
+      if (refreshToken) {
+        const { createDb } = await import("@/lib/supabase/db");
+        const db = createDb();
+        await db.from("settings").upsert({
+          id: "singleton",
+          google_refresh_token: refreshToken,
+          updated_at: new Date().toISOString(),
+        });
+      }
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

@@ -8,18 +8,29 @@ export async function fetchVietcombankEmails(
 
   const gmail = google.gmail({ version: "v1", auth });
 
-  const listResponse = await gmail.users.messages.list({
-    userId: "me",
-    q: 'from:info@info.vietcombank.com.vn subject:"Thông báo giao dịch thẻ"',
-    maxResults: 100,
-  });
+  // 全件取得: nextPageToken でページネーション
+  const allMessages: { id: string }[] = [];
+  let pageToken: string | undefined;
 
-  const messages = listResponse.data.messages || [];
+  do {
+    const listResponse = await gmail.users.messages.list({
+      userId: "me",
+      q: 'from:info@info.vietcombank.com.vn subject:"Thông báo giao dịch thẻ"',
+      maxResults: 500,
+      ...(pageToken ? { pageToken } : {}),
+    });
+
+    const messages = listResponse.data.messages || [];
+    for (const m of messages) {
+      if (m.id) allMessages.push({ id: m.id });
+    }
+
+    pageToken = listResponse.data.nextPageToken ?? undefined;
+  } while (pageToken);
+
   const results: Array<{ id: string; body: string }> = [];
 
-  for (const message of messages) {
-    if (!message.id) continue;
-
+  for (const message of allMessages) {
     const msgResponse = await gmail.users.messages.get({
       userId: "me",
       id: message.id,

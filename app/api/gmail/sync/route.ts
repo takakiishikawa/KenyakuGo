@@ -4,6 +4,8 @@ import { createDb, type Transaction } from "@/lib/supabase/db";
 import { fetchVietcombankEmails } from "@/lib/gmail";
 import { parseVietcombankEmail } from "@/lib/parser";
 
+export const maxDuration = 300; // 5分 (Vercel/Next.js route timeout)
+
 export async function GET() {
   try {
     const supabase = await createClient();

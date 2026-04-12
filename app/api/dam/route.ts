@@ -20,7 +20,7 @@ export async function GET() {
   ]);
 
   const targetMonthly = settings?.targetMonthly ?? 0;
-  const thisMonthTotal = thisMonthTxs.reduce((s: number, t) => s + t.amount, 0);
+  const thisMonthTotal = thisMonthTxs.reduce((s, t) => s + t.amount, 0);
   const currentBalance = targetMonthly - thisMonthTotal;
 
   // Cumulative: group all transactions by month

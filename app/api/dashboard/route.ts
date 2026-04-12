@@ -46,9 +46,9 @@ export async function GET() {
       prisma.settings.findUnique({ where: { id: "singleton" } }),
     ]);
 
-  const thisMonthTotal = thisMonthTxs.reduce((sum: number, t) => sum + t.amount, 0);
-  const thisWeekTotal = thisWeekTxs.reduce((sum: number, t) => sum + t.amount, 0);
-  const lastWeekTotal = lastWeekTxs.reduce((sum: number, t) => sum + t.amount, 0);
+  const thisMonthTotal = thisMonthTxs.reduce((sum, t) => sum + t.amount, 0);
+  const thisWeekTotal = thisWeekTxs.reduce((sum, t) => sum + t.amount, 0);
+  const lastWeekTotal = lastWeekTxs.reduce((sum, t) => sum + t.amount, 0);
 
   const weekDiff =
     lastWeekTotal > 0

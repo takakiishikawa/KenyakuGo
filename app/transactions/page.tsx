@@ -111,12 +111,19 @@ export default function TransactionsPage() {
 
   const handleCategorizeAll = async () => {
     setCategorizing(true);
-    const { updated, total } = await fetch("/api/ai/categorize-all", { method: "POST" }).then((r) => r.json());
-    toast.success(`${total}件中${updated}件のカテゴリを更新しました`);
-    setCategorizing(false);
-    fetchTransactions();
-    fetchCategories();
-    fetchUncategorizedCount();
+    try {
+      const res = await fetch("/api/ai/categorize-all", { method: "POST" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { updated, total } = await res.json();
+      toast.success(`${total}件中${updated}件のカテゴリを更新しました`);
+      fetchTransactions();
+      fetchCategories();
+      fetchUncategorizedCount();
+    } catch (e) {
+      toast.error(`分類に失敗しました: ${e instanceof Error ? e.message : "不明なエラー"}`);
+    } finally {
+      setCategorizing(false);
+    }
   };
 
   const handleAddCategory = async () => {

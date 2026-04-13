@@ -28,15 +28,10 @@ export function Sidebar() {
   useEffect(() => {
     if (!supabaseConfigured) return;
     const supabase = createClient();
-
     supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       setUser(session?.user ?? null);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
@@ -62,59 +57,92 @@ export function Sidebar() {
 
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
   const fullName = user?.user_metadata?.full_name as string | undefined;
+  const initials = fullName
+    ? fullName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+    : "KG";
 
   return (
     <aside
       className="fixed left-0 top-0 h-screen w-60 flex flex-col"
-      style={{ backgroundColor: "#1B4332" }}
+      style={{ backgroundColor: "#0D1F12", borderRight: "1px solid rgba(82,183,136,0.12)" }}
     >
-      <Link href="/" className="p-6 flex items-center gap-3 hover:opacity-80 transition-opacity">
-        <KenyakuGoIcon size={32} />
-        <h1 className="text-white text-xl font-bold tracking-wide">KenyakuGo</h1>
+      {/* Logo */}
+      <Link
+        href="/"
+        className="flex items-center gap-3 px-5 py-6 hover:opacity-80 transition-opacity"
+      >
+        <KenyakuGoIcon size={34} />
+        <span
+          className="font-display text-xl tracking-wide"
+          style={{ color: "#52B788" }}
+        >
+          KenyakuGo
+        </span>
       </Link>
 
-      <nav className="flex-1 px-3">
+      {/* Nav */}
+      <nav className="flex-1 px-3 space-y-0.5">
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href;
           return (
             <Link
               key={href}
               href={href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150"
               style={{
-                backgroundColor: isActive ? "#52B788" : "transparent",
-                color: "white",
+                backgroundColor: isActive ? "#1A2A1E" : "transparent",
+                borderLeft: isActive ? "3px solid #52B788" : "3px solid transparent",
+                color: isActive ? "#52B788" : "#6B8F71",
+                fontWeight: isActive ? "500" : "400",
               }}
               onMouseEnter={(e) => {
-                if (!isActive)
-                  (e.currentTarget as HTMLAnchorElement).style.backgroundColor =
-                    "rgba(82,183,136,0.2)";
+                if (!isActive) {
+                  (e.currentTarget as HTMLAnchorElement).style.color = "#E8F5E9";
+                  (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "rgba(26,42,30,0.5)";
+                }
               }}
               onMouseLeave={(e) => {
-                if (!isActive)
-                  (e.currentTarget as HTMLAnchorElement).style.backgroundColor =
-                    "transparent";
+                if (!isActive) {
+                  (e.currentTarget as HTMLAnchorElement).style.color = "#6B8F71";
+                  (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "transparent";
+                }
               }}
             >
-              <Icon size={18} />
-              <span className="text-sm font-medium">{label}</span>
+              <Icon size={17} />
+              <span className="text-sm">{label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-4 border-t border-green-700">
+      {/* User */}
+      <div
+        className="p-4 mx-3 mb-4 rounded-xl"
+        style={{ backgroundColor: "#1A2A1E", border: "1px solid rgba(82,183,136,0.1)" }}
+      >
         {user ? (
           <div className="flex items-center gap-3">
-            {avatarUrl && (
+            {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarUrl} alt="avatar" className="w-8 h-8 rounded-full" />
+              <img src={avatarUrl} alt="avatar" className="w-8 h-8 rounded-full ring-2" style={{ ringColor: "#52B788" }} />
+            ) : (
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold"
+                style={{ backgroundColor: "#52B788", color: "#0A0F0D" }}
+              >
+                {initials}
+              </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-white text-xs font-medium truncate">{fullName}</p>
+              <p className="text-xs font-medium truncate" style={{ color: "#E8F5E9" }}>
+                {fullName ?? "User"}
+              </p>
               <button
                 onClick={handleSignOut}
-                className="text-green-300 text-xs hover:text-white transition-colors"
+                className="text-xs transition-colors"
+                style={{ color: "#6B8F71" }}
+                onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "#52B788")}
+                onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "#6B8F71")}
               >
                 ログアウト
               </button>
@@ -123,8 +151,8 @@ export function Sidebar() {
         ) : (
           <button
             onClick={handleSignIn}
-            className="w-full text-white text-sm py-2 px-3 rounded-lg transition-colors"
-            style={{ backgroundColor: "#2D6A4F" }}
+            className="w-full text-sm py-2 px-3 rounded-lg font-medium transition-all"
+            style={{ backgroundColor: "#52B788", color: "#0A0F0D" }}
           >
             Googleでログイン
           </button>

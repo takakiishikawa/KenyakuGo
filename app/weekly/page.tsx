@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   LineChart,
   Line,
@@ -9,8 +8,10 @@ import {
   YAxis,
   Tooltip,
   Legend,
+  CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
+import { Sparkles } from "lucide-react";
 import { formatVND } from "@/lib/format";
 
 interface PeriodItem {
@@ -50,7 +51,32 @@ const PERIOD_LABELS: Record<Period, { current: string; prev: string }> = {
   year:  { current: "今年", prev: "昨年" },
 };
 
-const LINE_COLORS = ["#1B4332", "#52B788", "#F59E0B", "#EF4444", "#8B5CF6"];
+const LINE_COLORS = ["#52B788", "#FFB74D", "#C084FC", "#38BDF8", "#F87171"];
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      className="rounded-xl px-4 py-3 text-xs space-y-1"
+      style={{
+        backgroundColor: "#1A2A1E",
+        border: "1px solid rgba(82,183,136,0.25)",
+        color: "#E8F5E9",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+      }}
+    >
+      <p className="font-medium mb-2" style={{ color: "#52B788" }}>{label}</p>
+      {payload.map((entry: { name: string; value: number; color: string }) => (
+        <div key={entry.name} className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+          <span style={{ color: "#6B8F71" }}>{entry.name}</span>
+          <span className="font-num font-medium ml-auto pl-4">{formatVND(entry.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 export default function ReportPage() {
   const [period, setPeriod] = useState<Period>("week");
@@ -75,7 +101,7 @@ export default function ReportPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: p === "week" ? "weekly" : p === "month" ? "monthly" : "monthly",
+          type: p === "week" ? "weekly" : "monthly",
           data: { thisWeek: current.byCategory, lastWeek: prev.byCategory },
           periodKey: getPeriodKey(p),
         }),
@@ -86,11 +112,8 @@ export default function ReportPage() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchData(period);
-  }, [period, fetchData]);
+  useEffect(() => { fetchData(period); }, [period, fetchData]);
 
-  // recharts 用データ: x軸=期間ラベル、各カテゴリと合計をキーに
   const chartData = data?.periods.map((p) => ({
     label: p.label,
     合計: p.total,
@@ -99,7 +122,7 @@ export default function ReportPage() {
     ),
   })) ?? [];
 
-  const diffColor = data && data.diff <= 0 ? "#10B981" : "#EF4444";
+  const diffPositive = data ? data.diff <= 0 : undefined;
   const labels = PERIOD_LABELS[period];
 
   const tabs: { value: Period; label: string }[] = [
@@ -110,20 +133,23 @@ export default function ReportPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold" style={{ color: "#1A1A2E" }}>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-10">
+        <h1 className="font-display text-4xl" style={{ color: "#E8F5E9" }}>
           レポート
         </h1>
-
-        <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: "#E5E7EB" }}>
+        <div
+          className="flex rounded-xl overflow-hidden"
+          style={{ border: "1px solid rgba(82,183,136,0.2)", backgroundColor: "#111A14" }}
+        >
           {tabs.map((tab) => (
             <button
               key={tab.value}
               onClick={() => setPeriod(tab.value)}
-              className="px-5 py-2 text-sm font-medium transition-colors"
+              className="px-6 py-2 text-sm font-medium transition-all"
               style={{
-                backgroundColor: period === tab.value ? "#1B4332" : "white",
-                color: period === tab.value ? "white" : "#6B7280",
+                backgroundColor: period === tab.value ? "#52B788" : "transparent",
+                color: period === tab.value ? "#0A0F0D" : "#6B8F71",
               }}
             >
               {tab.label}
@@ -133,114 +159,120 @@ export default function ReportPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-6 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium" style={{ color: "#6B7280" }}>
-              {labels.current}の総支出
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold" style={{ color: "#1A1A2E" }}>
-              {data ? formatVND(data.currentTotal) : "—"}
+      <div className="grid grid-cols-3 gap-5 mb-8">
+        {[
+          {
+            label: `${labels.current}の総支出`,
+            value: data ? formatVND(data.currentTotal) : "—",
+            color: "#E8F5E9",
+          },
+          {
+            label: `${labels.prev}との差額`,
+            value: data ? `${data.diff > 0 ? "+" : ""}${formatVND(data.diff)}` : "—",
+            color: diffPositive === undefined ? "#E8F5E9" : diffPositive ? "#4CAF50" : "#EF5350",
+          },
+          {
+            label: "最多支出カテゴリ",
+            value: data?.topCategory ?? "—",
+            color: "#52B788",
+          },
+        ].map((card, i) => (
+          <div
+            key={card.label}
+            className="kg-card p-7 animate-fade-up"
+            style={{ animationDelay: `${i * 80}ms`, animationFillMode: "both" }}
+          >
+            <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "#6B8F71" }}>
+              {card.label}
             </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium" style={{ color: "#6B7280" }}>
-              {labels.prev}との差額
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold" style={{ color: diffColor }}>
-              {data ? `${data.diff > 0 ? "+" : ""}${formatVND(data.diff)}` : "—"}
+            <p className="font-num text-3xl font-semibold leading-none" style={{ color: card.color }}>
+              {card.value}
             </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium" style={{ color: "#6B7280" }}>
-              最多支出カテゴリ
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold" style={{ color: "#1A1A2E" }}>
-              {data?.topCategory ?? "—"}
-            </p>
-          </CardContent>
-        </Card>
+            <div className="mt-5 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, #52B788, transparent)" }} />
+          </div>
+        ))}
       </div>
 
-      {/* Line Chart */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-base" style={{ color: "#1A1A2E" }}>
-            カテゴリ別推移（上位5カテゴリ）
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={340}>
-              <LineChart data={chartData}>
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value) => formatVND(value as number)} />
-                <Legend />
+      {/* Chart */}
+      <div className="kg-card-static p-7 mb-5 animate-fade-up" style={{ animationDelay: "220ms" }}>
+        <p className="text-xs font-medium uppercase tracking-widest mb-6" style={{ color: "#6B8F71" }}>
+          カテゴリ別推移（上位5カテゴリ）
+        </p>
+        {chartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={320}>
+            <LineChart data={chartData}>
+              <CartesianGrid stroke="rgba(82,183,136,0.08)" strokeDasharray="0" vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: "#6B8F71" }}
+                axisLine={{ stroke: "rgba(82,183,136,0.15)" }}
+                tickLine={false}
+              />
+              <YAxis
+                tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                tick={{ fontSize: 11, fill: "#6B8F71" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend
+                wrapperStyle={{ fontSize: 12, color: "#6B8F71", paddingTop: 16 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="合計"
+                stroke="rgba(82,183,136,0.4)"
+                strokeWidth={2}
+                strokeDasharray="5 4"
+                dot={false}
+              />
+              {(data?.topCategories ?? []).map((cat, i) => (
                 <Line
+                  key={cat}
                   type="monotone"
-                  dataKey="合計"
-                  stroke="#94A3B8"
+                  dataKey={cat}
+                  stroke={LINE_COLORS[i % LINE_COLORS.length]}
                   strokeWidth={2}
-                  strokeDasharray="4 4"
-                  dot={false}
+                  dot={{ r: 3, fill: LINE_COLORS[i % LINE_COLORS.length] }}
+                  activeDot={{ r: 5 }}
                 />
-                {(data?.topCategories ?? []).map((cat, i) => (
-                  <Line
-                    key={cat}
-                    type="monotone"
-                    dataKey={cat}
-                    stroke={LINE_COLORS[i % LINE_COLORS.length]}
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-center py-12 text-sm" style={{ color: "#6B7280" }}>
-              データがありません
-            </p>
-          )}
-        </CardContent>
-      </Card>
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-sm" style={{ color: "#6B8F71" }}>データがありません</p>
+          </div>
+        )}
+      </div>
 
       {/* AI Comment */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base" style={{ color: "#1A1A2E" }}>
+      <div className="kg-card-static p-7 animate-fade-up" style={{ animationDelay: "300ms" }}>
+        <div className="flex items-center gap-2 mb-5">
+          <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "#6B8F71" }}>
             AIコメント
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </span>
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+            style={{ backgroundColor: "rgba(82,183,136,0.15)", color: "#52B788" }}
+          >
+            <Sparkles size={10} />
+            AI
+          </span>
+        </div>
+        <div className="border-l-2 pl-4" style={{ borderColor: "#52B788" }}>
           {commentLoading ? (
             <div className="space-y-2">
-              <div className="h-4 rounded animate-pulse" style={{ backgroundColor: "#E5E7EB" }} />
-              <div className="h-4 rounded animate-pulse w-3/4" style={{ backgroundColor: "#E5E7EB" }} />
+              <div className="skeleton h-4 w-full" />
+              <div className="skeleton h-4 w-3/4" />
             </div>
           ) : comment ? (
-            <p className="text-sm leading-relaxed" style={{ color: "#1A1A2E" }}>
-              {comment}
-            </p>
+            <p className="text-sm leading-7 italic" style={{ color: "#B2CABA" }}>{comment}</p>
           ) : (
-            <p className="text-sm" style={{ color: "#6B7280" }}>
-              取引データを同期するとAIコメントが表示されます
-            </p>
+            <p className="text-sm" style={{ color: "#6B8F71" }}>取引データを同期するとコメントが表示されます</p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

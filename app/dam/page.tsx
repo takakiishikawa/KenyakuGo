@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sparkles } from "lucide-react";
 import { formatVND } from "@/lib/format";
 
 interface DamData {
@@ -13,58 +13,76 @@ interface DamData {
 }
 
 function DamVisual({ level }: { level: number }) {
-  // level: 0-100 (percentage)
-  const waterHeight = Math.max(0, Math.min(level, 100));
-  const yOffset = 200 - (waterHeight / 100) * 200;
+  const pct = Math.max(0, Math.min(level, 100));
+  const waterTop = 220 - (pct / 100) * 200;
 
   return (
-    <div className="flex justify-center py-8">
-      <svg width="280" height="240" viewBox="0 0 280 240">
-        {/* Dam body */}
-        <rect x="10" y="10" width="260" height="220" rx="4" fill="none" stroke="#9CA3AF" strokeWidth="3" />
+    <div className="flex flex-col items-center py-6">
+      <svg width="260" height="260" viewBox="0 0 260 260">
+        <defs>
+          <clipPath id="damClip">
+            <rect x="14" y="14" width="232" height="232" rx="12" />
+          </clipPath>
+          <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#52B788" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#1B4332" stopOpacity="1" />
+          </linearGradient>
+        </defs>
+
+        {/* Outer border */}
+        <rect
+          x="14" y="14" width="232" height="232" rx="12"
+          fill="#0D1F12"
+          stroke="rgba(82,183,136,0.25)"
+          strokeWidth="2"
+        />
 
         {/* Water fill */}
-        <clipPath id="damClip">
-          <rect x="10" y="10" width="260" height="220" rx="4" />
-        </clipPath>
         <g clipPath="url(#damClip)">
-          <rect x="10" y={10 + (220 - (waterHeight / 100) * 220)} width="260" height={(waterHeight / 100) * 220} fill="#52B788" opacity="0.7" />
-          {/* Wave animation */}
+          <rect
+            x="14"
+            y={14 + waterTop}
+            width="232"
+            height={232 - waterTop}
+            fill="url(#waterGrad)"
+          />
+          {/* Wave */}
           <path
-            style={{
-              animation: "wave 3s ease-in-out infinite",
-            }}
-            d={`M 0 ${yOffset + 10} Q 70 ${yOffset} 140 ${yOffset + 10} Q 210 ${yOffset + 20} 280 ${yOffset + 10} L 280 230 L 0 230 Z`}
-            fill="#52B788"
-            opacity="0.5"
+            style={{ animation: "wave 3.5s ease-in-out infinite" }}
+            d={`M -10 ${14 + waterTop + 6} Q 75 ${14 + waterTop - 8} 140 ${14 + waterTop + 6} Q 210 ${14 + waterTop + 20} 280 ${14 + waterTop + 6} L 280 260 L -10 260 Z`}
+            fill="rgba(82,183,136,0.35)"
           />
         </g>
 
         {/* Percentage text */}
         <text
-          x="140"
-          y="130"
+          x="130"
+          y="122"
           textAnchor="middle"
-          fontSize="36"
-          fontWeight="bold"
-          fill={waterHeight > 50 ? "white" : "#1B4332"}
+          fontSize="52"
+          fontWeight="600"
+          fontFamily="var(--font-mono-display, monospace)"
+          fill={pct > 45 ? "#E8F5E9" : "#52B788"}
         >
-          {waterHeight}%
+          {pct}%
         </text>
         <text
-          x="140"
-          y="158"
+          x="130"
+          y="148"
           textAnchor="middle"
-          fontSize="13"
-          fill={waterHeight > 50 ? "white" : "#4B5563"}
+          fontSize="12"
+          fontFamily="var(--font-body, sans-serif)"
+          fill={pct > 45 ? "rgba(232,245,233,0.6)" : "#6B8F71"}
+          letterSpacing="3"
         >
-          貯水率
+          WATER LEVEL
         </text>
       </svg>
+
       <style>{`
         @keyframes wave {
           0%, 100% { transform: translateX(0); }
-          50% { transform: translateX(-20px); }
+          50% { transform: translateX(-24px); }
         }
       `}</style>
     </div>
@@ -104,94 +122,88 @@ export default function DamPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-8" style={{ color: "#1A1A2E" }}>
-        ダム
+      <h1 className="font-display text-4xl mb-10" style={{ color: "#E8F5E9" }}>
+        貯蓄ダム
       </h1>
 
-      <div className="grid grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-2 gap-5 mb-6">
         {/* Dam Visual */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base" style={{ color: "#1A1A2E" }}>
-              今月の貯水状況
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DamVisual level={data?.achievementRate ?? 0} />
-          </CardContent>
-        </Card>
+        <div className="kg-card-static p-6 animate-fade-up">
+          <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: "#6B8F71" }}>
+            今月の貯水状況
+          </p>
+          <DamVisual level={data?.achievementRate ?? 0} />
+        </div>
 
         {/* Stats */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium" style={{ color: "#6B7280" }}>
-                今月の貯水量
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p
-                className="text-3xl font-bold"
-                style={{ color: data && data.currentBalance >= 0 ? "#10B981" : "#EF4444" }}
-              >
-                {data ? formatVND(data.currentBalance) : "—"}
+        <div className="flex flex-col gap-5">
+          {[
+            {
+              label: "今月の貯水量",
+              value: data ? formatVND(data.currentBalance) : "—",
+              color: data && data.currentBalance >= 0 ? "#4CAF50" : "#EF5350",
+              delay: 80,
+            },
+            {
+              label: "達成率",
+              value: data ? `${data.achievementRate}%` : "—",
+              color: "#52B788",
+              delay: 160,
+            },
+            {
+              label: "累計ダム残高",
+              value: data ? formatVND(data.cumulativeBalance) : "—",
+              color: "#E8F5E9",
+              delay: 240,
+            },
+          ].map((card) => (
+            <div
+              key={card.label}
+              className="kg-card p-7 animate-fade-up flex-1"
+              style={{ animationDelay: `${card.delay}ms`, animationFillMode: "both" }}
+            >
+              <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "#6B8F71" }}>
+                {card.label}
               </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium" style={{ color: "#6B7280" }}>
-                達成率
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold" style={{ color: "#52B788" }}>
-                {data ? `${data.achievementRate}%` : "—"}
+              <p className="font-num text-3xl font-semibold" style={{ color: card.color }}>
+                {card.value}
               </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium" style={{ color: "#6B7280" }}>
-                累計ダム残高
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold" style={{ color: "#1B4332" }}>
-                {data ? formatVND(data.cumulativeBalance) : "—"}
-              </p>
-            </CardContent>
-          </Card>
+              <div className="mt-4 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, #52B788, transparent)" }} />
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* AI Suggest Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base" style={{ color: "#1A1A2E" }}>
+      {/* AI Suggest */}
+      <div className="kg-card-static p-7 animate-fade-up" style={{ animationDelay: "280ms" }}>
+        <div className="flex items-center gap-2 mb-5">
+          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "#6B8F71" }}>
             このお金で何ができる？
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </p>
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+            style={{ backgroundColor: "rgba(82,183,136,0.15)", color: "#52B788" }}
+          >
+            <Sparkles size={10} />
+            AI
+          </span>
+        </div>
+        <div className="border-l-2 pl-4" style={{ borderColor: "#52B788" }}>
           {commentLoading ? (
             <div className="space-y-2">
-              <div className="h-4 rounded animate-pulse" style={{ backgroundColor: "#E5E7EB" }} />
-              <div className="h-4 rounded animate-pulse w-4/5" style={{ backgroundColor: "#E5E7EB" }} />
-              <div className="h-4 rounded animate-pulse w-2/3" style={{ backgroundColor: "#E5E7EB" }} />
+              <div className="skeleton h-4 w-full" />
+              <div className="skeleton h-4 w-4/5" />
+              <div className="skeleton h-4 w-2/3" />
             </div>
           ) : comment ? (
-            <p className="text-sm leading-relaxed" style={{ color: "#1A1A2E" }}>
-              {comment}
-            </p>
+            <p className="text-sm leading-7 italic" style={{ color: "#B2CABA" }}>{comment}</p>
           ) : (
-            <p className="text-sm" style={{ color: "#6B7280" }}>
+            <p className="text-sm" style={{ color: "#6B8F71" }}>
               設定画面で想定月支出を設定すると提案が表示されます
             </p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

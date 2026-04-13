@@ -15,7 +15,7 @@ export async function listVietcombankMessageIds(accessToken: string): Promise<st
     const res = await gmail.users.messages.list({
       userId: "me",
       // サブドメイン全体をカバー＋成功取引のみ
-      q: 'from:(@vietcombank.com.vn) "Thành công"',
+      q: 'from:(@vietcombank.com.vn) ("Thành công" OR "Biên lai chuyển tiền")',
       maxResults: 500,
       ...(pageToken ? { pageToken } : {}),
     });

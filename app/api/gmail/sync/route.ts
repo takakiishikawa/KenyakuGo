@@ -101,7 +101,18 @@ export async function GET() {
       if (!body) continue;
 
       const parsed = parseVietcombankEmail(body);
-      if (!parsed.isValid) continue;
+      if (!parsed.isValid) {
+        // 解析不能メールを DB に記録し、次回ループで再試行しないようにする
+        await db.from("transactions").insert({
+          id: crypto.randomUUID(),
+          gmail_id: id,
+          store: "",
+          amount: 0,
+          date: new Date().toISOString(),
+          category: "その他",
+        } satisfies Omit<Transaction, "created_at">);
+        continue;
+      }
 
       const { error: err } = await db.from("transactions").insert({
         id: crypto.randomUUID(),

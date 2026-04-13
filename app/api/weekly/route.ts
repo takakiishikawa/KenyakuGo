@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createDb, type Transaction } from "@/lib/supabase/db";
+import { createDb, type Transaction, type Settings } from "@/lib/supabase/db";
 
 function getWeekStart(date: Date): Date {
   const d = new Date(date);
@@ -66,17 +66,23 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── 各バケットを並列クエリ（1バケット = 最大31日、行数上限に当たらない）──
-  const results = await Promise.all(
-    bucketDefs.map(({ start, end }) =>
+  // ── バケットクエリ + 設定クエリを並列実行 ──
+  const [settingsRes, ...results] = await Promise.all([
+    db.from("settings").select("target_monthly, fixed_costs").eq("id", "singleton").maybeSingle(),
+    ...bucketDefs.map(({ start, end }) =>
       db
         .from("transactions")
         .select("category, amount, date")
+        .gt("amount", 0)
         .gte("date", start.toISOString())
         .lte("date", end.toISOString())
         .limit(2000)
-    )
-  );
+    ),
+  ]);
+
+  const settings = settingsRes.data as Pick<Settings, "target_monthly" | "fixed_costs"> | null;
+  const targetMonthly = settings?.target_monthly ?? 0;
+  const fixedCosts = settings?.fixed_costs ?? 0;
 
   const periods: PeriodItem[] = bucketDefs.map(({ label }, i) => {
     const txs = (results[i].data ?? []) as Pick<Transaction, "category" | "amount" | "date">[];
@@ -107,15 +113,15 @@ export async function GET(req: NextRequest) {
   const topCategory =
     Object.entries(currentPeriod?.byCategory ?? {}).sort(([, a], [, b]) => b - a)[0]?.[0] ?? "—";
 
-  // 月次予測（当月のみ計算）
+  // 月次予測（当月のみ計算、固定費はペース推計から除外）
   let projectedTotal: number | null = null;
   if (period === "month") {
-    const currentMonthTxs = (results[results.length - 1].data ?? []) as Pick<Transaction, "amount">[];
-    if (currentMonthTxs.length > 0) {
+    const currentMonthTotal = currentPeriod?.total ?? 0;
+    if (currentMonthTotal > 0) {
       const dayOfMonth = now.getDate();
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-      const currentMonthTotal = currentMonthTxs.reduce((s, t) => s + t.amount, 0);
-      projectedTotal = Math.round((currentMonthTotal / dayOfMonth) * daysInMonth);
+      const variableSpend = Math.max(0, currentMonthTotal - fixedCosts);
+      projectedTotal = Math.round(fixedCosts + (variableSpend / dayOfMonth) * daysInMonth);
     }
   }
 
@@ -127,6 +133,8 @@ export async function GET(req: NextRequest) {
     currentTotal: currentPeriod?.total ?? 0,
     prevPeriodTotal: prevPeriod?.total ?? 0,
     projectedTotal,
+    targetMonthly,
+    fixedCosts,
     showYearTab: true,
   });
 }

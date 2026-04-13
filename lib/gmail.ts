@@ -1,6 +1,25 @@
-import { google } from "googleapis";
+import { google, gmail_v1 } from "googleapis";
 
 type GmailClient = ReturnType<typeof google.gmail>;
+
+// 多段ネスト MIME にも対応した本文抽出（HTML 優先 → plain テキスト）
+function extractBody(parts: gmail_v1.Schema$MessagePart[]): string | null {
+  for (const mimeType of ["text/html", "text/plain"]) {
+    for (const part of parts) {
+      if (part.mimeType === mimeType && part.body?.data) {
+        return Buffer.from(part.body.data, "base64").toString("utf-8");
+      }
+    }
+  }
+  // 見つからなければ multipart/* 子部品を再帰探索
+  for (const part of parts) {
+    if (part.parts?.length) {
+      const nested = extractBody(part.parts);
+      if (nested) return nested;
+    }
+  }
+  return null;
+}
 
 // 全メッセージIDのみを取得（本文は取らない）
 export async function listVietcombankMessageIds(accessToken: string): Promise<string[]> {
@@ -52,14 +71,8 @@ async function fetchBodyFromGmail(gmail: GmailClient, messageId: string): Promis
   const payload = msgResponse.data.payload;
   let body = "";
 
-  if (payload?.parts) {
-    for (const mimeType of ["text/html", "text/plain"]) {
-      const part = payload.parts.find((p) => p.mimeType === mimeType && p.body?.data);
-      if (part?.body?.data) {
-        body = Buffer.from(part.body.data, "base64").toString("utf-8");
-        break;
-      }
-    }
+  if (payload?.parts?.length) {
+    body = extractBody(payload.parts) ?? "";
   }
 
   if (!body && payload?.body?.data) {

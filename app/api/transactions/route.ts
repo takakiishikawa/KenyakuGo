@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
   let query = db
     .from("transactions")
     .select("id, store, amount, category, date")
+    .gt("amount", 0)
     .order("date", { ascending: false })
     .limit(10000);
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer } from "recharts";
-import { Sparkles } from "lucide-react";
+import { Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { formatVND } from "@/lib/format";
 
 interface PeriodItem { label: string; total: number; byCategory: Record<string, number>; }
@@ -14,6 +14,8 @@ interface ReportData {
   currentTotal: number;
   prevPeriodTotal: number;
   projectedTotal: number | null;
+  targetMonthly: number;
+  fixedCosts: number;
   showYearTab: boolean;
 }
 interface FeedbackData {
@@ -101,31 +103,21 @@ export default function ReportPage() {
     { value: "year", label: "年" },
   ];
 
-  // カード2: 月ならば1ヶ月予測、それ以外は差額
-  const projectedTotal = data?.projectedTotal ?? null;
+  // カード共通計算
+  const projected = data?.projectedTotal ?? null;
+  const target = data?.targetMonthly ?? 0;
+  const fixedCosts = data?.fixedCosts ?? 0;
   const prevPeriodTotal = data?.prevPeriodTotal ?? 0;
-  const projDiff = projectedTotal != null ? projectedTotal - prevPeriodTotal : null;
-  const projDiffPct = projDiff != null && prevPeriodTotal > 0
-    ? Math.round((projDiff / prevPeriodTotal) * 100)
-    : null;
+  const diff = data?.diff ?? 0;
+  const diffPct = prevPeriodTotal > 0 ? Math.round((diff / prevPeriodTotal) * 100) : null;
+  const diffImproved = diff <= 0;
 
-  const card2 = period === "month" && projectedTotal != null
-    ? {
-        label: "1ヶ月予測",
-        value: formatVND(projectedTotal),
-        color: projDiff != null && projDiff <= 0 ? "var(--kg-success)" : "var(--kg-danger)",
-        sub: projDiffPct != null
-          ? `先月比 ${projDiff! > 0 ? "+" : ""}${projDiffPct}%`
-          : null,
-        subColor: projDiff != null && projDiff <= 0 ? "var(--kg-success)" : "var(--kg-danger)",
-      }
-    : {
-        label: `${labels.prev}との差額`,
-        value: data ? `${data.diff > 0 ? "+" : ""}${formatVND(data.diff)}` : "—",
-        color: data == null ? "var(--kg-text)" : data.diff <= 0 ? "var(--kg-success)" : "var(--kg-danger)",
-        sub: null,
-        subColor: "var(--kg-text-muted)",
-      };
+  // 月のみ: 月末予測 vs 目標
+  const projVsTarget = period === "month" && projected != null && target > 0
+    ? projected > target
+      ? { text: `目標 ${formatVND(target)} を超過見込み`, ok: false }
+      : { text: `目標 ${formatVND(target)} 内で推移中`, ok: true }
+    : null;
 
   const card3SavingsCategory = feedback?.savingsCategory;
 
@@ -144,29 +136,48 @@ export default function ReportPage() {
       </div>
 
       <div className="grid grid-cols-3 gap-5 mb-8">
-        {/* カード1: 総支出 */}
+        {/* カード1: 当期出費 + 月のみ予測・目標 */}
         <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "0ms", animationFillMode: "both" }}>
           <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>{labels.current}の出費</p>
           <p className="font-num text-3xl font-semibold leading-none" style={{ color: "var(--kg-text)" }}>
             {data ? formatVND(data.currentTotal) : "—"}
           </p>
-
-          <div className="mt-5 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
-        </div>
-
-        {/* カード2: 差額 or 1ヶ月予測 */}
-        <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "80ms", animationFillMode: "both" }}>
-          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>{card2.label}</p>
-          <p className="font-num text-3xl font-semibold leading-none" style={{ color: card2.color }}>
-            {data ? card2.value : "—"}
-          </p>
-          {card2.sub && data && (
-            <p className="text-xs mt-2 font-medium" style={{ color: card2.subColor }}>{card2.sub}</p>
+          {period === "month" && projected != null && (
+            <p className="mt-2 text-sm font-medium" style={{ color: "var(--kg-text-muted)" }}>
+              月末予測{" "}
+              <span className="font-num" style={{ color: projVsTarget ? (projVsTarget.ok ? "var(--kg-success)" : "var(--kg-danger)") : "var(--kg-text)" }}>
+                {formatVND(projected)}
+              </span>
+            </p>
           )}
-          <div className="mt-5 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
+          {projVsTarget && (
+            <p className="mt-1 text-xs flex items-center gap-1"
+              style={{ color: projVsTarget.ok ? "var(--kg-success)" : "var(--kg-danger)" }}>
+              {projVsTarget.ok ? <TrendingDown size={11} /> : <TrendingUp size={11} />}
+              {projVsTarget.text}
+            </p>
+          )}
+          <div className="mt-4 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
         </div>
 
-        {/* カード3: 見直したい支出 */}
+        {/* カード2: 前期との差額（全期間共通） */}
+        <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "80ms", animationFillMode: "both" }}>
+          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>{labels.prev}との差額</p>
+          <p className="font-num text-3xl font-semibold leading-none"
+            style={{ color: data == null ? "var(--kg-text)" : diffImproved ? "var(--kg-success)" : "var(--kg-danger)" }}>
+            {data ? `${diff > 0 ? "+" : ""}${formatVND(diff)}` : "—"}
+          </p>
+          {data && diffPct !== null && (
+            <p className="mt-2 text-sm font-medium flex items-center gap-1"
+              style={{ color: diffImproved ? "var(--kg-success)" : "var(--kg-danger)" }}>
+              {diffImproved ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
+              {diffImproved ? `${labels.prev}より倹約（${Math.abs(diffPct)}%↓）` : `${labels.prev}より増加（${diffPct}%↑）`}
+            </p>
+          )}
+          <div className="mt-4 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
+        </div>
+
+        {/* カード3: 気になる支出（AI） */}
         <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "160ms", animationFillMode: "both" }}>
           <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>気になる支出</p>
           {feedbackLoading ? (
@@ -176,7 +187,7 @@ export default function ReportPage() {
               {card3SavingsCategory ?? data?.topCategory ?? "—"}
             </p>
           )}
-          <div className="mt-5 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
+          <div className="mt-4 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
         </div>
       </div>
 

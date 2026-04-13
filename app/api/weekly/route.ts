@@ -23,92 +23,71 @@ type PeriodItem = {
   byCategory: Record<string, number>;
 };
 
+type BucketDef = { label: string; start: Date; end: Date };
+
 export async function GET(req: NextRequest) {
   const period = req.nextUrl.searchParams.get("period") ?? "week";
   const db = createDb();
+  const now = new Date();
 
-  const { data: allTxs } = await db
-    .from("transactions")
-    .select("category, amount, date")
-    .order("date")
-    .limit(10000);
-
-  const txs = (allTxs ?? []) as Pick<Transaction, "category" | "amount" | "date">[];
-
-  // データのスパンを確認して年タブを表示するか判定
-  const dates = txs.map((t) => new Date(t.date));
-  const minDate = dates.length ? new Date(Math.min(...dates.map((d) => d.getTime()))) : new Date();
-  const maxDate = dates.length ? new Date(Math.max(...dates.map((d) => d.getTime()))) : new Date();
-  const spanMonths =
-    (maxDate.getFullYear() - minDate.getFullYear()) * 12 +
-    (maxDate.getMonth() - minDate.getMonth());
-  const showYearTab = true; // 常に年タブを表示
-
-  const groupByPeriod = (
-    buckets: { label: string; start: Date; end: Date }[]
-  ): PeriodItem[] => {
-    return buckets.map(({ label, start, end }) => {
-      const bucket = txs.filter((t) => {
-        const d = new Date(t.date);
-        return d >= start && d <= end;
-      });
-      const byCategory: Record<string, number> = {};
-      let total = 0;
-      for (const t of bucket) {
-        byCategory[t.category] = (byCategory[t.category] ?? 0) + t.amount;
-        total += t.amount;
-      }
-      return { label, total, byCategory };
-    });
-  };
-
-  let periods: PeriodItem[] = [];
+  // ── バケット定義（現在日付ベース、全件スキャン不要）──
+  const bucketDefs: BucketDef[] = [];
 
   if (period === "week") {
-    // 実データのある直近4週を使用、相対ラベル
-    const weekStartMap = new Map<string, Date>();
-    for (const tx of txs) {
-      const ws = getWeekStart(new Date(tx.date));
-      const key = ws.toISOString().slice(0, 10);
-      if (!weekStartMap.has(key)) weekStartMap.set(key, ws);
-    }
-    const weekStarts = [...weekStartMap.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-4)
-      .map(([, d]) => d);
-
-    const buckets = weekStarts.map((ws) => {
-      const end = getWeekEnd(ws);
+    // 直近4週（今週 + 過去3週）
+    const thisWeekStart = getWeekStart(now);
+    for (let i = 3; i >= 0; i--) {
+      const ws = new Date(thisWeekStart);
+      ws.setDate(ws.getDate() - i * 7);
+      const we = getWeekEnd(ws);
       const m = ws.getMonth() + 1;
       const weekNum = Math.ceil(ws.getDate() / 7);
-      return { label: `${m}月${weekNum}週目`, start: ws, end };
-    });
-    periods = groupByPeriod(buckets);
+      bucketDefs.push({ label: `${m}月${weekNum}週目`, start: ws, end: we });
+    }
   } else if (period === "month") {
-    // 実データのある直近6ヶ月、相対ラベル
-    const monthSet = new Set(txs.map((t) => t.date.slice(0, 7)));
-    const months = [...monthSet].sort().slice(-6);
-    const buckets = months.map((ym) => {
-      const [y, m] = ym.split("-").map(Number);
-      const start = new Date(y, m - 1, 1);
-      const end = new Date(y, m, 0, 23, 59, 59, 999);
-      const yr = String(y).slice(-2); // 2025 → "25"
-      return { label: `${yr}年${m}月`, start, end };
-    });
-    periods = groupByPeriod(buckets);
-  } else if (period === "year") {
-    // 全年（現在の年を必ず含める）
-    const yearSet = new Set(txs.map((t) => t.date.slice(0, 4)));
-    yearSet.add(String(new Date().getFullYear())); // データがなくても今年は必ず表示
-    const years = [...yearSet].sort();
-    const buckets = years.map((y) => {
-      const yn = Number(y);
-      const start = new Date(yn, 0, 1);
-      const end = new Date(yn, 11, 31, 23, 59, 59, 999);
-      return { label: `${y}年`, start, end };
-    });
-    periods = groupByPeriod(buckets);
+    // 直近6ヶ月（今月 + 過去5ヶ月）
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const start = new Date(d.getFullYear(), d.getMonth(), 1);
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+      const yr = String(d.getFullYear()).slice(-2);
+      const m = d.getMonth() + 1;
+      bucketDefs.push({ label: `${yr}年${m}月`, start, end });
+    }
+  } else {
+    // 直近3年（今年 + 過去2年）
+    const currentYear = now.getFullYear();
+    for (let y = currentYear - 2; y <= currentYear; y++) {
+      bucketDefs.push({
+        label: `${y}年`,
+        start: new Date(y, 0, 1),
+        end: new Date(y, 11, 31, 23, 59, 59, 999),
+      });
+    }
   }
+
+  // ── 各バケットを並列クエリ（1バケット = 最大31日、行数上限に当たらない）──
+  const results = await Promise.all(
+    bucketDefs.map(({ start, end }) =>
+      db
+        .from("transactions")
+        .select("category, amount, date")
+        .gte("date", start.toISOString())
+        .lte("date", end.toISOString())
+        .limit(2000)
+    )
+  );
+
+  const periods: PeriodItem[] = bucketDefs.map(({ label }, i) => {
+    const txs = (results[i].data ?? []) as Pick<Transaction, "category" | "amount" | "date">[];
+    const byCategory: Record<string, number> = {};
+    let total = 0;
+    for (const t of txs) {
+      byCategory[t.category] = (byCategory[t.category] ?? 0) + t.amount;
+      total += t.amount;
+    }
+    return { label, total, byCategory };
+  });
 
   // 全カテゴリ集計（合計上位5カテゴリをグラフに表示）
   const categoryTotals: Record<string, number> = {};
@@ -131,9 +110,7 @@ export async function GET(req: NextRequest) {
   // 月次予測（当月のみ計算）
   let projectedTotal: number | null = null;
   if (period === "month") {
-    const now = new Date();
-    const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const currentMonthTxs = txs.filter((t) => t.date.startsWith(currentYM));
+    const currentMonthTxs = (results[results.length - 1].data ?? []) as Pick<Transaction, "amount">[];
     if (currentMonthTxs.length > 0) {
       const dayOfMonth = now.getDate();
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -150,6 +127,6 @@ export async function GET(req: NextRequest) {
     currentTotal: currentPeriod?.total ?? 0,
     prevPeriodTotal: prevPeriod?.total ?? 0,
     projectedTotal,
-    showYearTab,
+    showYearTab: true,
   });
 }

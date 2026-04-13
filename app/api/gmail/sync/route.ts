@@ -79,8 +79,11 @@ export async function GET() {
       .select("gmail_id");
     const existingIds = new Set((existingRows ?? []).map((r) => r.gmail_id as string));
 
-    // 3. 新規IDのみ抽出
-    const newIds = allIds.filter((id) => !existingIds.has(id));
+    // 3. 新規IDのみ抽出（1回あたり最大100件でタイムアウト回避）
+    const allNewIds = allIds.filter((id) => !existingIds.has(id));
+    const BATCH = 100;
+    const newIds = allNewIds.slice(0, BATCH);
+    const remaining = Math.max(0, allNewIds.length - BATCH);
 
     let synced = 0;
     let insertError: string | null = null;
@@ -131,7 +134,7 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ synced });
+    return NextResponse.json({ synced, remaining });
   } catch (e) {
     console.error("[sync] Unexpected error:", e);
     return NextResponse.json(

@@ -150,14 +150,35 @@ export default function Dashboard() {
 
   const handleSync = async () => {
     setSyncing(true);
+    let totalSynced = 0;
     try {
-      const res = await fetch("/api/gmail/sync");
-      const json = await res.json();
-      if (!res.ok) {
-        toast.error(`同期失敗: ${json.error ?? res.status}`);
-        return;
+      // 残りがある限り連続して同期（1回あたり最大100件）
+      while (true) {
+        const res = await fetch("/api/gmail/sync");
+
+        let json: { synced?: number; remaining?: number; error?: string } = {};
+        try {
+          json = await res.json();
+        } catch {
+          toast.error("同期失敗: サーバーエラー（タイムアウトの可能性があります）");
+          break;
+        }
+
+        if (!res.ok) {
+          toast.error(`同期失敗: ${json.error ?? res.status}`);
+          break;
+        }
+
+        totalSynced += json.synced ?? 0;
+
+        if ((json.remaining ?? 0) > 0) {
+          toast.info(`${totalSynced}件取得済み、残り${json.remaining}件を続けて同期中...`);
+          continue;
+        }
+
+        toast.success(`${totalSynced}件取得しました`);
+        break;
       }
-      toast.success(`${json.synced}件取得しました`);
       fetchDashboard();
     } catch (e) {
       toast.error(`同期失敗: ${e instanceof Error ? e.message : "network error"}`);

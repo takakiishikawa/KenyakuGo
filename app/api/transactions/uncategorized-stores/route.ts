@@ -11,7 +11,8 @@ export async function GET() {
     .from("transactions")
     .select("store, amount")
     .eq("category", "その他")
-    .eq("reviewed", false);
+    .eq("reviewed", false)
+    .limit(10000);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

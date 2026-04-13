@@ -30,7 +30,8 @@ export async function GET(req: NextRequest) {
   const { data: allTxs } = await db
     .from("transactions")
     .select("category, amount, date")
-    .order("date");
+    .order("date")
+    .limit(10000);
 
   const txs = (allTxs ?? []) as Pick<Transaction, "category" | "amount" | "date">[];
 

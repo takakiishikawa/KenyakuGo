@@ -28,7 +28,8 @@ export async function GET(req: NextRequest) {
   let query = db
     .from("transactions")
     .select("id, store, amount, category, date")
-    .order("date", { ascending: false });
+    .order("date", { ascending: false })
+    .limit(10000);
 
   const now = new Date();
   if (period === "week") {

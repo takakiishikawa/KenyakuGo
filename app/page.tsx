@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import { TrendingDown, TrendingUp, Sparkles, X, RefreshCw } from "lucide-react";
+import { TrendingDown, TrendingUp, Sparkles, X, RefreshCw, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { formatVND, formatDate } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
@@ -127,12 +127,103 @@ function CategoryPopup({ category, color, onClose }: { category: string; color: 
   );
 }
 
+function WeekComparePopup({
+  thisWeekTotal,
+  lastWeekTotal,
+  weekDiff,
+  categoryBreakdown,
+  prevCategoryBreakdown,
+  onClose,
+}: {
+  thisWeekTotal: number;
+  lastWeekTotal: number;
+  weekDiff: number;
+  categoryBreakdown: { name: string; value: number }[];
+  prevCategoryBreakdown: Record<string, number>;
+  onClose: () => void;
+}) {
+  // merge all categories from both periods
+  const allCategories = Array.from(
+    new Set([...categoryBreakdown.map((c) => c.name), ...Object.keys(prevCategoryBreakdown)])
+  );
+  const rows = allCategories
+    .map((cat) => {
+      const current = categoryBreakdown.find((c) => c.name === cat)?.value ?? 0;
+      const prev = prevCategoryBreakdown[cat] ?? 0;
+      const diff = prev > 0 ? Math.round(((current - prev) / prev) * 100) : null;
+      return { cat, current, prev, diff };
+    })
+    .sort((a, b) => b.current - a.current);
+
+  const improved = weekDiff <= 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      style={{ backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl overflow-hidden animate-fade-up"
+        style={{ backgroundColor: "var(--kg-surface)", border: "1px solid var(--kg-border-medium)", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
+        <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: "var(--kg-border-subtle)" }}>
+          <div>
+            <p className="text-base font-semibold" style={{ color: "var(--kg-text)" }}>直近7日間 vs 前の7日間</p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--kg-text-muted)" }}>カテゴリ別の変化</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="font-num text-xl font-semibold" style={{ color: improved ? "var(--kg-success)" : "var(--kg-danger)" }}>
+              {weekDiff > 0 ? "+" : ""}{weekDiff}%
+            </span>
+            <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: "var(--kg-text-muted)" }}><X size={18} /></button>
+          </div>
+        </div>
+
+        {/* totals row */}
+        <div className="flex border-b" style={{ borderColor: "var(--kg-border-subtle)" }}>
+          <div className="flex-1 px-6 py-3 text-center border-r" style={{ borderColor: "var(--kg-border-subtle)" }}>
+            <p className="text-xs mb-1" style={{ color: "var(--kg-text-muted)" }}>直近7日間</p>
+            <p className="font-num text-base font-semibold" style={{ color: "var(--kg-text)" }}>{formatVND(thisWeekTotal)}</p>
+          </div>
+          <div className="flex-1 px-6 py-3 text-center">
+            <p className="text-xs mb-1" style={{ color: "var(--kg-text-muted)" }}>前の7日間</p>
+            <p className="font-num text-base font-semibold" style={{ color: "var(--kg-text-muted)" }}>{formatVND(lastWeekTotal)}</p>
+          </div>
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          <div className="px-2 py-2">
+            {rows.map(({ cat, current, prev, diff }) => (
+              <div key={cat} className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                style={{ marginBottom: 2 }}>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate" style={{ color: "var(--kg-text)" }}>{cat}</p>
+                  {prev > 0 && (
+                    <p className="text-xs mt-0.5 font-num" style={{ color: "var(--kg-text-muted)" }}>前 {formatVND(prev)}</p>
+                  )}
+                </div>
+                <p className="font-num text-sm font-semibold shrink-0" style={{ color: "var(--kg-text)" }}>
+                  {current > 0 ? formatVND(current) : "—"}
+                </p>
+                {diff !== null && (
+                  <span className="font-num text-xs font-semibold w-12 text-right shrink-0"
+                    style={{ color: diff <= 0 ? "var(--kg-success)" : "var(--kg-danger)" }}>
+                    {diff > 0 ? "+" : ""}{diff}%
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [feedback, setFeedback] = useState<DashboardFeedback | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [popupCategory, setPopupCategory] = useState<{ name: string; colorIndex: number } | null>(null);
+  const [showWeekCompare, setShowWeekCompare] = useState(false);
 
   const monthTotal = useCountUp(data?.thisMonthTotal ?? null);
 
@@ -235,13 +326,15 @@ export default function Dashboard() {
             {data ? formatVND(data.thisWeekTotal) : "—"}
           </p>
           {data && data.lastWeekTotal > 0 && (
-            <p className="mt-2 text-sm font-medium flex items-center gap-1"
+            <button className="mt-2 flex items-center gap-1 text-sm font-medium rounded-lg transition-opacity hover:opacity-70"
+              onClick={() => setShowWeekCompare(true)}
               style={{ color: weekImproved ? "var(--kg-success)" : "var(--kg-danger)" }}>
               {weekImproved ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
               {weekImproved
                 ? `前の7日間より倹約（${Math.abs(data.weekDiff)}%↓）`
                 : `前の7日間より増加（${data.weekDiff}%↑）`}
-            </p>
+              <ChevronRight size={13} className="opacity-60" />
+            </button>
           )}
           <div className="mt-4 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
         </div>
@@ -267,8 +360,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 gap-5 mb-8">
         {/* Donut */}
         <div className="kg-card-static p-7 animate-fade-up" style={{ animationDelay: "200ms" }}>
-          <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: "var(--kg-text-muted)" }}>今週の使い道</p>
-          <p className="text-xs mb-5" style={{ color: "var(--kg-text-muted)", opacity: 0.6 }}>カテゴリをクリックで詳細</p>
+          <p className="text-xs font-medium uppercase tracking-widest mb-5" style={{ color: "var(--kg-text-muted)" }}>今週の使い道</p>
           {data?.categoryBreakdown?.length ? (
             <div className="flex items-center gap-4">
               <div style={{ width: 160, height: 160, flexShrink: 0 }}>
@@ -391,6 +483,17 @@ export default function Dashboard() {
           category={popupCategory.name}
           color={DONUT_COLORS[popupCategory.colorIndex % DONUT_COLORS.length]}
           onClose={() => setPopupCategory(null)}
+        />
+      )}
+
+      {showWeekCompare && data && (
+        <WeekComparePopup
+          thisWeekTotal={data.thisWeekTotal}
+          lastWeekTotal={data.lastWeekTotal}
+          weekDiff={data.weekDiff}
+          categoryBreakdown={data.categoryBreakdown}
+          prevCategoryBreakdown={data.prevCategoryBreakdown}
+          onClose={() => setShowWeekCompare(false)}
         />
       )}
     </div>

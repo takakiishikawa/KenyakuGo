@@ -124,7 +124,7 @@ export function Sidebar() {
           <div className="flex items-center gap-3">
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarUrl} alt="avatar" className="w-8 h-8 rounded-full ring-2" style={{ ringColor: "#52B788" }} />
+              <img src={avatarUrl} alt="avatar" className="w-8 h-8 rounded-full" style={{ outline: "2px solid #52B788", outlineOffset: "2px" }} />
             ) : (
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold"

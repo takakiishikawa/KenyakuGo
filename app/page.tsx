@@ -360,13 +360,13 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 gap-5 mb-8">
         {/* Donut */}
         <div className="kg-card-static p-7 animate-fade-up" style={{ animationDelay: "200ms" }}>
-          <p className="text-xs font-medium uppercase tracking-widest mb-5" style={{ color: "var(--kg-text-muted)" }}>今週の使い道</p>
+          <p className="text-xs font-medium uppercase tracking-widest mb-4" style={{ color: "var(--kg-text-muted)" }}>直近7日間の内訳</p>
           {data?.categoryBreakdown?.length ? (
-            <div className="flex items-center gap-4">
-              <div style={{ width: 160, height: 160, flexShrink: 0 }}>
+            <div className="flex flex-col items-center gap-4">
+              <div style={{ width: "100%", height: 220 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={data.categoryBreakdown} cx="50%" cy="50%" innerRadius={44} outerRadius={75}
+                    <Pie data={data.categoryBreakdown} cx="50%" cy="50%" innerRadius={60} outerRadius={100}
                       dataKey="value" paddingAngle={2}
                       onClick={(entry: { name?: string }, index: number) => {
                         if (entry.name) setPopupCategory({ name: entry.name, colorIndex: index });
@@ -383,12 +383,12 @@ export default function Dashboard() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="flex-1 space-y-2 min-w-0">
+              <div className="w-full space-y-0.5">
                 {data.categoryBreakdown.slice(0, 6).map((item, i) => {
                   const prev = data.prevCategoryBreakdown?.[item.name] ?? 0;
                   const diff = prev > 0 ? Math.round(((item.value - prev) / prev) * 100) : null;
                   return (
-                    <button key={item.name} className="flex items-center gap-2 w-full text-left rounded-lg px-2 py-1 transition-colors"
+                    <button key={item.name} className="flex items-center gap-2 w-full text-left rounded-lg px-2 py-1.5 transition-colors"
                       style={{ backgroundColor: "transparent" }}
                       onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--kg-surface-2)")}
                       onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
@@ -397,7 +397,7 @@ export default function Dashboard() {
                       <span className="text-xs truncate flex-1" style={{ color: "var(--kg-text-muted)" }}>{item.name}</span>
                       <span className="text-xs font-num font-medium" style={{ color: "var(--kg-text)" }}>{formatVND(item.value)}</span>
                       {diff !== null && (
-                        <span className="text-xs font-num font-medium w-12 text-right shrink-0"
+                        <span className="text-xs font-num font-medium w-10 text-right shrink-0"
                           style={{ color: diff <= 0 ? "var(--kg-success)" : "var(--kg-danger)" }}>
                           {diff > 0 ? "+" : ""}{diff}%
                         </span>
@@ -408,7 +408,7 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <p className="text-center py-16 text-sm" style={{ color: "var(--kg-text-muted)" }}>今週の取引データがありません</p>
+            <p className="text-center py-16 text-sm" style={{ color: "var(--kg-text-muted)" }}>直近7日間の取引データがありません</p>
           )}
         </div>
 

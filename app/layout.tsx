@@ -1,26 +1,15 @@
 import type { Metadata } from "next";
-import { DM_Serif_Display, DM_Sans, JetBrains_Mono } from "next/font/google";
+import { Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Sidebar } from "@/components/sidebar";
+import { ThemeProvider } from "@/components/theme-provider";
 
-const dmSerifDisplay = DM_Serif_Display({
-  weight: "400",
-  style: ["normal", "italic"],
+const notoSansJP = Noto_Sans_JP({
+  weight: ["300", "400", "500", "600", "700"],
   subsets: ["latin"],
-  variable: "--font-display",
-});
-
-const dmSans = DM_Sans({
-  weight: ["300", "400", "500", "600"],
-  subsets: ["latin"],
-  variable: "--font-body",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  weight: ["400", "600"],
-  subsets: ["latin"],
-  variable: "--font-mono-display",
+  variable: "--font-noto",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -34,19 +23,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="ja"
-      className={`${dmSerifDisplay.variable} ${dmSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full" style={{ backgroundColor: "#0A0F0D" }}>
-        <Providers>
-          <div className="flex h-screen">
-            <Sidebar />
-            <main className="ml-60 flex-1 overflow-y-auto p-10" style={{ backgroundColor: "#0A0F0D" }}>
-              {children}
-            </main>
-          </div>
-        </Providers>
+    <html lang="ja" className={`${notoSansJP.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        {/* テーマをページロード前に適用してフラッシュを防止 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var s=localStorage.getItem('kg-theme');var d=s||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.classList.add(d);})();`,
+          }}
+        />
+      </head>
+      <body className="min-h-full">
+        <ThemeProvider>
+          <Providers>
+            <div className="flex h-screen" style={{ backgroundColor: "var(--kg-bg)" }}>
+              <Sidebar />
+              <main className="ml-60 flex-1 overflow-y-auto p-10" style={{ backgroundColor: "var(--kg-bg)" }}>
+                {children}
+              </main>
+            </div>
+          </Providers>
+        </ThemeProvider>
       </body>
     </html>
   );

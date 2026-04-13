@@ -73,10 +73,11 @@ export async function GET() {
 
     const db = createDb();
 
-    // 2. DB に既存の gmail_id を取得してセットに
+    // 2. DB に既存の gmail_id を取得してセットに（全件取得するため limit を大きく設定）
     const { data: existingRows } = await db
       .from("transactions")
-      .select("gmail_id");
+      .select("gmail_id")
+      .limit(100000);
     const existingIds = new Set((existingRows ?? []).map((r) => r.gmail_id as string));
 
     // 3. 新規IDのみ抽出（1回あたり最大100件でタイムアウト回避）
@@ -112,6 +113,8 @@ export async function GET() {
       } satisfies Omit<Transaction, "created_at">);
 
       if (err) {
+        // 重複キーエラー（23505）はスキップして続行
+        if (err.code === "23505") continue;
         console.error("[sync] Insert error:", err);
         insertError = err.message;
         break;

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createDb, type Transaction } from "@/lib/supabase/db";
-import { fetchVietcombankEmails } from "@/lib/gmail";
+import { listVietcombankMessageIds, fetchEmailBody } from "@/lib/gmail";
 import { parseVietcombankEmail } from "@/lib/parser";
 
 export const maxDuration = 300; // 5分 (Vercel/Next.js route timeout)
@@ -59,9 +59,10 @@ export async function GET() {
       accessToken = tokenData.access_token;
     }
 
-    let emails: { id: string; body: string }[] = [];
+    // 1. Gmail から全メッセージIDを取得
+    let allIds: string[] = [];
     try {
-      emails = await fetchVietcombankEmails(accessToken!);
+      allIds = await listVietcombankMessageIds(accessToken!);
     } catch (e) {
       console.error("[sync] Gmail fetch error:", e);
       return NextResponse.json(
@@ -71,29 +72,36 @@ export async function GET() {
     }
 
     const db = createDb();
+
+    // 2. DB に既存の gmail_id を取得してセットに
+    const { data: existingRows } = await db
+      .from("transactions")
+      .select("gmail_id");
+    const existingIds = new Set((existingRows ?? []).map((r) => r.gmail_id as string));
+
+    // 3. 新規IDのみ抽出
+    const newIds = allIds.filter((id) => !existingIds.has(id));
+
     let synced = 0;
     let insertError: string | null = null;
 
-    for (const email of emails) {
-      const parsed = parseVietcombankEmail(email.body);
-      if (!parsed.isValid) continue;
-
-      const { data: existing, error: findError } = await db
-        .from("transactions")
-        .select("id")
-        .eq("gmail_id", email.id)
-        .maybeSingle();
-
-      if (findError) {
-        console.error("[sync] findUnique error:", findError);
-        insertError = findError.message;
-        break;
+    // 4. 新規IDのみ本文を取得してパース・保存
+    for (const id of newIds) {
+      let body: string | null = null;
+      try {
+        body = await fetchEmailBody(accessToken!, id);
+      } catch (e) {
+        console.error("[sync] fetchEmailBody error:", e);
+        continue;
       }
-      if (existing) continue;
+      if (!body) continue;
+
+      const parsed = parseVietcombankEmail(body);
+      if (!parsed.isValid) continue;
 
       const { error: err } = await db.from("transactions").insert({
         id: crypto.randomUUID(),
-        gmail_id: email.id,
+        gmail_id: id,
         store: parsed.store,
         amount: parsed.amount,
         date: parsed.date.toISOString(),

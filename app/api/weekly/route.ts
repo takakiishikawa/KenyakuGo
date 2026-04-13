@@ -76,24 +76,23 @@ export async function GET(req: NextRequest) {
       .slice(-4)
       .map(([, d]) => d);
 
-    const relativeWeekLabels = ["3週前", "2週前", "先週", "今週"];
-    const offset = Math.max(0, relativeWeekLabels.length - weekStarts.length);
-    const buckets = weekStarts.map((ws, i) => {
+    const buckets = weekStarts.map((ws) => {
       const end = getWeekEnd(ws);
-      return { label: relativeWeekLabels[offset + i], start: ws, end };
+      const m = ws.getMonth() + 1;
+      const weekNum = Math.ceil(ws.getDate() / 7);
+      return { label: `${m}月${weekNum}週目`, start: ws, end };
     });
     periods = groupByPeriod(buckets);
   } else if (period === "month") {
     // 実データのある直近6ヶ月、相対ラベル
     const monthSet = new Set(txs.map((t) => t.date.slice(0, 7)));
     const months = [...monthSet].sort().slice(-6);
-    const relativeMonthLabels = ["5ヶ月前", "4ヶ月前", "3ヶ月前", "2ヶ月前", "先月", "今月"];
-    const offset = Math.max(0, relativeMonthLabels.length - months.length);
-    const buckets = months.map((ym, i) => {
+    const buckets = months.map((ym) => {
       const [y, m] = ym.split("-").map(Number);
       const start = new Date(y, m - 1, 1);
       const end = new Date(y, m, 0, 23, 59, 59, 999);
-      return { label: relativeMonthLabels[offset + i], start, end };
+      const yr = String(y).slice(-2); // 2025 → "25"
+      return { label: `${yr}年${m}月`, start, end };
     });
     periods = groupByPeriod(buckets);
   } else if (period === "year") {

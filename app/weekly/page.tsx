@@ -168,7 +168,7 @@ export default function ReportPage() {
 
         {/* カード3: 見直したい支出 */}
         <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "160ms", animationFillMode: "both" }}>
-          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>見直したい支出</p>
+          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>気になる支出</p>
           {feedbackLoading ? (
             <div className="skeleton h-8 w-3/4 rounded-lg" />
           ) : (
@@ -218,39 +218,39 @@ export default function ReportPage() {
 
         {feedbackLoading ? (
           <div className="space-y-3">
-            <div className="skeleton h-4 w-full rounded" />
-            <div className="skeleton h-4 w-4/5 rounded" />
-            <div className="skeleton h-16 w-full rounded-xl mt-2" />
+            <div className="skeleton h-16 w-full rounded-xl" />
+            <div className="skeleton h-20 w-full rounded-xl" />
+            <div className="skeleton h-24 w-full rounded-xl" />
           </div>
         ) : feedback ? (
-          <div className="space-y-5">
-            {/* 総評 */}
-            <div className="border-l-2 pl-4" style={{ borderColor: "var(--kg-accent)" }}>
-              <p className="text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>全体のまとめ</p>
-              <p className="text-sm leading-7" style={{ color: "var(--kg-text-secondary)" }}>{feedback.analysis}</p>
+          <div className="space-y-3">
+            {/* 全体のまとめ */}
+            <div className="rounded-xl p-4" style={{ backgroundColor: "var(--kg-surface-2)" }}>
+              <p className="text-xs font-medium mb-2" style={{ color: "var(--kg-text-muted)" }}>まとめ</p>
+              <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{feedback.analysis}</p>
             </div>
 
-            {/* 倹約推奨カテゴリ */}
+            {/* 気になる支出 */}
             {feedback.savingsCategory && (
-              <div className="rounded-xl p-5" style={{ backgroundColor: "rgba(255,183,77,0.07)", border: "1px solid rgba(255,183,77,0.2)" }}>
-                <p className="text-xs font-medium uppercase tracking-widest mb-2" style={{ color: "var(--kg-warning)" }}>見直しポイント</p>
-                <p className="text-xl font-semibold mb-2" style={{ color: "var(--kg-warning)" }}>{feedback.savingsCategory}</p>
+              <div className="rounded-xl p-4" style={{ backgroundColor: "rgba(255,183,77,0.07)", border: "1px solid rgba(255,183,77,0.15)" }}>
+                <p className="text-xs font-medium mb-2" style={{ color: "var(--kg-warning)" }}>少し使いすぎかも</p>
+                <p className="text-base font-semibold mb-1" style={{ color: "var(--kg-warning)" }}>{feedback.savingsCategory}</p>
                 <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{feedback.savingsReason}</p>
               </div>
             )}
 
-            {/* 改善のヒント */}
+            {/* ヒント */}
             {feedback.savingsSuggestion && (
-              <div>
-                <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>改善のヒント</p>
-                <div className="space-y-2">
+              <div className="rounded-xl p-4" style={{ backgroundColor: "var(--kg-surface-2)" }}>
+                <p className="text-xs font-medium mb-3" style={{ color: "var(--kg-text-muted)" }}>こうしてみては？</p>
+                <div className="space-y-2.5">
                   {feedback.savingsSuggestion
                     .split("\n")
                     .map((line) => line.replace(/^[・•\-\s]+/, "").trim())
                     .filter(Boolean)
                     .map((line, i) => (
-                      <div key={i} className="flex items-start gap-3">
-                        <span className="mt-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                      <div key={i} className="flex items-start gap-2.5">
+                        <span className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                           style={{ backgroundColor: "rgba(82,183,136,0.15)", color: "var(--kg-accent)" }}>
                           {i + 1}
                         </span>

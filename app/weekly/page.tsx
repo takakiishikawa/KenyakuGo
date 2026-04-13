@@ -6,16 +6,31 @@ import { Sparkles } from "lucide-react";
 import { formatVND } from "@/lib/format";
 
 interface PeriodItem { label: string; total: number; byCategory: Record<string, number>; }
-interface ReportData { periods: PeriodItem[]; topCategories: string[]; diff: number; topCategory: string; currentTotal: number; showYearTab: boolean; }
+interface ReportData {
+  periods: PeriodItem[];
+  topCategories: string[];
+  diff: number;
+  topCategory: string;
+  currentTotal: number;
+  prevPeriodTotal: number;
+  projectedTotal: number | null;
+  showYearTab: boolean;
+}
+interface FeedbackData {
+  analysis: string;
+  savingsCategory: string | null;
+  savingsReason: string;
+  savingsSuggestion: string;
+}
 type Period = "week" | "month" | "year";
 
 function getPeriodKey(p: Period): string {
   const now = new Date();
   if (p === "week") {
     const d = new Date(now); const day = d.getDay(); d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-    return `week-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-  } else if (p === "month") return `month-${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-  return `year-${now.getFullYear()}`;
+    return `v2-week-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  } else if (p === "month") return `v2-month-${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+  return `v2-year-${now.getFullYear()}`;
 }
 
 const LABELS: Record<Period, {current:string;prev:string}> = {
@@ -44,26 +59,31 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function ReportPage() {
   const [period, setPeriod] = useState<Period>("week");
   const [data, setData] = useState<ReportData | null>(null);
-  const [comment, setComment] = useState("");
-  const [commentLoading, setCommentLoading] = useState(false);
+  const [feedback, setFeedback] = useState<FeedbackData | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   const fetchData = useCallback(async (p: Period) => {
-    setData(null); setComment("");
+    setData(null); setFeedback(null);
     const res = await fetch(`/api/weekly?period=${p}`);
     if (!res.ok) return;
     const json: ReportData = await res.json();
     setData(json);
     const periods = json.periods;
     if (periods.length >= 2) {
-      setCommentLoading(true);
+      setFeedbackLoading(true);
       const current = periods[periods.length - 1];
       const prev = periods[periods.length - 2];
       const r = await fetch("/api/ai/comment", {
         method: "POST", headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ type: p === "week" ? "weekly" : "monthly", data: { thisWeek: current.byCategory, lastWeek: prev.byCategory }, periodKey: getPeriodKey(p) }),
+        body: JSON.stringify({
+          type: p === "week" ? "weekly" : "monthly",
+          data: { thisWeek: current.byCategory, lastWeek: prev.byCategory },
+          periodKey: getPeriodKey(p),
+        }),
       });
-      const { comment: c } = await r.json();
-      setComment(c); setCommentLoading(false);
+      const result = await r.json();
+      if (result.feedback) setFeedback(result.feedback as FeedbackData);
+      setFeedbackLoading(false);
     }
   }, []);
 
@@ -74,12 +94,39 @@ export default function ReportPage() {
     ...Object.fromEntries((data.topCategories ?? []).map((cat) => [cat, p.byCategory[cat] ?? 0])),
   })) ?? [];
 
-  const diffPositive = data ? data.diff <= 0 : undefined;
   const labels = LABELS[period];
   const tabs: { value: Period; label: string }[] = [
     { value: "week", label: "週" }, { value: "month", label: "月" },
     ...(data?.showYearTab ? [{ value: "year" as Period, label: "年" }] : []),
   ];
+
+  // カード2: 月ならば1ヶ月予測、それ以外は差額
+  const projectedTotal = data?.projectedTotal ?? null;
+  const prevPeriodTotal = data?.prevPeriodTotal ?? 0;
+  const projDiff = projectedTotal != null ? projectedTotal - prevPeriodTotal : null;
+  const projDiffPct = projDiff != null && prevPeriodTotal > 0
+    ? Math.round((projDiff / prevPeriodTotal) * 100)
+    : null;
+
+  const card2 = period === "month" && projectedTotal != null
+    ? {
+        label: "1ヶ月予測",
+        value: formatVND(projectedTotal),
+        color: projDiff != null && projDiff <= 0 ? "var(--kg-success)" : "var(--kg-danger)",
+        sub: projDiffPct != null
+          ? `先月比 ${projDiff! > 0 ? "+" : ""}${projDiffPct}%`
+          : null,
+        subColor: projDiff != null && projDiff <= 0 ? "var(--kg-success)" : "var(--kg-danger)",
+      }
+    : {
+        label: `${labels.prev}との差額`,
+        value: data ? `${data.diff > 0 ? "+" : ""}${formatVND(data.diff)}` : "—",
+        color: data == null ? "var(--kg-text)" : data.diff <= 0 ? "var(--kg-success)" : "var(--kg-danger)",
+        sub: null,
+        subColor: "var(--kg-text-muted)",
+      };
+
+  const card3SavingsCategory = feedback?.savingsCategory;
 
   return (
     <div>
@@ -96,17 +143,39 @@ export default function ReportPage() {
       </div>
 
       <div className="grid grid-cols-3 gap-5 mb-8">
-        {[
-          { label: `${labels.current}の総支出`, value: data ? formatVND(data.currentTotal) : "—", color: "var(--kg-text)" },
-          { label: `${labels.prev}との差額`, value: data ? `${data.diff > 0 ? "+" : ""}${formatVND(data.diff)}` : "—", color: diffPositive === undefined ? "var(--kg-text)" : diffPositive ? "var(--kg-success)" : "var(--kg-danger)" },
-          { label: "最多支出カテゴリ", value: data?.topCategory ?? "—", color: "var(--kg-accent)" },
-        ].map((card, i) => (
-          <div key={card.label} className="kg-card p-7 animate-fade-up" style={{ animationDelay: `${i * 80}ms`, animationFillMode: "both" }}>
-            <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>{card.label}</p>
-            <p className="font-num text-3xl font-semibold leading-none" style={{ color: card.color }}>{card.value}</p>
-            <div className="mt-5 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
-          </div>
-        ))}
+        {/* カード1: 総支出 */}
+        <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "0ms", animationFillMode: "both" }}>
+          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>{labels.current}の総支出</p>
+          <p className="font-num text-3xl font-semibold leading-none" style={{ color: "var(--kg-text)" }}>
+            {data ? formatVND(data.currentTotal) : "—"}
+          </p>
+          <div className="mt-5 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
+        </div>
+
+        {/* カード2: 差額 or 1ヶ月予測 */}
+        <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "80ms", animationFillMode: "both" }}>
+          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>{card2.label}</p>
+          <p className="font-num text-3xl font-semibold leading-none" style={{ color: card2.color }}>
+            {data ? card2.value : "—"}
+          </p>
+          {card2.sub && data && (
+            <p className="text-xs mt-2 font-medium" style={{ color: card2.subColor }}>{card2.sub}</p>
+          )}
+          <div className="mt-5 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
+        </div>
+
+        {/* カード3: 倹約推奨 */}
+        <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "160ms", animationFillMode: "both" }}>
+          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>倹約推奨</p>
+          {feedbackLoading ? (
+            <div className="skeleton h-8 w-3/4 rounded-lg" />
+          ) : (
+            <p className="font-num text-3xl font-semibold leading-none" style={{ color: card3SavingsCategory ? "var(--kg-warning)" : "var(--kg-accent)" }}>
+              {card3SavingsCategory ?? data?.topCategory ?? "—"}
+            </p>
+          )}
+          <div className="mt-5 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
+        </div>
       </div>
 
       <div className="kg-card-static p-7 mb-5">
@@ -135,23 +204,64 @@ export default function ReportPage() {
         )}
       </div>
 
+      {/* 倹約フィードバック */}
       <div className="kg-card-static p-7">
         <div className="flex items-center gap-2 mb-5">
-          <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>AIコメント</span>
+          <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>倹約フィードバック</span>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
             style={{ backgroundColor: "rgba(82,183,136,0.12)", color: "var(--kg-accent)" }}>
             <Sparkles size={10} /> AI
           </span>
         </div>
-        <div className="border-l-2 pl-4" style={{ borderColor: "var(--kg-accent)" }}>
-          {commentLoading ? (
-            <div className="space-y-2"><div className="skeleton h-4 w-full" /><div className="skeleton h-4 w-3/4" /></div>
-          ) : comment ? (
-            <p className="text-sm leading-7 italic" style={{ color: "var(--kg-text-secondary)" }}>{comment}</p>
-          ) : (
-            <p className="text-sm" style={{ color: "var(--kg-text-muted)" }}>取引データを同期するとコメントが表示されます</p>
-          )}
-        </div>
+
+        {feedbackLoading ? (
+          <div className="space-y-3">
+            <div className="skeleton h-4 w-full rounded" />
+            <div className="skeleton h-4 w-4/5 rounded" />
+            <div className="skeleton h-16 w-full rounded-xl mt-2" />
+          </div>
+        ) : feedback ? (
+          <div className="space-y-5">
+            {/* 総評 */}
+            <div className="border-l-2 pl-4" style={{ borderColor: "var(--kg-accent)" }}>
+              <p className="text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>総評</p>
+              <p className="text-sm leading-7" style={{ color: "var(--kg-text-secondary)" }}>{feedback.analysis}</p>
+            </div>
+
+            {/* 倹約推奨カテゴリ */}
+            {feedback.savingsCategory && (
+              <div className="rounded-xl p-5" style={{ backgroundColor: "rgba(255,183,77,0.07)", border: "1px solid rgba(255,183,77,0.2)" }}>
+                <p className="text-xs font-medium uppercase tracking-widest mb-2" style={{ color: "var(--kg-warning)" }}>倹約推奨カテゴリ</p>
+                <p className="text-xl font-semibold mb-2" style={{ color: "var(--kg-warning)" }}>{feedback.savingsCategory}</p>
+                <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{feedback.savingsReason}</p>
+              </div>
+            )}
+
+            {/* 節約提案 */}
+            {feedback.savingsSuggestion && (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>節約提案</p>
+                <div className="space-y-2">
+                  {feedback.savingsSuggestion
+                    .split("\n")
+                    .map((line) => line.replace(/^[・•\-\s]+/, "").trim())
+                    .filter(Boolean)
+                    .map((line, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <span className="mt-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                          style={{ backgroundColor: "rgba(82,183,136,0.15)", color: "var(--kg-accent)" }}>
+                          {i + 1}
+                        </span>
+                        <p className="text-sm leading-6 flex-1" style={{ color: "var(--kg-text-secondary)" }}>{line}</p>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm" style={{ color: "var(--kg-text-muted)" }}>取引データを同期するとフィードバックが表示されます</p>
+        )}
       </div>
     </div>
   );

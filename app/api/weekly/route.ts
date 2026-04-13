@@ -125,12 +125,28 @@ export async function GET(req: NextRequest) {
   const topCategory =
     Object.entries(currentPeriod?.byCategory ?? {}).sort(([, a], [, b]) => b - a)[0]?.[0] ?? "—";
 
+  // 月次予測（当月のみ計算）
+  let projectedTotal: number | null = null;
+  if (period === "month") {
+    const now = new Date();
+    const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const currentMonthTxs = txs.filter((t) => t.date.startsWith(currentYM));
+    if (currentMonthTxs.length > 0) {
+      const dayOfMonth = now.getDate();
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const currentMonthTotal = currentMonthTxs.reduce((s, t) => s + t.amount, 0);
+      projectedTotal = Math.round((currentMonthTotal / dayOfMonth) * daysInMonth);
+    }
+  }
+
   return NextResponse.json({
     periods,
     topCategories,
     diff,
     topCategory,
     currentTotal: currentPeriod?.total ?? 0,
+    prevPeriodTotal: prevPeriod?.total ?? 0,
+    projectedTotal,
     showYearTab,
   });
 }

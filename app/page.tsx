@@ -170,9 +170,9 @@ export default function Dashboard() {
       <div className="grid grid-cols-3 gap-5 mb-8">
         <SummaryCard label="今月の総支出" value={data ? formatVND(monthTotal) : "—"} delay={0} />
         <SummaryCard
-          label="先週比"
+          label="前週との変化"
           value={data ? `${data.weekDiff > 0 ? "+" : ""}${data.weekDiff}%` : "—"}
-          sub={data ? (data.weekDiff <= 0 ? "先週より節約" : "先週より増加") : undefined}
+          sub={data ? (data.weekDiff <= 0 ? "前の7日間より抑えられた" : "前の7日間より増えた") : undefined}
           positive={data ? data.weekDiff <= 0 : undefined}
           delay={80}
         />
@@ -189,7 +189,7 @@ export default function Dashboard() {
         {/* Donut */}
         <div className="kg-card-static p-7 animate-fade-up" style={{ animationDelay: "200ms" }}>
           <p className="text-xs font-medium uppercase tracking-widest mb-5" style={{ color: "var(--kg-text-muted)" }}>
-            直近7日間のカテゴリ別支出
+            今週の使い道
           </p>
           {data?.categoryBreakdown?.length ? (
             <div className="flex items-center gap-4">
@@ -229,14 +229,14 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <p className="text-center py-16 text-sm" style={{ color: "var(--kg-text-muted)" }}>直近7日間の取引データがありません</p>
+            <p className="text-center py-16 text-sm" style={{ color: "var(--kg-text-muted)" }}>今週の取引データがありません</p>
           )}
         </div>
 
         {/* AI Comment */}
         <div className="kg-card-static p-7 animate-fade-up" style={{ animationDelay: "240ms" }}>
           <div className="flex items-center gap-2 mb-5">
-            <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>AIコメント</span>
+            <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>支出チェック</span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
               style={{ backgroundColor: "rgba(82,183,136,0.12)", color: "var(--kg-accent)" }}>
               <Sparkles size={10} /> AI

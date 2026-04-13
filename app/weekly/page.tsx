@@ -146,10 +146,11 @@ export default function ReportPage() {
       <div className="grid grid-cols-3 gap-5 mb-8">
         {/* カード1: 総支出 */}
         <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "0ms", animationFillMode: "both" }}>
-          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>{labels.current}の総支出</p>
+          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>{labels.current}の出費</p>
           <p className="font-num text-3xl font-semibold leading-none" style={{ color: "var(--kg-text)" }}>
             {data ? formatVND(data.currentTotal) : "—"}
           </p>
+
           <div className="mt-5 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
         </div>
 
@@ -165,9 +166,9 @@ export default function ReportPage() {
           <div className="mt-5 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
         </div>
 
-        {/* カード3: 倹約推奨 */}
+        {/* カード3: 見直したい支出 */}
         <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "160ms", animationFillMode: "both" }}>
-          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>倹約推奨</p>
+          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>見直したい支出</p>
           {feedbackLoading ? (
             <div className="skeleton h-8 w-3/4 rounded-lg" />
           ) : (
@@ -181,7 +182,7 @@ export default function ReportPage() {
 
       <div className="kg-card-static p-7 mb-5">
         <p className="text-xs font-medium uppercase tracking-widest mb-6" style={{ color: "var(--kg-text-muted)" }}>
-          カテゴリ別推移（上位5カテゴリ）
+          使い道の推移（上位5カテゴリ）
         </p>
         {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={320}>
@@ -205,10 +206,10 @@ export default function ReportPage() {
         )}
       </div>
 
-      {/* 倹約フィードバック */}
+      {/* 支出の振り返り */}
       <div className="kg-card-static p-7">
         <div className="flex items-center gap-2 mb-5">
-          <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>倹約フィードバック</span>
+          <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>支出の振り返り</span>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
             style={{ backgroundColor: "rgba(82,183,136,0.12)", color: "var(--kg-accent)" }}>
             <Sparkles size={10} /> AI
@@ -225,14 +226,14 @@ export default function ReportPage() {
           <div className="space-y-5">
             {/* 総評 */}
             <div className="border-l-2 pl-4" style={{ borderColor: "var(--kg-accent)" }}>
-              <p className="text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>総評</p>
+              <p className="text-xs font-medium mb-2 uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>全体のまとめ</p>
               <p className="text-sm leading-7" style={{ color: "var(--kg-text-secondary)" }}>{feedback.analysis}</p>
             </div>
 
             {/* 倹約推奨カテゴリ */}
             {feedback.savingsCategory && (
               <div className="rounded-xl p-5" style={{ backgroundColor: "rgba(255,183,77,0.07)", border: "1px solid rgba(255,183,77,0.2)" }}>
-                <p className="text-xs font-medium uppercase tracking-widest mb-2" style={{ color: "var(--kg-warning)" }}>倹約推奨カテゴリ</p>
+                <p className="text-xs font-medium uppercase tracking-widest mb-2" style={{ color: "var(--kg-warning)" }}>見直しポイント</p>
                 <p className="text-xl font-semibold mb-2" style={{ color: "var(--kg-warning)" }}>{feedback.savingsCategory}</p>
                 <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{feedback.savingsReason}</p>
               </div>
@@ -241,7 +242,7 @@ export default function ReportPage() {
             {/* 節約提案 */}
             {feedback.savingsSuggestion && (
               <div>
-                <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>節約提案</p>
+                <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>改善のヒント</p>
                 <div className="space-y-2">
                   {feedback.savingsSuggestion
                     .split("\n")
@@ -261,7 +262,7 @@ export default function ReportPage() {
             )}
           </div>
         ) : (
-          <p className="text-sm" style={{ color: "var(--kg-text-muted)" }}>取引データを同期するとフィードバックが表示されます</p>
+          <p className="text-sm" style={{ color: "var(--kg-text-muted)" }}>取引データを同期すると振り返りが表示されます</p>
         )}
       </div>
     </div>

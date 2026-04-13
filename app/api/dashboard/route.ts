@@ -59,6 +59,13 @@ export async function GET() {
   const targetMonthly = settings?.target_monthly ?? 0;
   const damBalance = targetMonthly - thisMonthTotal;
 
+  // 月末予測（今日までのペースで推計）
+  const dayOfMonth = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const projectedMonthTotal = thisMonthTotal > 0
+    ? Math.round((thisMonthTotal / dayOfMonth) * daysInMonth)
+    : null;
+
   const categoryMap: Record<string, number> = {};
   for (const tx of last7Txs) {
     categoryMap[tx.category] = (categoryMap[tx.category] ?? 0) + tx.amount;
@@ -74,6 +81,7 @@ export async function GET() {
 
   return NextResponse.json({
     thisMonthTotal,
+    projectedMonthTotal,
     thisWeekTotal: last7Total,
     lastWeekTotal: prev7Total,
     weekDiff,

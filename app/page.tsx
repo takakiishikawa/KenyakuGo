@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import { TrendingDown, TrendingUp, Sparkles, X } from "lucide-react";
+import { TrendingDown, TrendingUp, Sparkles, X, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { formatVND, formatDate } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
@@ -11,6 +11,7 @@ const DONUT_COLORS = ["#2D6A4F", "#52B788", "#95D5B2", "#FFB74D", "#C084FC", "#3
 
 interface DashboardData {
   thisMonthTotal: number;
+  projectedMonthTotal: number | null;
   thisWeekTotal: number;
   lastWeekTotal: number;
   weekDiff: number;
@@ -18,13 +19,13 @@ interface DashboardData {
   targetMonthly: number;
   categoryBreakdown: { name: string; value: number }[];
   prevCategoryBreakdown: Record<string, number>;
-  recentTransactions: {
-    id: string;
-    store: string;
-    amount: number;
-    category: string;
-    date: string;
-  }[];
+  recentTransactions: { id: string; store: string; amount: number; category: string; date: string; }[];
+}
+
+interface DashboardFeedback {
+  summary: string;
+  point: string;
+  tip: string;
 }
 
 interface TxItem {
@@ -60,49 +61,18 @@ function CategoryBadge({ category }: { category: string }) {
   const { bg, text } = getCategoryColors(category);
   const isUncategorized = category === "その他";
   return (
-    <span
-      className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
+    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
       style={{
         backgroundColor: isUncategorized ? "rgba(239,83,80,0.12)" : bg,
         color: isUncategorized ? "var(--kg-danger)" : text,
         border: `1px solid ${isUncategorized ? "rgba(239,83,80,0.25)" : "transparent"}`,
-      }}
-    >
+      }}>
       {isUncategorized ? "未分類" : category}
     </span>
   );
 }
 
-function SummaryCard({
-  label, value, sub, positive, delay = 0,
-}: {
-  label: string; value: string; sub?: string; positive?: boolean; delay?: number;
-}) {
-  return (
-    <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: `${delay}ms`, animationFillMode: "both" }}>
-      <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>
-        {label}
-      </p>
-      <p className="font-num text-4xl font-semibold leading-none" style={{ color: "var(--kg-text)" }}>
-        {value}
-      </p>
-      {sub && (
-        <p className="mt-2 text-sm font-medium flex items-center gap-1"
-          style={{ color: positive === undefined ? "var(--kg-text-muted)" : positive ? "var(--kg-success)" : "var(--kg-danger)" }}>
-          {positive !== undefined && (positive ? <TrendingDown size={14} /> : <TrendingUp size={14} />)}
-          {sub}
-        </p>
-      )}
-      <div className="mt-5 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
-    </div>
-  );
-}
-
-function CategoryPopup({
-  category, color, onClose,
-}: {
-  category: string; color: string; onClose: () => void;
-}) {
+function CategoryPopup({ category, color, onClose }: { category: string; color: string; onClose: () => void }) {
   const [txs, setTxs] = useState<TxItem[] | null>(null);
 
   useEffect(() => {
@@ -120,8 +90,6 @@ function CategoryPopup({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden animate-fade-up"
         style={{ backgroundColor: "var(--kg-surface)", border: "1px solid var(--kg-border-medium)", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
-
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: "var(--kg-border-subtle)" }}>
           <div className="flex items-center gap-3">
             <span className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
@@ -132,33 +100,23 @@ function CategoryPopup({
           </div>
           <div className="flex items-center gap-4">
             <p className="font-num text-xl font-semibold" style={{ color: "var(--kg-accent)" }}>{formatVND(total)}</p>
-            <button onClick={onClose} className="p-1.5 rounded-lg transition-colors"
-              style={{ color: "var(--kg-text-muted)" }}>
-              <X size={18} />
-            </button>
+            <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: "var(--kg-text-muted)" }}><X size={18} /></button>
           </div>
         </div>
-
-        {/* Transaction list */}
         <div className="overflow-y-auto flex-1">
           {txs === null ? (
-            <div className="px-6 py-8 space-y-3">
-              {[1, 2, 3].map((i) => <div key={i} className="skeleton h-10 rounded-xl" />)}
-            </div>
+            <div className="px-6 py-8 space-y-3">{[1,2,3].map((i) => <div key={i} className="skeleton h-10 rounded-xl" />)}</div>
           ) : txs.length === 0 ? (
             <p className="text-sm text-center py-10" style={{ color: "var(--kg-text-muted)" }}>この期間の取引はありません</p>
           ) : (
             <div>
               {txs.map((tx) => (
-                <div key={tx.id} className="flex items-center justify-between px-6 py-3.5 border-b last:border-0"
-                  style={{ borderColor: "var(--kg-border-subtle)" }}>
+                <div key={tx.id} className="flex items-center justify-between px-6 py-3.5 border-b last:border-0" style={{ borderColor: "var(--kg-border-subtle)" }}>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate" style={{ color: "var(--kg-text)" }}>{tx.store}</p>
                     <p className="text-xs mt-0.5" style={{ color: "var(--kg-text-muted)" }}>{formatDate(tx.date)}</p>
                   </div>
-                  <p className="font-num text-sm font-semibold ml-4 shrink-0" style={{ color: "var(--kg-text)" }}>
-                    {formatVND(tx.amount)}
-                  </p>
+                  <p className="font-num text-sm font-semibold ml-4 shrink-0" style={{ color: "var(--kg-text)" }}>{formatVND(tx.amount)}</p>
                 </div>
               ))}
             </div>
@@ -171,12 +129,12 @@ function CategoryPopup({
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
-  const [comment, setComment] = useState<string>("");
-  const [commentLoading, setCommentLoading] = useState(false);
+  const [feedback, setFeedback] = useState<DashboardFeedback | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [popupCategory, setPopupCategory] = useState<{ name: string; colorIndex: number } | null>(null);
 
   const monthTotal = useCountUp(data?.thisMonthTotal ?? null);
-  const damBalance = useCountUp(data?.damBalance ?? null);
 
   const fetchDashboard = useCallback(async () => {
     const res = await fetch("/api/dashboard");
@@ -184,8 +142,8 @@ export default function Dashboard() {
     if (!res.ok) return;
     setData(json);
     if (json.categoryBreakdown?.length > 0) {
-      setCommentLoading(true);
-      const commentRes = await fetch("/api/ai/comment", {
+      setFeedbackLoading(true);
+      const r = await fetch("/api/ai/comment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -195,65 +153,133 @@ export default function Dashboard() {
           ),
         }),
       });
-      const { comment: c } = await commentRes.json();
-      setComment(c);
-      setCommentLoading(false);
+      const result = await r.json();
+      if (result.feedback) setFeedback(result.feedback as DashboardFeedback);
+      setFeedbackLoading(false);
     }
   }, []);
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
-  const handlePieClick = (entry: { name?: string }, index: number) => {
-    if (entry.name) setPopupCategory({ name: entry.name, colorIndex: index });
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/gmail/sync");
+      let json: { synced?: number; remaining?: number; error?: string } = {};
+      try { json = await res.json(); } catch {
+        toast.error("同期失敗: サーバーエラー（タイムアウトの可能性があります）");
+        return;
+      }
+      if (!res.ok) { toast.error(`同期失敗: ${json.error ?? res.status}`); return; }
+      toast.success(`${json.synced ?? 0}件取得しました${(json.remaining ?? 0) > 0 ? `（残り${json.remaining}件あり — もう一度押してください）` : ""}`);
+      fetchDashboard();
+    } catch (e) {
+      toast.error(`同期失敗: ${e instanceof Error ? e.message : "network error"}`);
+    } finally {
+      setSyncing(false);
+    }
   };
+
+  // 月末予測 vs 目標
+  const projected = data?.projectedMonthTotal ?? null;
+  const target = data?.targetMonthly ?? 0;
+  const projVsTarget = projected != null && target > 0
+    ? projected > target
+      ? { text: `目標 ${formatVND(target)} を超過見込み`, ok: false }
+      : { text: `目標 ${formatVND(target)} 内で推移中`, ok: true }
+    : null;
+
+  // 直近7日間 vs 前の7日間
+  const weekImproved = data ? data.weekDiff <= 0 : undefined;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-10">
         <h1 className="text-3xl font-semibold" style={{ color: "var(--kg-text)" }}>ダッシュボード</h1>
+        <button onClick={handleSync} disabled={syncing}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
+          style={{ backgroundColor: "var(--kg-surface-2)", color: "var(--kg-accent)", border: "1px solid var(--kg-border-medium)" }}>
+          <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
+          {syncing ? "同期中..." : "同期"}
+        </button>
       </div>
 
       <div className="grid grid-cols-3 gap-5 mb-8">
-        <SummaryCard label="今月の出費" value={data ? formatVND(monthTotal) : "—"} delay={0} />
-        <SummaryCard
-          label="前週との変化"
-          value={data ? `${data.weekDiff > 0 ? "+" : ""}${data.weekDiff}%` : "—"}
-          sub={data ? (data.weekDiff <= 0 ? "前の7日間より抑えられた" : "前の7日間より増えた") : undefined}
-          positive={data ? data.weekDiff <= 0 : undefined}
-          delay={80}
-        />
-        <SummaryCard
-          label="ダム残高"
-          value={data ? formatVND(damBalance) : "—"}
-          sub={data && data.damBalance >= 0 ? "黒字" : data ? "赤字" : undefined}
-          positive={data ? data.damBalance >= 0 : undefined}
-          delay={160}
-        />
+        {/* 今月の出費 + 月末予測 */}
+        <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "0ms", animationFillMode: "both" }}>
+          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>今月の出費</p>
+          <p className="font-num text-4xl font-semibold leading-none" style={{ color: "var(--kg-text)" }}>
+            {data ? formatVND(monthTotal) : "—"}
+          </p>
+          {projected && (
+            <p className="mt-2 text-sm font-medium" style={{ color: "var(--kg-text-muted)" }}>
+              月末予測 <span className="font-num" style={{ color: projVsTarget ? (projVsTarget.ok ? "var(--kg-success)" : "var(--kg-danger)") : "var(--kg-text)" }}>
+                {formatVND(projected)}
+              </span>
+            </p>
+          )}
+          {projVsTarget && (
+            <p className="mt-1 text-xs flex items-center gap-1"
+              style={{ color: projVsTarget.ok ? "var(--kg-success)" : "var(--kg-danger)" }}>
+              {projVsTarget.ok ? <TrendingDown size={12} /> : <TrendingUp size={12} />}
+              {projVsTarget.text}
+            </p>
+          )}
+          <div className="mt-4 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
+        </div>
+
+        {/* 直近7日間の出費 */}
+        <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "80ms", animationFillMode: "both" }}>
+          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>直近7日間の出費</p>
+          <p className="font-num text-4xl font-semibold leading-none" style={{ color: "var(--kg-text)" }}>
+            {data ? formatVND(data.thisWeekTotal) : "—"}
+          </p>
+          {data && data.lastWeekTotal > 0 && (
+            <p className="mt-2 text-sm font-medium flex items-center gap-1"
+              style={{ color: weekImproved ? "var(--kg-success)" : "var(--kg-danger)" }}>
+              {weekImproved ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
+              {weekImproved
+                ? `前の7日間より倹約（${Math.abs(data.weekDiff)}%↓）`
+                : `前の7日間より増加（${data.weekDiff}%↑）`}
+            </p>
+          )}
+          <div className="mt-4 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
+        </div>
+
+        {/* ダム残高 */}
+        <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "160ms", animationFillMode: "both" }}>
+          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>ダム残高</p>
+          <p className="font-num text-4xl font-semibold leading-none"
+            style={{ color: data ? (data.damBalance >= 0 ? "var(--kg-success)" : "var(--kg-danger)") : "var(--kg-text)" }}>
+            {data ? formatVND(data.damBalance) : "—"}
+          </p>
+          {data && (
+            <p className="mt-2 text-sm font-medium flex items-center gap-1"
+              style={{ color: data.damBalance >= 0 ? "var(--kg-success)" : "var(--kg-danger)" }}>
+              {data.damBalance >= 0 ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
+              {data.damBalance >= 0 ? "今月は黒字" : "今月は赤字"}
+            </p>
+          )}
+          <div className="mt-4 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-5 mb-8">
         {/* Donut */}
         <div className="kg-card-static p-7 animate-fade-up" style={{ animationDelay: "200ms" }}>
-          <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: "var(--kg-text-muted)" }}>
-            今週の使い道
-          </p>
-          <p className="text-xs mb-5" style={{ color: "var(--kg-text-muted)", opacity: 0.6 }}>
-            カテゴリをクリックで詳細
-          </p>
+          <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: "var(--kg-text-muted)" }}>今週の使い道</p>
+          <p className="text-xs mb-5" style={{ color: "var(--kg-text-muted)", opacity: 0.6 }}>カテゴリをクリックで詳細</p>
           {data?.categoryBreakdown?.length ? (
             <div className="flex items-center gap-4">
               <div style={{ width: 160, height: 160, flexShrink: 0 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie
-                      data={data.categoryBreakdown}
-                      cx="50%" cy="50%"
-                      innerRadius={44} outerRadius={75}
-                      dataKey="value"
-                      paddingAngle={2}
-                      onClick={handlePieClick}
-                      style={{ cursor: "pointer" }}
-                    >
+                    <Pie data={data.categoryBreakdown} cx="50%" cy="50%" innerRadius={44} outerRadius={75}
+                      dataKey="value" paddingAngle={2}
+                      onClick={(entry: { name?: string }, index: number) => {
+                        if (entry.name) setPopupCategory({ name: entry.name, colorIndex: index });
+                      }}
+                      style={{ cursor: "pointer" }}>
                       {data.categoryBreakdown.map((_, i) => (
                         <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} stroke="transparent" />
                       ))}
@@ -270,14 +296,11 @@ export default function Dashboard() {
                   const prev = data.prevCategoryBreakdown?.[item.name] ?? 0;
                   const diff = prev > 0 ? Math.round(((item.value - prev) / prev) * 100) : null;
                   return (
-                    <button
-                      key={item.name}
-                      className="flex items-center gap-2 w-full text-left rounded-lg px-2 py-1 transition-colors"
+                    <button key={item.name} className="flex items-center gap-2 w-full text-left rounded-lg px-2 py-1 transition-colors"
                       style={{ backgroundColor: "transparent" }}
                       onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--kg-surface-2)")}
                       onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
-                      onClick={() => setPopupCategory({ name: item.name, colorIndex: i })}
-                    >
+                      onClick={() => setPopupCategory({ name: item.name, colorIndex: i })}>
                       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
                       <span className="text-xs truncate flex-1" style={{ color: "var(--kg-text-muted)" }}>{item.name}</span>
                       <span className="text-xs font-num font-medium" style={{ color: "var(--kg-text)" }}>{formatVND(item.value)}</span>
@@ -297,7 +320,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* 支出チェック */}
+        {/* 支出チェック (AI) */}
         <div className="kg-card-static p-7 animate-fade-up" style={{ animationDelay: "240ms" }}>
           <div className="flex items-center gap-2 mb-5">
             <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>支出チェック</span>
@@ -306,17 +329,31 @@ export default function Dashboard() {
               <Sparkles size={10} /> AI
             </span>
           </div>
-          <div className="border-l-2 pl-4" style={{ borderColor: "var(--kg-accent)" }}>
-            {commentLoading ? (
-              <div className="space-y-2">
-                <div className="skeleton h-4 w-full" /><div className="skeleton h-4 w-4/5" /><div className="skeleton h-4 w-3/5" />
+
+          {feedbackLoading ? (
+            <div className="space-y-3">
+              <div className="skeleton h-14 w-full rounded-xl" />
+              <div className="skeleton h-14 w-full rounded-xl" />
+              <div className="skeleton h-14 w-full rounded-xl" />
+            </div>
+          ) : feedback ? (
+            <div className="space-y-3">
+              <div className="rounded-xl p-4" style={{ backgroundColor: "var(--kg-surface-2)" }}>
+                <p className="text-xs font-medium mb-1.5" style={{ color: "var(--kg-text-muted)" }}>今週の状況</p>
+                <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{feedback.summary}</p>
               </div>
-            ) : comment ? (
-              <p className="text-sm leading-7 italic" style={{ color: "var(--kg-text-secondary)" }}>{comment}</p>
-            ) : (
-              <p className="text-sm" style={{ color: "var(--kg-text-muted)" }}>取引データを同期するとコメントが表示されます</p>
-            )}
-          </div>
+              <div className="rounded-xl p-4" style={{ backgroundColor: "var(--kg-surface-2)" }}>
+                <p className="text-xs font-medium mb-1.5" style={{ color: "var(--kg-accent)" }}>注目のポイント</p>
+                <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{feedback.point}</p>
+              </div>
+              <div className="rounded-xl p-4" style={{ backgroundColor: "var(--kg-surface-2)" }}>
+                <p className="text-xs font-medium mb-1.5" style={{ color: "var(--kg-text-muted)" }}>一言アドバイス</p>
+                <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{feedback.tip}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm" style={{ color: "var(--kg-text-muted)" }}>取引データを同期するとチェックが表示されます</p>
+          )}
         </div>
       </div>
 
@@ -328,13 +365,11 @@ export default function Dashboard() {
         {data?.recentTransactions?.length ? (
           <div>
             {data.recentTransactions.map((tx) => (
-              <div
-                key={tx.id}
+              <div key={tx.id}
                 className="flex items-center justify-between px-7 py-4 border-b last:border-0 transition-colors"
                 style={{ borderColor: "var(--kg-border-subtle)" }}
                 onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--kg-surface-2)")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
-              >
+                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}>
                 <div className="flex items-center gap-3">
                   <CategoryBadge category={tx.category} />
                   <span className="text-sm font-medium" style={{ color: "var(--kg-text)" }}>{tx.store}</span>
@@ -347,13 +382,10 @@ export default function Dashboard() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-center py-16" style={{ color: "var(--kg-text-muted)" }}>
-            取引データがありません
-          </p>
+          <p className="text-sm text-center py-16" style={{ color: "var(--kg-text-muted)" }}>取引データがありません。同期ボタンを押してください。</p>
         )}
       </div>
 
-      {/* Category popup */}
       {popupCategory && (
         <CategoryPopup
           category={popupCategory.name}

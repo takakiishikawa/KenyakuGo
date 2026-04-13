@@ -32,10 +32,18 @@ export async function POST(req: NextRequest) {
   let isStructured = false;
 
   if (type === "dashboard") {
+    isStructured = true;
     const entries = Object.entries(data as Record<string, number>)
       .map(([k, v]) => `${k}: ${v.toLocaleString()} VND`)
-      .join(", ");
-    prompt = `今週の支出サマリー: ${entries}\nこの支出について、ホーチミン在住の日本人に向けたポジティブで励ましになる日本語コメントを1〜2文で生成してください。`;
+      .join("、");
+    prompt = `ホーチミン在住日本人の直近7日間の支出（カテゴリ別VND）: ${entries}
+
+以下のJSON形式のみで返してください（マークダウン不要）:
+{
+  "summary": "今週の支出についての一言まとめ（1文、日本語）",
+  "point": "注目すべき支出や良い点（1文、ポジティブな視点で、日本語）",
+  "tip": "倹約のための具体的な一言アドバイス（1文、日本語）"
+}`;
   } else if (type === "weekly") {
     isStructured = true;
     prompt = `ホーチミン在住日本人の週次支出分析（カテゴリ別VND）

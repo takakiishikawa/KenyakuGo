@@ -96,8 +96,9 @@ export async function GET(req: NextRequest) {
     });
     periods = groupByPeriod(buckets);
   } else if (period === "year") {
-    // 全年
+    // 全年（現在の年を必ず含める）
     const yearSet = new Set(txs.map((t) => t.date.slice(0, 4)));
+    yearSet.add(String(new Date().getFullYear())); // データがなくても今年は必ず表示
     const years = [...yearSet].sort();
     const buckets = years.map((y) => {
       const yn = Number(y);

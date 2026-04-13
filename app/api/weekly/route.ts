@@ -64,14 +64,23 @@ export async function GET(req: NextRequest) {
   let periods: PeriodItem[] = [];
 
   if (period === "week") {
-    // 直近4週
-    const now = new Date();
-    const buckets = Array.from({ length: 4 }, (_, i) => {
-      const offset = (3 - i) * 7;
-      const start = getWeekStart(new Date(now.getTime() - offset * 86400000));
-      const end = getWeekEnd(start);
-      const labels = ["3週前", "2週前", "先週", "今週"];
-      return { label: labels[i], start, end };
+    // 実データのある直近4週を使用
+    const weekStartMap = new Map<string, Date>();
+    for (const tx of txs) {
+      const ws = getWeekStart(new Date(tx.date));
+      const key = ws.toISOString().slice(0, 10);
+      if (!weekStartMap.has(key)) weekStartMap.set(key, ws);
+    }
+    const weekStarts = [...weekStartMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-4)
+      .map(([, d]) => d);
+
+    const buckets = weekStarts.map((ws) => {
+      const end = getWeekEnd(ws);
+      const m = ws.getMonth() + 1;
+      const d = ws.getDate();
+      return { label: `${m}/${d}週`, start: ws, end };
     });
     periods = groupByPeriod(buckets);
   } else if (period === "month") {

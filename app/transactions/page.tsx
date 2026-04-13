@@ -16,6 +16,7 @@ interface Transaction {
 interface UncategorizedStore {
   store: string;
   count: number;
+  totalAmount: number;
   suggested: string | null;
   hint: string | null;
 }
@@ -195,7 +196,7 @@ export default function TransactionsPage() {
             <div key={s.store} className="flex items-center gap-3 px-6 py-3 border-b last:border-0" style={{ borderColor: "rgba(255,183,77,0.1)" }}>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate" style={{ color: "var(--kg-text)" }}>{s.store}</p>
-                <p className="text-xs" style={{ color: "var(--kg-text-muted)" }}>{s.count}件</p>
+                <p className="text-xs" style={{ color: "var(--kg-text-muted)" }}>{s.count}件 · {formatVND(s.totalAmount)}</p>
               </div>
               {s.hint && (
                 <span className="text-xs px-2 py-1 rounded-full whitespace-nowrap"

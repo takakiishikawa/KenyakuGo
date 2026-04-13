@@ -37,6 +37,13 @@ export async function GET(req: NextRequest) {
   } else if (period === "month") {
     const range = getMonthRange(now);
     query = query.gte("date", range.start.toISOString()).lte("date", range.end.toISOString());
+  } else if (period === "last7") {
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    const start = new Date(now);
+    start.setDate(start.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    query = query.gte("date", start.toISOString()).lte("date", end.toISOString());
   }
 
   if (category && category !== "all") {

@@ -239,7 +239,7 @@ export default function ReportPage() {
               </div>
             )}
 
-            {/* 節約提案 */}
+            {/* 改善のヒント */}
             {feedback.savingsSuggestion && (
               <div>
                 <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>改善のヒント</p>

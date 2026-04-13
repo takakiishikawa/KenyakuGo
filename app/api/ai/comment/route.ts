@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   "analysis": "今週の支出についての簡潔な総評（2文以内、日本語）",
   "savingsCategory": "最も削減を推奨する裁量的支出カテゴリ名（削減不要ならnull）",
   "savingsReason": "そのカテゴリを推奨する理由（1文、日本語）",
-  "savingsSuggestion": "具体的な節約方法（3つまで、改行区切り、「・」始まり）"
+  "savingsSuggestion": "具体的な倹約方法（3つまで、改行区切り、「・」始まり）"
 }`;
   } else if (type === "monthly") {
     isStructured = true;
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   "analysis": "今月の支出についての簡潔な総評（2文以内、日本語）",
   "savingsCategory": "最も削減を推奨する裁量的支出カテゴリ名（削減不要ならnull）",
   "savingsReason": "そのカテゴリを推奨する理由（1文、日本語）",
-  "savingsSuggestion": "具体的な節約方法（3つまで、改行区切り、「・」始まり）"
+  "savingsSuggestion": "具体的な倹約方法（3つまで、改行区切り、「・」始まり）"
 }`;
   } else if (type === "dam") {
     prompt = `累計ダム残高: ${(data.cumulativeBalance as number).toLocaleString()} VND\nホーチミン生活を楽しくする視点で「このお金で何ができる？」を具体的に提案してください。日本語で2〜3文。`;

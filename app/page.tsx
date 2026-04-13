@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import { RefreshCw, TrendingDown, TrendingUp, Sparkles } from "lucide-react";
+import { TrendingDown, TrendingUp, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { formatVND, formatDate } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
@@ -25,6 +25,14 @@ interface DashboardData {
     category: string;
     date: string;
   }[];
+}
+
+interface TxItem {
+  id: string;
+  store: string;
+  amount: number;
+  category: string;
+  date: string;
 }
 
 function useCountUp(target: number | null, duration = 700) {
@@ -90,11 +98,82 @@ function SummaryCard({
   );
 }
 
+function CategoryPopup({
+  category, color, onClose,
+}: {
+  category: string; color: string; onClose: () => void;
+}) {
+  const [txs, setTxs] = useState<TxItem[] | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/transactions?period=last7&category=${encodeURIComponent(category)}`)
+      .then((r) => r.json())
+      .then((data) => setTxs(data as TxItem[]))
+      .catch(() => { toast.error("データ取得に失敗しました"); onClose(); });
+  }, [category, onClose]);
+
+  const total = txs ? txs.reduce((s, t) => s + t.amount, 0) : 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      style={{ backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden animate-fade-up"
+        style={{ backgroundColor: "var(--kg-surface)", border: "1px solid var(--kg-border-medium)", maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: "var(--kg-border-subtle)" }}>
+          <div className="flex items-center gap-3">
+            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+            <div>
+              <p className="text-base font-semibold" style={{ color: "var(--kg-text)" }}>{category}</p>
+              <p className="text-xs" style={{ color: "var(--kg-text-muted)" }}>直近7日間</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <p className="font-num text-xl font-semibold" style={{ color: "var(--kg-accent)" }}>{formatVND(total)}</p>
+            <button onClick={onClose} className="p-1.5 rounded-lg transition-colors"
+              style={{ color: "var(--kg-text-muted)" }}>
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Transaction list */}
+        <div className="overflow-y-auto flex-1">
+          {txs === null ? (
+            <div className="px-6 py-8 space-y-3">
+              {[1, 2, 3].map((i) => <div key={i} className="skeleton h-10 rounded-xl" />)}
+            </div>
+          ) : txs.length === 0 ? (
+            <p className="text-sm text-center py-10" style={{ color: "var(--kg-text-muted)" }}>この期間の取引はありません</p>
+          ) : (
+            <div>
+              {txs.map((tx) => (
+                <div key={tx.id} className="flex items-center justify-between px-6 py-3.5 border-b last:border-0"
+                  style={{ borderColor: "var(--kg-border-subtle)" }}>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate" style={{ color: "var(--kg-text)" }}>{tx.store}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--kg-text-muted)" }}>{formatDate(tx.date)}</p>
+                  </div>
+                  <p className="font-num text-sm font-semibold ml-4 shrink-0" style={{ color: "var(--kg-text)" }}>
+                    {formatVND(tx.amount)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [comment, setComment] = useState<string>("");
   const [commentLoading, setCommentLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const [popupCategory, setPopupCategory] = useState<{ name: string; colorIndex: number } | null>(null);
 
   const monthTotal = useCountUp(data?.thisMonthTotal ?? null);
   const damBalance = useCountUp(data?.damBalance ?? null);
@@ -124,51 +203,18 @@ export default function Dashboard() {
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
-  const handleSync = async () => {
-    setSyncing(true);
-    let totalSynced = 0;
-    try {
-      while (true) {
-        const res = await fetch("/api/gmail/sync");
-        let json: { synced?: number; remaining?: number; error?: string } = {};
-        try { json = await res.json(); } catch {
-          toast.error("同期失敗: サーバーエラー（タイムアウトの可能性があります）");
-          break;
-        }
-        if (!res.ok) { toast.error(`同期失敗: ${json.error ?? res.status}`); break; }
-        totalSynced += json.synced ?? 0;
-        if ((json.remaining ?? 0) > 0) {
-          toast.info(`${totalSynced}件取得済み、残り${json.remaining}件を同期中...`);
-          continue;
-        }
-        toast.success(`${totalSynced}件取得しました`);
-        break;
-      }
-      fetchDashboard();
-    } catch (e) {
-      toast.error(`同期失敗: ${e instanceof Error ? e.message : "network error"}`);
-    } finally {
-      setSyncing(false);
-    }
+  const handlePieClick = (entry: { name?: string }, index: number) => {
+    if (entry.name) setPopupCategory({ name: entry.name, colorIndex: index });
   };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-10">
         <h1 className="text-3xl font-semibold" style={{ color: "var(--kg-text)" }}>ダッシュボード</h1>
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
-          style={{ backgroundColor: "var(--kg-surface-2)", color: "var(--kg-accent)", border: "1px solid var(--kg-border-medium)" }}
-        >
-          <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
-          {syncing ? "同期中..." : "同期"}
-        </button>
       </div>
 
       <div className="grid grid-cols-3 gap-5 mb-8">
-        <SummaryCard label="今月の総支出" value={data ? formatVND(monthTotal) : "—"} delay={0} />
+        <SummaryCard label="今月の出費" value={data ? formatVND(monthTotal) : "—"} delay={0} />
         <SummaryCard
           label="前週との変化"
           value={data ? `${data.weekDiff > 0 ? "+" : ""}${data.weekDiff}%` : "—"}
@@ -188,15 +234,26 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 gap-5 mb-8">
         {/* Donut */}
         <div className="kg-card-static p-7 animate-fade-up" style={{ animationDelay: "200ms" }}>
-          <p className="text-xs font-medium uppercase tracking-widest mb-5" style={{ color: "var(--kg-text-muted)" }}>
+          <p className="text-xs font-medium uppercase tracking-widest mb-1" style={{ color: "var(--kg-text-muted)" }}>
             今週の使い道
+          </p>
+          <p className="text-xs mb-5" style={{ color: "var(--kg-text-muted)", opacity: 0.6 }}>
+            カテゴリをクリックで詳細
           </p>
           {data?.categoryBreakdown?.length ? (
             <div className="flex items-center gap-4">
               <div style={{ width: 160, height: 160, flexShrink: 0 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={data.categoryBreakdown} cx="50%" cy="50%" innerRadius={44} outerRadius={75} dataKey="value" paddingAngle={2}>
+                    <Pie
+                      data={data.categoryBreakdown}
+                      cx="50%" cy="50%"
+                      innerRadius={44} outerRadius={75}
+                      dataKey="value"
+                      paddingAngle={2}
+                      onClick={handlePieClick}
+                      style={{ cursor: "pointer" }}
+                    >
                       {data.categoryBreakdown.map((_, i) => (
                         <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} stroke="transparent" />
                       ))}
@@ -213,7 +270,14 @@ export default function Dashboard() {
                   const prev = data.prevCategoryBreakdown?.[item.name] ?? 0;
                   const diff = prev > 0 ? Math.round(((item.value - prev) / prev) * 100) : null;
                   return (
-                    <div key={item.name} className="flex items-center gap-2">
+                    <button
+                      key={item.name}
+                      className="flex items-center gap-2 w-full text-left rounded-lg px-2 py-1 transition-colors"
+                      style={{ backgroundColor: "transparent" }}
+                      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "var(--kg-surface-2)")}
+                      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
+                      onClick={() => setPopupCategory({ name: item.name, colorIndex: i })}
+                    >
                       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
                       <span className="text-xs truncate flex-1" style={{ color: "var(--kg-text-muted)" }}>{item.name}</span>
                       <span className="text-xs font-num font-medium" style={{ color: "var(--kg-text)" }}>{formatVND(item.value)}</span>
@@ -223,7 +287,7 @@ export default function Dashboard() {
                           {diff > 0 ? "+" : ""}{diff}%
                         </span>
                       )}
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -233,7 +297,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* AI Comment */}
+        {/* 支出チェック */}
         <div className="kg-card-static p-7 animate-fade-up" style={{ animationDelay: "240ms" }}>
           <div className="flex items-center gap-2 mb-5">
             <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>支出チェック</span>
@@ -284,10 +348,19 @@ export default function Dashboard() {
           </div>
         ) : (
           <p className="text-sm text-center py-16" style={{ color: "var(--kg-text-muted)" }}>
-            取引データがありません。同期ボタンを押してください。
+            取引データがありません
           </p>
         )}
       </div>
+
+      {/* Category popup */}
+      {popupCategory && (
+        <CategoryPopup
+          category={popupCategory.name}
+          color={DONUT_COLORS[popupCategory.colorIndex % DONUT_COLORS.length]}
+          onClose={() => setPopupCategory(null)}
+        />
+      )}
     </div>
   );
 }

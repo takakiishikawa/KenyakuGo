@@ -27,6 +27,12 @@ interface Transaction {
   date: string;
 }
 
+interface UncategorizedStore {
+  store: string;
+  count: number;
+  suggested: string | null;
+}
+
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -36,11 +42,19 @@ export default function TransactionsPage() {
   const [newCategory, setNewCategory] = useState("");
   const [categorizing, setCategorizing] = useState(false);
 
-  useEffect(() => {
+  // 要確認ストア
+  const [uncategorizedStores, setUncategorizedStores] = useState<UncategorizedStore[]>([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewSelections, setReviewSelections] = useState<Record<string, string>>({});
+  const [applyingStore, setApplyingStore] = useState<string | null>(null);
+
+  const fetchCategories = useCallback(() => {
     fetch("/api/categories")
       .then((r) => r.json())
       .then((data) => setCategories((data as { name: string }[]).map((c) => c.name)));
   }, []);
+
+  useEffect(() => { fetchCategories(); }, [fetchCategories]);
 
   const fetchTransactions = useCallback(async () => {
     const params = new URLSearchParams({ period });
@@ -50,9 +64,38 @@ export default function TransactionsPage() {
     setTransactions(data);
   }, [period, categoryFilter]);
 
-  useEffect(() => {
+  useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
+
+  const fetchUncategorizedStores = useCallback(async () => {
+    setReviewLoading(true);
+    const res = await fetch("/api/transactions/uncategorized-stores");
+    const data: UncategorizedStore[] = await res.json();
+    setUncategorizedStores(data);
+    // AI提案をデフォルト選択にセット
+    const defaults: Record<string, string> = {};
+    for (const s of data) {
+      if (s.suggested) defaults[s.store] = s.suggested as string;
+    }
+    setReviewSelections(defaults);
+    setReviewLoading(false);
+  }, []);
+
+  const handleApplyStore = async (store: string) => {
+    const category = reviewSelections[store];
+    if (!category) return;
+    setApplyingStore(store);
+    const res = await fetch("/api/transactions/reclassify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ store, category }),
+    });
+    const { updated } = await res.json();
+    toast.success(`「${store}」の${updated}件を「${category}」に更新しました`);
+    setApplyingStore(null);
+    setUncategorizedStores((prev) => prev.filter((s) => s.store !== store));
     fetchTransactions();
-  }, [fetchTransactions]);
+    fetchCategories();
+  };
 
   const handleCategorizeAll = async () => {
     setCategorizing(true);
@@ -61,9 +104,7 @@ export default function TransactionsPage() {
     toast.success(`${total}件中${updated}件のカテゴリを更新しました`);
     setCategorizing(false);
     fetchTransactions();
-    fetch("/api/categories")
-      .then((r) => r.json())
-      .then((data) => setCategories((data as { name: string }[]).map((c) => c.name)));
+    fetchCategories();
   };
 
   const handleCategoryUpdate = async () => {
@@ -84,19 +125,83 @@ export default function TransactionsPage() {
         <h1 className="text-2xl font-bold" style={{ color: "#1A1A2E" }}>
           取引一覧
         </h1>
-        <button
-          onClick={handleCategorizeAll}
-          disabled={categorizing}
-          className="px-4 py-2 text-sm rounded-lg text-white font-medium disabled:opacity-50"
-          style={{ backgroundColor: "#52B788" }}
-        >
-          {categorizing ? "分類中..." : "カテゴリ一括適用"}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={fetchUncategorizedStores}
+            disabled={reviewLoading}
+            className="px-4 py-2 text-sm rounded-lg font-medium border disabled:opacity-50"
+            style={{ borderColor: "#52B788", color: "#52B788" }}
+          >
+            {reviewLoading ? "読込中..." : "要確認リスト"}
+          </button>
+          <button
+            onClick={handleCategorizeAll}
+            disabled={categorizing}
+            className="px-4 py-2 text-sm rounded-lg text-white font-medium disabled:opacity-50"
+            style={{ backgroundColor: "#52B788" }}
+          >
+            {categorizing ? "分類中..." : "カテゴリ一括適用"}
+          </button>
+        </div>
       </div>
+
+      {/* 要確認ストア */}
+      {uncategorizedStores.length > 0 && (
+        <Card className="mb-6 border-amber-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2" style={{ color: "#92400E" }}>
+              <span>⚠</span>
+              繰り返し発生している未分類の店舗（{uncategorizedStores.length}件）
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {uncategorizedStores.map((s) => (
+              <div
+                key={s.store}
+                className="flex items-center gap-3 px-4 py-3 border-t"
+                style={{ borderColor: "#FDE68A" }}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate" style={{ color: "#1A1A2E" }}>
+                    {s.store}
+                  </p>
+                  <p className="text-xs" style={{ color: "#6B7280" }}>
+                    {s.count}件
+                  </p>
+                </div>
+                <Select
+                  value={reviewSelections[s.store] ?? ""}
+                  onValueChange={(v) =>
+                    setReviewSelections((prev) => ({ ...prev, [s.store]: v ?? "" }))
+                  }
+                >
+                  <SelectTrigger className="w-40 text-xs h-8">
+                    <SelectValue placeholder="カテゴリ選択" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat} value={cat} className="text-xs">
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <button
+                  onClick={() => handleApplyStore(s.store)}
+                  disabled={!reviewSelections[s.store] || applyingStore === s.store}
+                  className="px-3 py-1.5 text-xs rounded-lg text-white font-medium disabled:opacity-40 whitespace-nowrap"
+                  style={{ backgroundColor: "#1B4332" }}
+                >
+                  {applyingStore === s.store ? "適用中..." : "適用（全件）"}
+                </button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <div className="flex gap-4 mb-6">
-        {/* Period tabs */}
         <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: "#E5E7EB" }}>
           {[
             { value: "week", label: "今週" },
@@ -117,7 +222,6 @@ export default function TransactionsPage() {
           ))}
         </div>
 
-        {/* Category select */}
         <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v ?? "all")}>
           <SelectTrigger className="w-48">
             <SelectValue placeholder="カテゴリ" />

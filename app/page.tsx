@@ -17,6 +17,7 @@ interface DashboardData {
   damBalance: number;
   targetMonthly: number;
   categoryBreakdown: { name: string; value: number }[];
+  prevCategoryBreakdown: Record<string, number>;
   recentTransactions: {
     id: string;
     store: string;
@@ -188,14 +189,14 @@ export default function Dashboard() {
         {/* Donut */}
         <div className="kg-card-static p-7 animate-fade-up" style={{ animationDelay: "200ms" }}>
           <p className="text-xs font-medium uppercase tracking-widest mb-5" style={{ color: "var(--kg-text-muted)" }}>
-            今週のカテゴリ別支出
+            直近7日間のカテゴリ別支出
           </p>
           {data?.categoryBreakdown?.length ? (
             <div className="flex items-center gap-4">
-              <div style={{ width: 180, height: 180, flexShrink: 0 }}>
+              <div style={{ width: 160, height: 160, flexShrink: 0 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={data.categoryBreakdown} cx="50%" cy="50%" innerRadius={52} outerRadius={85} dataKey="value" paddingAngle={2}>
+                    <Pie data={data.categoryBreakdown} cx="50%" cy="50%" innerRadius={44} outerRadius={75} dataKey="value" paddingAngle={2}>
                       {data.categoryBreakdown.map((_, i) => (
                         <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} stroke="transparent" />
                       ))}
@@ -208,17 +209,27 @@ export default function Dashboard() {
                 </ResponsiveContainer>
               </div>
               <div className="flex-1 space-y-2 min-w-0">
-                {data.categoryBreakdown.slice(0, 6).map((item, i) => (
-                  <div key={item.name} className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
-                    <span className="text-xs truncate flex-1" style={{ color: "var(--kg-text-muted)" }}>{item.name}</span>
-                    <span className="text-xs font-num font-medium" style={{ color: "var(--kg-text)" }}>{formatVND(item.value)}</span>
-                  </div>
-                ))}
+                {data.categoryBreakdown.slice(0, 6).map((item, i) => {
+                  const prev = data.prevCategoryBreakdown?.[item.name] ?? 0;
+                  const diff = prev > 0 ? Math.round(((item.value - prev) / prev) * 100) : null;
+                  return (
+                    <div key={item.name} className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+                      <span className="text-xs truncate flex-1" style={{ color: "var(--kg-text-muted)" }}>{item.name}</span>
+                      <span className="text-xs font-num font-medium" style={{ color: "var(--kg-text)" }}>{formatVND(item.value)}</span>
+                      {diff !== null && (
+                        <span className="text-xs font-num font-medium w-12 text-right shrink-0"
+                          style={{ color: diff <= 0 ? "var(--kg-success)" : "var(--kg-danger)" }}>
+                          {diff > 0 ? "+" : ""}{diff}%
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ) : (
-            <p className="text-center py-16 text-sm" style={{ color: "var(--kg-text-muted)" }}>今週の取引データがありません</p>
+            <p className="text-center py-16 text-sm" style={{ color: "var(--kg-text-muted)" }}>直近7日間の取引データがありません</p>
           )}
         </div>
 

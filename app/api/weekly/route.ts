@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
   const spanMonths =
     (maxDate.getFullYear() - minDate.getFullYear()) * 12 +
     (maxDate.getMonth() - minDate.getMonth());
-  const showYearTab = spanMonths >= 12;
+  const showYearTab = true; // 常に年タブを表示
 
   const groupByPeriod = (
     buckets: { label: string; start: Date; end: Date }[]
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
   let periods: PeriodItem[] = [];
 
   if (period === "week") {
-    // 実データのある直近4週を使用
+    // 実データのある直近4週を使用、相対ラベル
     const weekStartMap = new Map<string, Date>();
     for (const tx of txs) {
       const ws = getWeekStart(new Date(tx.date));
@@ -76,22 +76,24 @@ export async function GET(req: NextRequest) {
       .slice(-4)
       .map(([, d]) => d);
 
-    const buckets = weekStarts.map((ws) => {
+    const relativeWeekLabels = ["3週前", "2週前", "先週", "今週"];
+    const offset = Math.max(0, relativeWeekLabels.length - weekStarts.length);
+    const buckets = weekStarts.map((ws, i) => {
       const end = getWeekEnd(ws);
-      const m = ws.getMonth() + 1;
-      const d = ws.getDate();
-      return { label: `${m}/${d}週`, start: ws, end };
+      return { label: relativeWeekLabels[offset + i], start: ws, end };
     });
     periods = groupByPeriod(buckets);
   } else if (period === "month") {
-    // 全月
+    // 実データのある直近6ヶ月、相対ラベル
     const monthSet = new Set(txs.map((t) => t.date.slice(0, 7)));
-    const months = [...monthSet].sort();
-    const buckets = months.map((ym) => {
+    const months = [...monthSet].sort().slice(-6);
+    const relativeMonthLabels = ["5ヶ月前", "4ヶ月前", "3ヶ月前", "2ヶ月前", "先月", "今月"];
+    const offset = Math.max(0, relativeMonthLabels.length - months.length);
+    const buckets = months.map((ym, i) => {
       const [y, m] = ym.split("-").map(Number);
       const start = new Date(y, m - 1, 1);
       const end = new Date(y, m, 0, 23, 59, 59, 999);
-      return { label: `${y}年${m}月`, start, end };
+      return { label: relativeMonthLabels[offset + i], start, end };
     });
     periods = groupByPeriod(buckets);
   } else if (period === "year") {

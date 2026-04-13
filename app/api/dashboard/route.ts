@@ -27,7 +27,7 @@ export async function GET() {
   const [last7Res, prev7Res, thisMonthRes, recentRes, settingsRes] = await Promise.all([
     db.from("transactions").select("amount, category")
       .gte("date", last7Start.toISOString()).lte("date", last7End.toISOString()),
-    db.from("transactions").select("amount")
+    db.from("transactions").select("amount, category")
       .gte("date", prev7Start.toISOString()).lte("date", prev7End.toISOString()),
     db.from("transactions").select("amount")
       .gte("date", monthStart.toISOString()).lte("date", monthEnd.toISOString()),
@@ -43,7 +43,7 @@ export async function GET() {
   }
 
   const last7Txs = (last7Res.data ?? []) as Pick<Transaction, "amount" | "category">[];
-  const prev7Txs = (prev7Res.data ?? []) as Pick<Transaction, "amount">[];
+  const prev7Txs = (prev7Res.data ?? []) as Pick<Transaction, "amount" | "category">[];
   const thisMonthTxs = (thisMonthRes.data ?? []) as Pick<Transaction, "amount">[];
   const recentTxs = (recentRes.data ?? []) as Pick<Transaction, "id" | "store" | "amount" | "category" | "date">[];
   const settings = settingsRes.data as Pick<Settings, "target_monthly"> | null;
@@ -67,6 +67,11 @@ export async function GET() {
     .sort(([, a], [, b]) => b - a)
     .map(([name, value]) => ({ name, value }));
 
+  const prevCategoryMap: Record<string, number> = {};
+  for (const tx of prev7Txs) {
+    prevCategoryMap[tx.category] = (prevCategoryMap[tx.category] ?? 0) + tx.amount;
+  }
+
   return NextResponse.json({
     thisMonthTotal,
     thisWeekTotal: last7Total,
@@ -75,6 +80,7 @@ export async function GET() {
     damBalance,
     targetMonthly,
     categoryBreakdown,
+    prevCategoryBreakdown: prevCategoryMap,
     recentTransactions: recentTxs,
   });
 }

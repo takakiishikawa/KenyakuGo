@@ -96,8 +96,9 @@ export default function ReportPage() {
 
   const labels = LABELS[period];
   const tabs: { value: Period; label: string }[] = [
-    { value: "week", label: "週" }, { value: "month", label: "月" },
-    ...(data?.showYearTab ? [{ value: "year" as Period, label: "年" }] : []),
+    { value: "week", label: "今週" },
+    { value: "month", label: "今月" },
+    { value: "year", label: "年" },
   ];
 
   // カード2: 月ならば1ヶ月予測、それ以外は差額

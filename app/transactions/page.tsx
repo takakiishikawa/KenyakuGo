@@ -31,6 +31,7 @@ interface UncategorizedStore {
   store: string;
   count: number;
   suggested: string | null;
+  hint: string | null;
 }
 
 export default function TransactionsPage() {
@@ -191,6 +192,12 @@ export default function TransactionsPage() {
                     {s.count}件
                   </p>
                 </div>
+                {s.hint && (
+                  <p className="text-xs whitespace-nowrap px-2 py-1 rounded-full"
+                    style={{ backgroundColor: "#FEF3C7", color: "#92400E" }}>
+                    {s.hint}
+                  </p>
+                )}
                 <Select
                   value={reviewSelections[s.store] ?? ""}
                   onValueChange={(v) =>

@@ -11,7 +11,7 @@ export async function PATCH(
 
   const { data } = await db
     .from("transactions")
-    .update({ category })
+    .update({ category, reviewed: true })
     .eq("id", id)
     .select("id, store, amount, category, date")
     .single();

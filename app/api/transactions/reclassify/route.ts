@@ -20,10 +20,10 @@ export async function POST(req: NextRequest) {
     await db.from("categories").insert({ name: category });
   }
 
-  // 同じ店名の全取引を一括更新
+  // 同じ店名の全取引を一括更新（reviewed = true でレビュー済みとしてマーク）
   const { error, data } = await db
     .from("transactions")
-    .update({ category })
+    .update({ category, reviewed: true })
     .eq("store", store)
     .select("id");
 

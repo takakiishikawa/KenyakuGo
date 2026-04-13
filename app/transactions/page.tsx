@@ -45,6 +45,7 @@ export default function TransactionsPage() {
 
   // 要確認ストア
   const [uncategorizedStores, setUncategorizedStores] = useState<UncategorizedStore[]>([]);
+  const [uncategorizedCount, setUncategorizedCount] = useState<number | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewSelections, setReviewSelections] = useState<Record<string, string>>({});
   const [applyingStore, setApplyingStore] = useState<string | null>(null);
@@ -59,7 +60,14 @@ export default function TransactionsPage() {
       .then((data) => setCategories((data as { name: string }[]).map((c) => c.name)));
   }, []);
 
+  const fetchUncategorizedCount = useCallback(async () => {
+    const res = await fetch("/api/transactions/uncategorized-count");
+    const { count } = await res.json();
+    setUncategorizedCount(count ?? 0);
+  }, []);
+
   useEffect(() => { fetchCategories(); }, [fetchCategories]);
+  useEffect(() => { fetchUncategorizedCount(); }, [fetchUncategorizedCount]);
 
   const fetchTransactions = useCallback(async () => {
     const params = new URLSearchParams({ period });
@@ -76,6 +84,7 @@ export default function TransactionsPage() {
     const res = await fetch("/api/transactions/uncategorized-stores");
     const data: UncategorizedStore[] = await res.json();
     setUncategorizedStores(data);
+    setUncategorizedCount(data.length);
     // AI提案をデフォルト選択にセット
     const defaults: Record<string, string> = {};
     for (const s of data) {
@@ -97,7 +106,11 @@ export default function TransactionsPage() {
     const { updated } = await res.json();
     toast.success(`「${store}」の${updated}件を「${category}」に更新しました`);
     setApplyingStore(null);
-    setUncategorizedStores((prev) => prev.filter((s) => s.store !== store));
+    setUncategorizedStores((prev) => {
+      const next = prev.filter((s) => s.store !== store);
+      setUncategorizedCount(next.length);
+      return next;
+    });
     fetchTransactions();
     fetchCategories();
   };
@@ -155,7 +168,9 @@ export default function TransactionsPage() {
             className="px-4 py-2 text-sm rounded-lg font-medium border disabled:opacity-50"
             style={{ borderColor: "#52B788", color: "#52B788" }}
           >
-            {reviewLoading ? "読込中..." : "要確認リスト"}
+            {reviewLoading
+              ? "読込中..."
+              : `要確認リスト${uncategorizedCount !== null && uncategorizedCount > 0 ? `（${uncategorizedCount}）` : ""}`}
           </button>
           <button
             onClick={handleCategorizeAll}

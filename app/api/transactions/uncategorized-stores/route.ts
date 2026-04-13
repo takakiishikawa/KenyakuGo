@@ -10,7 +10,8 @@ export async function GET() {
   const { data, error } = await db
     .from("transactions")
     .select("store")
-    .eq("category", "その他");
+    .eq("category", "その他")
+    .eq("reviewed", false);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

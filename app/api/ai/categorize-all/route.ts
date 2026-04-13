@@ -110,7 +110,7 @@ export async function POST() {
 
     const { error: updateErr } = await db
       .from("transactions")
-      .update({ category })
+      .update({ category, reviewed: true })
       .eq("id", tx.id);
 
     if (!updateErr) updated++;

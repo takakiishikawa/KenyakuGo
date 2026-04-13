@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Home, List, BarChart2, Droplets, Settings } from "lucide-react";
+import { LayoutDashboard, List, BarChart2, Droplets, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { KenyakuGoIcon } from "@/components/logo";
 import type { User } from "@supabase/supabase-js";
 
 const navItems = [
-  { href: "/", label: "ホーム", icon: Home },
-  { href: "/transactions", label: "取引一覧", icon: List },
+  { href: "/", label: "ダッシュボード", icon: LayoutDashboard },
   { href: "/weekly", label: "レポート", icon: BarChart2 },
-  { href: "/dam", label: "ダム", icon: Droplets },
+  { href: "/transactions", label: "取引一覧", icon: List },
+  { href: "/dam", label: "貯蓄ダム", icon: Droplets },
   { href: "/settings", label: "設定", icon: Settings },
 ];
 
@@ -67,9 +68,10 @@ export function Sidebar() {
       className="fixed left-0 top-0 h-screen w-60 flex flex-col"
       style={{ backgroundColor: "#1B4332" }}
     >
-      <div className="p-6">
+      <Link href="/" className="p-6 flex items-center gap-3 hover:opacity-80 transition-opacity">
+        <KenyakuGoIcon size={32} />
         <h1 className="text-white text-xl font-bold tracking-wide">KenyakuGo</h1>
-      </div>
+      </Link>
 
       <nav className="flex-1 px-3">
         {navItems.map(({ href, label, icon: Icon }) => {

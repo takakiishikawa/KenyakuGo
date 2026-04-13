@@ -48,9 +48,13 @@ export async function GET() {
   const recentTxs = (recentRes.data ?? []) as Pick<Transaction, "id" | "store" | "amount" | "category" | "date">[];
   const settings = settingsRes.data as Pick<Settings, "target_monthly" | "fixed_costs"> | null;
 
+  // 固定費カテゴリは7日間比較から除外
+  const FIXED_CATEGORIES = ["家賃", "ローン", "公共料金", "通信費"];
+  const isVariable = (tx: Pick<Transaction, "category">) => !FIXED_CATEGORIES.includes(tx.category);
+
   const thisMonthTotal = thisMonthTxs.reduce((s, t) => s + t.amount, 0);
-  const last7Total = last7Txs.reduce((s, t) => s + t.amount, 0);
-  const prev7Total = prev7Txs.reduce((s, t) => s + t.amount, 0);
+  const last7Total = last7Txs.filter(isVariable).reduce((s, t) => s + t.amount, 0);
+  const prev7Total = prev7Txs.filter(isVariable).reduce((s, t) => s + t.amount, 0);
 
   const weekDiff = prev7Total > 0
     ? Math.round(((last7Total - prev7Total) / prev7Total) * 100)

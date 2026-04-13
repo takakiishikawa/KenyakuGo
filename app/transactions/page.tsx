@@ -48,6 +48,10 @@ export default function TransactionsPage() {
   const [reviewSelections, setReviewSelections] = useState<Record<string, string>>({});
   const [applyingStore, setApplyingStore] = useState<string | null>(null);
 
+  // カテゴリ追加
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [addingCategory, setAddingCategory] = useState(false);
+
   const fetchCategories = useCallback(() => {
     fetch("/api/categories")
       .then((r) => r.json())
@@ -105,6 +109,24 @@ export default function TransactionsPage() {
     setCategorizing(false);
     fetchTransactions();
     fetchCategories();
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    setAddingCategory(true);
+    const res = await fetch("/api/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newCategoryName.trim() }),
+    });
+    if (res.status === 409) {
+      toast.error("そのカテゴリはすでに存在します");
+    } else if (res.ok) {
+      toast.success(`「${newCategoryName.trim()}」を追加しました`);
+      setNewCategoryName("");
+      fetchCategories();
+    }
+    setAddingCategory(false);
   };
 
   const handleCategoryUpdate = async () => {
@@ -199,6 +221,27 @@ export default function TransactionsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* カテゴリ追加 */}
+      <div className="flex gap-2 mb-4">
+        <input
+          type="text"
+          value={newCategoryName}
+          onChange={(e) => setNewCategoryName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
+          placeholder="新しいカテゴリ名..."
+          className="flex-1 px-3 py-2 text-sm border rounded-lg outline-none"
+          style={{ borderColor: "#E5E7EB", color: "#1A1A2E" }}
+        />
+        <button
+          onClick={handleAddCategory}
+          disabled={addingCategory || !newCategoryName.trim()}
+          className="px-4 py-2 text-sm rounded-lg text-white font-medium disabled:opacity-40"
+          style={{ backgroundColor: "#1B4332" }}
+        >
+          + 追加
+        </button>
+      </div>
 
       {/* Filters */}
       <div className="flex gap-4 mb-6">

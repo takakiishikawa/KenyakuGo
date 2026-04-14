@@ -203,7 +203,9 @@ ${qaPairs || "（回答なし）"}
   if (isStructured) {
     let feedback: Record<string, unknown> = {};
     try {
-      const match = text.match(/\{[\s\S]*\}/);
+      // コードブロック記法を除去してからパース
+      const cleaned = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+      const match = cleaned.match(/\{[\s\S]*\}/);
       if (match) feedback = JSON.parse(match[0]);
     } catch { /* パース失敗時は空 */ }
 

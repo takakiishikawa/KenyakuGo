@@ -92,24 +92,34 @@ function QASection({ data }: { data: DamData }) {
   const handleGenerate = useCallback(async () => {
     setLoading(true);
     setResult(null);
-    const qaList = QUESTIONS.map((q) => ({ question: q.question, answer: answers[q.id] ?? "" }));
-    const res = await fetch("/api/ai/comment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "dam-qa",
-        data: {
-          cumulativeBalance: data.cumulativeBalance,
-          projectedBalance: data.currentBalance,
-          targetMonthly: data.targetMonthly,
-          monthsCount: data.months.length,
-          answers: qaList,
-        },
-      }),
-    });
-    const json = await res.json();
-    if (json.feedback) setResult(json.feedback as QAResult);
-    setLoading(false);
+    try {
+      const qaList = QUESTIONS.map((q) => ({ question: q.question, answer: answers[q.id] ?? "" }));
+      const res = await fetch("/api/ai/comment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "dam-qa",
+          data: {
+            cumulativeBalance: data.cumulativeBalance,
+            projectedBalance: data.currentBalance,
+            targetMonthly: data.targetMonthly,
+            monthsCount: data.months.length,
+            answers: qaList,
+          },
+        }),
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      const fb = json.feedback as Partial<QAResult> | undefined;
+      // recommendations が配列として存在する場合のみセット
+      if (Array.isArray(fb?.recommendations) && fb.recommendations.length > 0) {
+        setResult(fb as QAResult);
+      }
+    } catch (e) {
+      console.error("[dam-qa] fetch error:", e);
+    } finally {
+      setLoading(false);
+    }
   }, [answers, data]);
 
   const handleReset = () => {
@@ -195,7 +205,7 @@ function QASection({ data }: { data: DamData }) {
             </div>
           )}
           <div className="grid grid-cols-2 gap-4">
-            {result.recommendations.map((rec, i) => (
+            {(result.recommendations ?? []).map((rec, i) => (
               <div key={i} className="rounded-xl p-5 flex flex-col gap-2"
                 style={{ backgroundColor: "var(--kg-surface-2)", border: "1px solid var(--kg-border-subtle)" }}>
                 <div className="flex items-start justify-between gap-2">

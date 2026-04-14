@@ -14,6 +14,7 @@ interface ReportData {
   currentTotal: number;
   prevPeriodTotal: number;
   projectedTotal: number | null;
+  projectedDiff: number | null;
   targetMonthly: number;
   fixedCosts: number;
   showYearTab: boolean;
@@ -105,12 +106,14 @@ export default function ReportPage() {
 
   // カード共通計算
   const projected = data?.projectedTotal ?? null;
+  const projectedDiff = data?.projectedDiff ?? null;
   const target = data?.targetMonthly ?? 0;
-  const fixedCosts = data?.fixedCosts ?? 0;
   const prevPeriodTotal = data?.prevPeriodTotal ?? 0;
-  const diff = data?.diff ?? 0;
-  const diffPct = prevPeriodTotal > 0 ? Math.round((diff / prevPeriodTotal) * 100) : null;
-  const diffImproved = diff <= 0;
+
+  // Card2: 予測ベースの差額
+  const card2Diff = projectedDiff ?? data?.diff ?? 0;
+  const card2Pct = prevPeriodTotal > 0 ? Math.round((card2Diff / prevPeriodTotal) * 100) : null;
+  const card2Improved = card2Diff <= 0;
 
   // 月のみ: 月末予測 vs 目標
   const projVsTarget = period === "month" && projected != null && target > 0
@@ -160,21 +163,28 @@ export default function ReportPage() {
           <div className="mt-4 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
         </div>
 
-        {/* カード2: 前期との差額（全期間共通） */}
+        {/* カード2: 予測ベースの前期差額（全期間共通） */}
         <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "80ms", animationFillMode: "both" }}>
           <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>{labels.prev}との差額</p>
           <p className="font-num text-3xl font-semibold leading-none"
-            style={{ color: data == null ? "var(--kg-text)" : diffImproved ? "var(--kg-success)" : "var(--kg-danger)" }}>
-            {data ? `${diff > 0 ? "+" : ""}${formatVND(diff)}` : "—"}
+            style={{ color: data == null ? "var(--kg-text)" : card2Improved ? "var(--kg-success)" : "var(--kg-danger)" }}>
+            {data ? `${card2Diff > 0 ? "+" : ""}${formatVND(card2Diff)}` : "—"}
           </p>
-          {data && diffPct !== null && (
+          {data && card2Pct !== null && (
             <p className="mt-2 text-sm font-medium flex items-center gap-1"
-              style={{ color: diffImproved ? "var(--kg-success)" : "var(--kg-danger)" }}>
-              {diffImproved ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
-              {diffImproved ? `${labels.prev}より倹約（${Math.abs(diffPct)}%↓）` : `${labels.prev}より増加（${diffPct}%↑）`}
+              style={{ color: card2Improved ? "var(--kg-success)" : "var(--kg-danger)" }}>
+              {card2Improved ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
+              {card2Improved
+                ? `${labels.prev}より倹約見込み（${Math.abs(card2Pct)}%↓）`
+                : `${labels.prev}より増加見込み（${card2Pct}%↑）`}
             </p>
           )}
-          <div className="mt-4 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
+          {projected != null && (
+            <p className="text-xs mt-1" style={{ color: "var(--kg-text-muted)", opacity: 0.7 }}>
+              {period === "week" ? "今週" : period === "month" ? "今月" : "今年"}の予測: {formatVND(projected)}
+            </p>
+          )}
+          <div className="mt-3 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
         </div>
 
         {/* カード3: 気になる支出（AI） */}

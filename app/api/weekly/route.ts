@@ -113,26 +113,41 @@ export async function GET(req: NextRequest) {
   const topCategory =
     Object.entries(currentPeriod?.byCategory ?? {}).sort(([, a], [, b]) => b - a)[0]?.[0] ?? "—";
 
-  // 月次予測（当月のみ計算、固定費はペース推計から除外）
+  // 期間ごとの予測（今のペースが続いた場合の期末予測）
+  const currentTotal = currentPeriod?.total ?? 0;
+  const prevTotal = prevPeriod?.total ?? 0;
   let projectedTotal: number | null = null;
-  if (period === "month") {
-    const currentMonthTotal = currentPeriod?.total ?? 0;
-    if (currentMonthTotal > 0) {
-      const dayOfMonth = now.getDate();
-      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-      const variableSpend = Math.max(0, currentMonthTotal - fixedCosts);
-      projectedTotal = Math.round(fixedCosts + (variableSpend / dayOfMonth) * daysInMonth);
-    }
+
+  if (period === "month" && currentTotal > 0) {
+    // 月: 固定費を除いた変動費ペースで推計
+    const dayOfMonth = now.getDate();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const variableSpend = Math.max(0, currentTotal - fixedCosts);
+    projectedTotal = Math.round(fixedCosts + (variableSpend / dayOfMonth) * daysInMonth);
+  } else if (period === "week" && currentTotal > 0) {
+    // 週: 今日が週の何日目か（月=1 ... 日=7）
+    const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+    projectedTotal = Math.round((currentTotal / dayOfWeek) * 7);
+  } else if (period === "year" && currentTotal > 0) {
+    // 年: 今年の何日目か
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / 86400000) + 1;
+    const daysInYear = new Date(now.getFullYear(), 1, 29).getMonth() === 1 ? 366 : 365;
+    projectedTotal = Math.round((currentTotal / dayOfYear) * daysInYear);
   }
+
+  // 予測ベースの差額（Card2 に使用）
+  const projectedDiff = projectedTotal != null ? projectedTotal - prevTotal : null;
 
   return NextResponse.json({
     periods,
     topCategories,
     diff,
     topCategory,
-    currentTotal: currentPeriod?.total ?? 0,
-    prevPeriodTotal: prevPeriod?.total ?? 0,
+    currentTotal,
+    prevPeriodTotal: prevTotal,
     projectedTotal,
+    projectedDiff,
     targetMonthly,
     fixedCosts,
     showYearTab: true,

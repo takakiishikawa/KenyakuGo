@@ -73,12 +73,24 @@ export async function GET() {
 
     const db = createDb();
 
-    // 2. DB に既存の gmail_id を取得してセットに（全件取得するため limit を大きく設定）
+    // 2. DB に既存の gmail_id を取得してセットに + 店舗→カテゴリのマップを作成
     const { data: existingRows } = await db
       .from("transactions")
-      .select("gmail_id")
+      .select("gmail_id, store, category")
       .limit(100000);
-    const existingIds = new Set((existingRows ?? []).map((r) => r.gmail_id as string));
+
+    const existingIds = new Set<string>();
+    const storeCategory = new Map<string, string>(); // 既知店舗のカテゴリ
+
+    for (const row of existingRows ?? []) {
+      if (row.gmail_id) existingIds.add(row.gmail_id as string);
+      const store = (row.store as string)?.trim();
+      const cat = row.category as string;
+      // "その他" 以外の確定カテゴリのみ学習
+      if (store && cat && cat !== "その他") {
+        storeCategory.set(store, cat);
+      }
+    }
 
     // 3. 新規IDのみ抽出（1回あたり最大100件でタイムアウト回避）
     const allNewIds = allIds.filter((id) => !existingIds.has(id));
@@ -114,13 +126,15 @@ export async function GET() {
         continue;
       }
 
+      // 過去に同じ店舗をカテゴライズ済みならそのカテゴリを使用、なければ「その他」
+      const knownCategory = storeCategory.get(parsed.store.trim());
       const { error: err } = await db.from("transactions").insert({
         id: crypto.randomUUID(),
         gmail_id: id,
         store: parsed.store,
         amount: parsed.amount,
         date: parsed.date.toISOString(),
-        category: "その他",
+        category: knownCategory ?? "その他",
       } satisfies Omit<Transaction, "created_at">);
 
       if (err) {

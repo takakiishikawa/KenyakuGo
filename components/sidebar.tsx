@@ -5,8 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LayoutDashboard, List, BarChart2, Droplets, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { KenyakuGoIcon } from "@/components/logo";
-import { ThemeToggle } from "@/components/theme-provider";
 import type { User } from "@supabase/supabase-js";
 
 const navItems = [
@@ -59,125 +57,132 @@ export function Sidebar() {
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
   const fullName = user?.user_metadata?.full_name as string | undefined;
   const initials = fullName
-    ? fullName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+    ? fullName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
     : "KG";
 
-  // サイドバーは常にダークグリーン（ブランドカラー）
   return (
     <aside
-      className="fixed left-0 top-0 h-screen w-60 flex flex-col"
+      className="fixed left-0 top-0 h-screen flex flex-col"
       style={{
-        backgroundColor: "var(--kg-sidebar)",
-        borderRight: "1px solid rgba(255,255,255,0.08)",
+        width: "260px",
+        backgroundColor: "#1A2E1F",
       }}
     >
       {/* Logo */}
       <Link
         href="/"
-        className="flex items-center gap-3 px-5 py-6 hover:opacity-80 transition-opacity"
+        className="flex items-center gap-3 px-6 py-7 hover:opacity-90 transition-opacity"
       >
-        <KenyakuGoIcon size={32} />
-        <span className="text-xl font-semibold tracking-wide" style={{ color: "#52B788" }}>
+        <div
+          className="flex items-center justify-center shrink-0"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 12,
+            backgroundColor: "#52B788",
+          }}
+        >
+          <span className="text-base font-bold" style={{ color: "#1A2E1F" }}>¥</span>
+        </div>
+        <span
+          style={{
+            fontFamily: "var(--font-dm-serif), serif",
+            fontSize: 20,
+            color: "#ffffff",
+            letterSpacing: "0.01em",
+          }}
+        >
           KenyakuGo
         </span>
       </Link>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 space-y-0.5">
+      <nav className="flex-1 px-3 space-y-1">
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href;
           return (
             <Link
               key={href}
               href={href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150"
+              className="flex items-center gap-3 transition-all duration-150"
               style={{
-                backgroundColor: isActive ? "rgba(82,183,136,0.15)" : "transparent",
-                borderLeft: isActive ? "3px solid #52B788" : "3px solid transparent",
+                padding: "12px 16px",
+                borderRadius: 12,
+                backgroundColor: isActive ? "rgba(82,183,136,0.2)" : "transparent",
+                border: isActive ? "1px solid rgba(82,183,136,0.3)" : "1px solid transparent",
                 color: isActive ? "#52B788" : "rgba(255,255,255,0.55)",
-                fontWeight: isActive ? "600" : "400",
+                fontWeight: isActive ? 500 : 400,
+                fontSize: 14,
               }}
               onMouseEnter={(e) => {
                 if (!isActive) {
-                  (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.9)";
-                  (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "rgba(255,255,255,0.07)";
+                  const el = e.currentTarget as HTMLAnchorElement;
+                  el.style.color = "rgba(255,255,255,0.85)";
+                  el.style.backgroundColor = "rgba(255,255,255,0.06)";
                 }
               }}
               onMouseLeave={(e) => {
                 if (!isActive) {
-                  (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.55)";
-                  (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "transparent";
+                  const el = e.currentTarget as HTMLAnchorElement;
+                  el.style.color = "rgba(255,255,255,0.55)";
+                  el.style.backgroundColor = "transparent";
                 }
               }}
             >
-              <Icon size={17} />
-              <span className="text-sm">{label}</span>
+              <Icon size={17} style={{ color: isActive ? "#52B788" : "rgba(255,255,255,0.45)" }} />
+              <span>{label}</span>
             </Link>
           );
         })}
       </nav>
 
-      {/* Theme toggle + User */}
-      <div className="px-3 pb-4 space-y-2">
-        {/* Theme toggle row */}
-        <div
-          className="flex items-center justify-between px-3 py-2 rounded-lg"
-          style={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-        >
-          <span className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
-            テーマ
-          </span>
-          <ThemeToggle />
-        </div>
-
-        {/* User */}
-        <div
-          className="flex items-center gap-3 px-3 py-3 rounded-xl"
-          style={{ backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-        >
-          {user ? (
-            <>
-              {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={avatarUrl}
-                  alt="avatar"
-                  className="w-8 h-8 rounded-full"
-                  style={{ outline: "2px solid #52B788", outlineOffset: "2px" }}
-                />
-              ) : (
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold"
-                  style={{ backgroundColor: "#52B788", color: "#1B4332" }}
-                >
-                  {initials}
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium truncate" style={{ color: "rgba(255,255,255,0.85)" }}>
-                  {fullName ?? "User"}
-                </p>
-                <button
-                  onClick={handleSignOut}
-                  className="text-xs transition-colors"
-                  style={{ color: "rgba(255,255,255,0.4)" }}
-                  onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "#52B788")}
-                  onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "rgba(255,255,255,0.4)")}
-                >
-                  ログアウト
-                </button>
+      {/* User area — pinned to bottom */}
+      <div
+        className="absolute"
+        style={{ bottom: 24, left: 16, right: 16 }}
+      >
+        {user ? (
+          <div className="flex items-center gap-3">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarUrl}
+                alt="avatar"
+                className="shrink-0 rounded-full"
+                style={{ width: 36, height: 36, outline: "2px solid #52B788", outlineOffset: "2px" }}
+              />
+            ) : (
+              <div
+                className="shrink-0 rounded-full flex items-center justify-center text-xs font-semibold"
+                style={{ width: 36, height: 36, backgroundColor: "#52B788", color: "#1A2E1F" }}
+              >
+                {initials}
               </div>
-            </>
-          ) : (
-            <button
-              onClick={handleSignIn}
-              className="w-full text-sm py-2 px-3 rounded-lg font-medium transition-all"
-              style={{ backgroundColor: "#52B788", color: "#1B4332" }}
-            >
-              Googleでログイン
-            </button>
-          )}
-        </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="truncate" style={{ fontSize: 14, color: "rgba(255,255,255,0.85)", fontWeight: 500 }}>
+                {fullName ?? "User"}
+              </p>
+              <button
+                onClick={handleSignOut}
+                className="transition-colors"
+                style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}
+                onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "#52B788")}
+                onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "rgba(255,255,255,0.4)")}
+              >
+                ログアウト
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={handleSignIn}
+            className="w-full text-sm py-2.5 px-4 rounded-xl font-medium transition-all"
+            style={{ backgroundColor: "#52B788", color: "#1A2E1F" }}
+          >
+            Googleでログイン
+          </button>
+        )}
       </div>
     </aside>
   );

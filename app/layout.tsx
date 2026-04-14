@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Noto_Sans_JP } from "next/font/google";
+import { Noto_Sans_JP, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Sidebar } from "@/components/sidebar";
@@ -9,6 +9,13 @@ const notoSansJP = Noto_Sans_JP({
   weight: ["300", "400", "500", "600", "700"],
   subsets: ["latin"],
   variable: "--font-noto",
+  display: "swap",
+});
+
+const dmSerifDisplay = DM_Serif_Display({
+  weight: ["400"],
+  subsets: ["latin"],
+  variable: "--font-dm-serif",
   display: "swap",
 });
 
@@ -23,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className={`${notoSansJP.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="ja" className={`${notoSansJP.variable} ${dmSerifDisplay.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         {/* テーマをページロード前に適用してフラッシュを防止 */}
         <script
@@ -37,7 +44,7 @@ export default function RootLayout({
           <Providers>
             <div className="flex h-screen" style={{ backgroundColor: "var(--kg-bg)" }}>
               <Sidebar />
-              <main className="ml-60 flex-1 overflow-y-auto p-10" style={{ backgroundColor: "var(--kg-bg)" }}>
+              <main className="ml-[260px] flex-1 overflow-y-auto p-10" style={{ backgroundColor: "var(--kg-bg)" }}>
                 {children}
               </main>
             </div>

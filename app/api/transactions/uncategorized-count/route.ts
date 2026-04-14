@@ -8,7 +8,8 @@ export async function GET() {
     .from("transactions")
     .select("store")
     .eq("category", "その他")
-    .eq("reviewed", false);
+    .eq("reviewed", false)
+    .gt("amount", 0);
 
   if (error) return NextResponse.json({ count: 0 });
 

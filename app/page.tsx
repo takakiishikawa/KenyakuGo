@@ -222,8 +222,8 @@ export default function Dashboard() {
   const [feedback, setFeedback] = useState<DashboardFeedback | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [syncState, setSyncState] = useState<"idle" | "upToDate" | "hasMore">("idle");
-  const [syncRemaining, setSyncRemaining] = useState(0);
+  const [syncState, setSyncState] = useState<"idle" | "upToDate">("idle");
+  const [syncProgress, setSyncProgress] = useState<{ done: number; total: number } | null>(null);
   const [popupCategory, setPopupCategory] = useState<{ name: string; colorIndex: number } | null>(null);
   const [showWeekCompare, setShowWeekCompare] = useState(false);
 
@@ -257,32 +257,44 @@ export default function Dashboard() {
   const handleSync = async () => {
     setSyncing(true);
     setSyncState("idle");
+    setSyncProgress(null);
+    let totalSynced = 0;
+    let estimatedTotal = 0;
+    let processed = 0;
+
     try {
-      const res = await fetch("/api/gmail/sync");
-      let json: { synced?: number; remaining?: number; error?: string } = {};
-      try { json = await res.json(); } catch {
-        toast.error("同期失敗: サーバーエラー（タイムアウトの可能性があります）");
-        return;
+      // 残りがなくなるまで自動で連続取得
+      while (true) {
+        const res = await fetch("/api/gmail/sync");
+        let json: { synced?: number; remaining?: number; error?: string } = {};
+        try { json = await res.json(); } catch {
+          toast.error("同期失敗: サーバーエラー（タイムアウトの可能性があります）");
+          break;
+        }
+        if (!res.ok) { toast.error(`同期失敗: ${json.error ?? res.status}`); break; }
+
+        const remaining = json.remaining ?? 0;
+        totalSynced += json.synced ?? 0;
+        processed += 100;
+
+        // 初回で全体像を把握
+        if (estimatedTotal === 0) estimatedTotal = processed + remaining;
+        const done = Math.min(processed, estimatedTotal);
+        setSyncProgress({ done, total: estimatedTotal });
+
+        if (remaining === 0) break;
+        // まだ残りがある → ループ継続
       }
-      if (!res.ok) { toast.error(`同期失敗: ${json.error ?? res.status}`); return; }
-      const remaining = json.remaining ?? 0;
-      const synced = json.synced ?? 0;
-      if (remaining > 0) {
-        setSyncState("hasMore");
-        setSyncRemaining(remaining);
-        toast.success(`${synced}件取得しました（残り${remaining}件）`);
-      } else {
-        setSyncState("upToDate");
-        setSyncRemaining(0);
-        if (synced > 0) toast.success(`${synced}件取得しました`);
-        // 5秒後に idle に戻す
-        setTimeout(() => setSyncState("idle"), 5000);
-      }
+
+      setSyncState("upToDate");
+      if (totalSynced > 0) toast.success(`${totalSynced}件の取引を取得しました`);
+      setTimeout(() => setSyncState("idle"), 5000);
       fetchDashboard();
     } catch (e) {
       toast.error(`同期失敗: ${e instanceof Error ? e.message : "network error"}`);
     } finally {
       setSyncing(false);
+      setSyncProgress(null);
     }
   };
 
@@ -305,17 +317,18 @@ export default function Dashboard() {
         <button onClick={handleSync} disabled={syncing}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
           style={{
-            backgroundColor: syncState === "hasMore" ? "rgba(255,183,77,0.1)" : syncState === "upToDate" ? "rgba(82,183,136,0.1)" : "var(--kg-surface-2)",
-            color: syncState === "hasMore" ? "var(--kg-warning)" : syncState === "upToDate" ? "var(--kg-success)" : "var(--kg-accent)",
-            border: syncState === "hasMore" ? "1px solid rgba(255,183,77,0.35)" : syncState === "upToDate" ? "1px solid rgba(82,183,136,0.35)" : "1px solid var(--kg-border-medium)",
+            backgroundColor: syncState === "upToDate" ? "rgba(82,183,136,0.1)" : "var(--kg-surface-2)",
+            color: syncState === "upToDate" ? "var(--kg-success)" : "var(--kg-accent)",
+            border: syncState === "upToDate" ? "1px solid rgba(82,183,136,0.35)" : "1px solid var(--kg-border-medium)",
+            minWidth: 120,
           }}>
           <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
-          {syncing
+          {syncing && syncProgress
+            ? `${syncProgress.done}/${syncProgress.total}件`
+            : syncing
             ? "同期中..."
             : syncState === "upToDate"
             ? "最新の状態"
-            : syncState === "hasMore"
-            ? `続きを取得（残り${syncRemaining}件）`
             : "同期"}
         </button>
       </div>

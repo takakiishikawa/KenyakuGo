@@ -67,7 +67,7 @@ export function Sidebar() {
       className="fixed left-0 top-0 h-screen flex flex-col"
       style={{
         width: "260px",
-        backgroundColor: "#1A2E1F",
+        background: "linear-gradient(160deg, #1A3320 0%, #0F2318 40%, #0A1A10 100%)",
       }}
     >
       {/* Logo */}
@@ -81,7 +81,7 @@ export function Sidebar() {
             width: 36,
             height: 36,
             borderRadius: 12,
-            backgroundColor: "#52B788",
+            background: "linear-gradient(135deg, #52B788 0%, #2D6A4F 100%)",
           }}
         >
           <span className="text-base font-bold" style={{ color: "#1A2E1F" }}>¥</span>
@@ -111,8 +111,8 @@ export function Sidebar() {
               style={{
                 padding: "12px 16px",
                 borderRadius: 12,
-                backgroundColor: isActive ? "rgba(82,183,136,0.2)" : "transparent",
-                border: isActive ? "1px solid rgba(82,183,136,0.3)" : "1px solid transparent",
+                background: isActive ? "linear-gradient(135deg, rgba(82,183,136,0.25) 0%, rgba(45,106,79,0.15) 100%)" : "transparent",
+                border: isActive ? "1px solid rgba(82,183,136,0.2)" : "1px solid transparent",
                 color: isActive ? "#52B788" : "rgba(255,255,255,0.55)",
                 fontWeight: isActive ? 500 : 400,
                 fontSize: 14,
@@ -145,7 +145,8 @@ export function Sidebar() {
         style={{ bottom: 24, left: 16, right: 16 }}
       >
         {user ? (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+            style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)" }}>
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img

@@ -53,7 +53,9 @@ export default function TransactionsPage() {
   const [applyingStore, setApplyingStore] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [addingCategory, setAddingCategory] = useState(false);
+  const [showAddCategory, setShowAddCategory] = useState(false);
   const [categorizing, setCategorizing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchCategories = useCallback(() => {
     fetch("/api/categories").then((r) => r.json()).then((data) =>
@@ -135,7 +137,7 @@ export default function TransactionsPage() {
       body: JSON.stringify({ name: newCategoryName.trim() }),
     });
     if (res.status === 409) toast.error("そのカテゴリはすでに存在します");
-    else if (res.ok) { toast.success(`「${newCategoryName.trim()}」を追加しました`); setNewCategoryName(""); fetchCategories(); }
+    else if (res.ok) { toast.success(`「${newCategoryName.trim()}」を追加しました`); setNewCategoryName(""); setShowAddCategory(false); fetchCategories(); }
     setAddingCategory(false);
   };
 
@@ -163,30 +165,50 @@ export default function TransactionsPage() {
     outline: "none",
   };
 
+  const filteredTransactions = searchQuery.trim()
+    ? transactions.filter((tx) => tx.store.toLowerCase().includes(searchQuery.toLowerCase()))
+    : transactions;
+
+  const allCategorized = uncategorizedCount === 0;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-10">
         <h1 className="text-3xl font-semibold" style={{ color: "var(--kg-text)" }}>取引一覧</h1>
         <div className="flex gap-3">
-          <button
-            onClick={fetchUncategorizedStores}
-            disabled={reviewLoading}
-            className="px-4 py-2 text-sm rounded-xl font-medium transition-all disabled:opacity-50"
-            style={{
-              border: `1px solid ${uncategorizedCount && uncategorizedCount > 0 ? "rgba(255,183,77,0.35)" : "var(--kg-border-medium)"}`,
-              color: uncategorizedCount && uncategorizedCount > 0 ? "var(--kg-warning)" : "var(--kg-accent)",
-              backgroundColor: uncategorizedCount && uncategorizedCount > 0 ? "rgba(255,183,77,0.08)" : "transparent",
-            }}
-          >
-            {reviewLoading ? "読込中..." : `要確認リスト${uncategorizedCount ? `（${uncategorizedCount}）` : ""}`}
-          </button>
+          {/* 要確認リスト */}
+          {allCategorized ? (
+            <div className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-xl font-medium"
+              style={{ color: "var(--kg-success)", backgroundColor: "rgba(82,183,136,0.08)", border: "1px solid rgba(82,183,136,0.2)" }}>
+              <span>✓</span>
+              <span>全て分類済み</span>
+            </div>
+          ) : (
+            <button
+              onClick={fetchUncategorizedStores}
+              disabled={reviewLoading}
+              className="px-4 py-2 text-sm rounded-xl font-medium transition-all disabled:opacity-50"
+              style={{
+                border: `1px solid ${uncategorizedCount && uncategorizedCount > 0 ? "rgba(255,183,77,0.35)" : "var(--kg-border-medium)"}`,
+                color: uncategorizedCount && uncategorizedCount > 0 ? "var(--kg-warning)" : "var(--kg-text-muted)",
+                backgroundColor: uncategorizedCount && uncategorizedCount > 0 ? "rgba(255,183,77,0.08)" : "transparent",
+              }}
+            >
+              {reviewLoading ? "読込中..." : `要確認リスト${uncategorizedCount ? `（${uncategorizedCount}）` : ""}`}
+            </button>
+          )}
+          {/* AI一括分類 */}
           <button
             onClick={handleCategorizeAll}
-            disabled={categorizing}
+            disabled={categorizing || allCategorized}
             className="px-4 py-2 text-sm rounded-xl font-medium transition-all disabled:opacity-50"
-            style={{ backgroundColor: "var(--kg-accent)", color: "var(--kg-bg)" }}
+            style={{
+              backgroundColor: allCategorized ? "transparent" : "var(--kg-accent)",
+              color: allCategorized ? "var(--kg-text-muted)" : "var(--kg-bg)",
+              border: allCategorized ? "1px solid var(--kg-border)" : "none",
+            }}
           >
-            {categorizing ? "分類中..." : "AI一括分類"}
+            {categorizing ? "分類中..." : allCategorized ? "AI一括分類" : "AI一括分類"}
           </button>
         </div>
       </div>
@@ -232,25 +254,58 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      {/* カテゴリ追加 */}
+      {/* 検索 + カテゴリ追加 */}
       <div className="flex gap-3 mb-5">
-        <input
-          type="text"
-          value={newCategoryName}
-          onChange={(e) => setNewCategoryName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleAddCategory()}
-          placeholder="新しいカテゴリ名..."
-          className="kg-input"
-          style={{ maxWidth: 280 }}
-        />
-        <button
-          onClick={handleAddCategory}
-          disabled={addingCategory || !newCategoryName.trim()}
-          className="px-4 py-2 text-sm rounded-xl font-medium transition-all disabled:opacity-40"
-          style={{ backgroundColor: "var(--kg-surface-2)", color: "var(--kg-accent)", border: "1px solid var(--kg-border-medium)" }}
-        >
-          + 追加
-        </button>
+        <div className="relative flex-1" style={{ maxWidth: 320 }}>
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: "var(--kg-text-muted)" }}>
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="店名で検索..."
+            className="kg-input"
+            style={{ paddingLeft: 36, width: "100%" }}
+          />
+        </div>
+        {showAddCategory ? (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAddCategory(); if (e.key === "Escape") { setShowAddCategory(false); setNewCategoryName(""); } }}
+              placeholder="カテゴリ名..."
+              autoFocus
+              className="kg-input"
+              style={{ width: 180 }}
+            />
+            <button
+              onClick={handleAddCategory}
+              disabled={addingCategory || !newCategoryName.trim()}
+              className="px-4 py-2 text-sm rounded-xl font-medium transition-all disabled:opacity-40"
+              style={{ backgroundColor: "var(--kg-accent)", color: "var(--kg-bg)" }}
+            >
+              {addingCategory ? "..." : "追加"}
+            </button>
+            <button
+              onClick={() => { setShowAddCategory(false); setNewCategoryName(""); }}
+              className="px-3 py-2 text-sm rounded-xl transition-all"
+              style={{ color: "var(--kg-text-muted)", border: "1px solid var(--kg-border)" }}
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowAddCategory(true)}
+            className="px-4 py-2 text-sm rounded-xl font-medium transition-all whitespace-nowrap"
+            style={{ backgroundColor: "var(--kg-surface-2)", color: "var(--kg-text-muted)", border: "1px solid var(--kg-border-medium)" }}
+          >
+            + カテゴリ追加
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -280,12 +335,12 @@ export default function TransactionsPage() {
       <div className="kg-card-static">
         <div className="px-7 py-5 border-b" style={{ borderColor: "var(--kg-border-subtle)" }}>
           <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>
-            {transactions.length}件の取引
+            {filteredTransactions.length}件の取引{searchQuery.trim() ? ` — 「${searchQuery}」で絞り込み中` : ""}
           </p>
         </div>
-        {transactions.length > 0 ? (
+        {filteredTransactions.length > 0 ? (
           <div>
-            {transactions.map((tx) => {
+            {filteredTransactions.map((tx) => {
               const isUncategorized = tx.category === "その他";
               const isEditing = editingId === tx.id;
               return (
@@ -341,7 +396,9 @@ export default function TransactionsPage() {
             })}
           </div>
         ) : (
-          <p className="text-center py-16 text-sm" style={{ color: "var(--kg-text-muted)" }}>取引データがありません</p>
+          <p className="text-center py-16 text-sm" style={{ color: "var(--kg-text-muted)" }}>
+            {searchQuery.trim() ? `「${searchQuery}」に一致する取引はありません` : "取引データがありません"}
+          </p>
         )}
       </div>
     </div>

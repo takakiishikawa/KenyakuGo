@@ -222,6 +222,8 @@ export default function Dashboard() {
   const [feedback, setFeedback] = useState<DashboardFeedback | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [syncState, setSyncState] = useState<"idle" | "upToDate" | "hasMore">("idle");
+  const [syncRemaining, setSyncRemaining] = useState(0);
   const [popupCategory, setPopupCategory] = useState<{ name: string; colorIndex: number } | null>(null);
   const [showWeekCompare, setShowWeekCompare] = useState(false);
 
@@ -254,6 +256,7 @@ export default function Dashboard() {
 
   const handleSync = async () => {
     setSyncing(true);
+    setSyncState("idle");
     try {
       const res = await fetch("/api/gmail/sync");
       let json: { synced?: number; remaining?: number; error?: string } = {};
@@ -262,7 +265,19 @@ export default function Dashboard() {
         return;
       }
       if (!res.ok) { toast.error(`同期失敗: ${json.error ?? res.status}`); return; }
-      toast.success(`${json.synced ?? 0}件取得しました${(json.remaining ?? 0) > 0 ? `（残り${json.remaining}件あり — もう一度押してください）` : ""}`);
+      const remaining = json.remaining ?? 0;
+      const synced = json.synced ?? 0;
+      if (remaining > 0) {
+        setSyncState("hasMore");
+        setSyncRemaining(remaining);
+        toast.success(`${synced}件取得しました（残り${remaining}件）`);
+      } else {
+        setSyncState("upToDate");
+        setSyncRemaining(0);
+        if (synced > 0) toast.success(`${synced}件取得しました`);
+        // 5秒後に idle に戻す
+        setTimeout(() => setSyncState("idle"), 5000);
+      }
       fetchDashboard();
     } catch (e) {
       toast.error(`同期失敗: ${e instanceof Error ? e.message : "network error"}`);
@@ -289,9 +304,19 @@ export default function Dashboard() {
         <h1 className="text-3xl font-semibold" style={{ color: "var(--kg-text)" }}>ダッシュボード</h1>
         <button onClick={handleSync} disabled={syncing}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
-          style={{ backgroundColor: "var(--kg-surface-2)", color: "var(--kg-accent)", border: "1px solid var(--kg-border-medium)" }}>
+          style={{
+            backgroundColor: syncState === "hasMore" ? "rgba(255,183,77,0.1)" : syncState === "upToDate" ? "rgba(82,183,136,0.1)" : "var(--kg-surface-2)",
+            color: syncState === "hasMore" ? "var(--kg-warning)" : syncState === "upToDate" ? "var(--kg-success)" : "var(--kg-accent)",
+            border: syncState === "hasMore" ? "1px solid rgba(255,183,77,0.35)" : syncState === "upToDate" ? "1px solid rgba(82,183,136,0.35)" : "1px solid var(--kg-border-medium)",
+          }}>
           <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
-          {syncing ? "同期中..." : "同期"}
+          {syncing
+            ? "同期中..."
+            : syncState === "upToDate"
+            ? "最新の状態"
+            : syncState === "hasMore"
+            ? `続きを取得（残り${syncRemaining}件）`
+            : "同期"}
         </button>
       </div>
 

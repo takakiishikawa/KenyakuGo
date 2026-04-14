@@ -81,6 +81,7 @@ function QASection({ data }: { data: DamData }) {
   });
   const [result, setResult] = useState<QAResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [genError, setGenError] = useState(false);
 
   const saveAnswers = (next: Record<string, string>) => {
     setAnswers(next);
@@ -92,6 +93,7 @@ function QASection({ data }: { data: DamData }) {
   const handleGenerate = useCallback(async () => {
     setLoading(true);
     setResult(null);
+    setGenError(false);
     try {
       const qaList = QUESTIONS.map((q) => ({ question: q.question, answer: answers[q.id] ?? "" }));
       const res = await fetch("/api/ai/comment", {
@@ -108,15 +110,17 @@ function QASection({ data }: { data: DamData }) {
           },
         }),
       });
-      if (!res.ok) return;
+      if (!res.ok) { setGenError(true); return; }
       const json = await res.json();
       const fb = json.feedback as Partial<QAResult> | undefined;
-      // recommendations が配列として存在する場合のみセット
       if (Array.isArray(fb?.recommendations) && fb.recommendations.length > 0) {
         setResult(fb as QAResult);
+      } else {
+        setGenError(true);
       }
     } catch (e) {
       console.error("[dam-qa] fetch error:", e);
+      setGenError(true);
     } finally {
       setLoading(false);
     }
@@ -125,6 +129,7 @@ function QASection({ data }: { data: DamData }) {
   const handleReset = () => {
     saveAnswers({});
     setResult(null);
+    setGenError(false);
   };
 
   return (
@@ -194,6 +199,12 @@ function QASection({ data }: { data: DamData }) {
               <div className="skeleton h-7 w-1/2 rounded-lg" />
             </div>
           ))}
+        </div>
+      )}
+
+      {genError && !loading && (
+        <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "var(--kg-danger)" }}>
+          提案の生成に失敗しました。もう一度「提案を見る」を押してみてください。
         </div>
       )}
 

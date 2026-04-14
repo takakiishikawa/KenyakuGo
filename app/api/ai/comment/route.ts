@@ -191,9 +191,12 @@ ${qaPairs || "（回答なし）"}
 }`;
   }
 
+  // dam-qa は提案3〜4件×6フィールドで500では切れるため多めに確保
+  const maxTokens = type === "dam-qa" ? 1500 : 600;
+
   const message = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 500,
+    max_tokens: maxTokens,
     messages: [{ role: "user", content: prompt }],
   });
 

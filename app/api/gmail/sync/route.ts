@@ -74,27 +74,30 @@ export async function GET() {
     const db = createDb();
 
     // 2. DB に既存の gmail_id を取得してセットに + 店舗→カテゴリのマップを作成
-    const { data: existingRows } = await db
-      .from("transactions")
-      .select("gmail_id, store, category")
-      .limit(100000);
-
+    // Supabase はサーバー側で1000行上限があるため、ページネーションで全件取得
     const existingIds = new Set<string>();
     const storeCategory = new Map<string, string>(); // 既知店舗のカテゴリ
-
-    for (const row of existingRows ?? []) {
-      if (row.gmail_id) existingIds.add(row.gmail_id as string);
-      const store = (row.store as string)?.trim();
-      const cat = row.category as string;
-      // "その他" 以外の確定カテゴリのみ学習
-      if (store && cat && cat !== "その他") {
-        storeCategory.set(store, cat);
+    const PAGE = 1000;
+    let page = 0;
+    while (true) {
+      const { data: pageRows } = await db
+        .from("transactions")
+        .select("gmail_id, store, category")
+        .range(page * PAGE, (page + 1) * PAGE - 1);
+      if (!pageRows || pageRows.length === 0) break;
+      for (const row of pageRows) {
+        if (row.gmail_id) existingIds.add(row.gmail_id as string);
+        const store = (row.store as string)?.trim();
+        const cat = row.category as string;
+        if (store && cat && cat !== "その他") storeCategory.set(store, cat);
       }
+      if (pageRows.length < PAGE) break;
+      page++;
     }
 
-    // 3. 新規IDのみ抽出（1回あたり最大100件でタイムアウト回避）
+    // 3. 新規IDのみ抽出（1回あたり最大200件でタイムアウト回避）
     const allNewIds = allIds.filter((id) => !existingIds.has(id));
-    const BATCH = 100;
+    const BATCH = 200;
     const newIds = allNewIds.slice(0, BATCH);
     const remaining = Math.max(0, allNewIds.length - BATCH);
 

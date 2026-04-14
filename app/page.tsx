@@ -275,7 +275,7 @@ export default function Dashboard() {
 
         const remaining = json.remaining ?? 0;
         totalSynced += json.synced ?? 0;
-        processed += 100;
+        processed += 200;
 
         // 初回で全体像を把握
         if (estimatedTotal === 0) estimatedTotal = processed + remaining;

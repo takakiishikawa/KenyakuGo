@@ -47,26 +47,34 @@ const REFERENCES = [
   {
     title: "お金は寝かせて増やしなさい",
     author: "水瀬ケンイチ",
-    desc: "インデックス投資の入門書。節約して余ったお金をどう増やすかの基礎。",
-    tag: "📗 書籍",
+    desc: "インデックス投資の入門書。倹約して余ったお金をどう増やすかの基礎。長期・分散・低コストの原則を平易に解説。",
+    color: "#1a4b6e",
+    textColor: "#a8d8f0",
+    link: "https://www.amazon.co.jp/s?k=%E3%81%8A%E9%87%91%E3%81%AF%E5%AF%9D%E3%81%8B%E3%81%9B%E3%81%A6%E5%A2%97%E3%82%84%E3%81%97%E3%81%AA%E3%81%95%E3%81%84+%E6%B0%B4%E7%80%AC%E3%82%B1%E3%83%B3%E3%82%A4%E3%83%81",
   },
   {
     title: "となりの億万長者",
     author: "トーマス・J・スタンリー",
-    desc: "アメリカの富裕層研究。「質素な生活習慣」こそが富の源泉であることを統計で示す古典。",
-    tag: "📙 書籍",
+    desc: "アメリカの富裕層研究。「質素な生活習慣」こそが富の源泉であることを統計で示す古典。倹約と資産形成の関係を実証的に解き明かす。",
+    color: "#6b3a1f",
+    textColor: "#f5c98a",
+    link: "https://www.amazon.co.jp/s?k=%E3%81%A8%E3%81%AA%E3%82%8A%E3%81%AE%E5%84%84%E4%B8%87%E9%95%B7%E8%80%85",
   },
   {
     title: "FIRE 最強の早期リタイア術",
     author: "クリスティー・シェン",
-    desc: "カナダ在住の中国系移民夫婦が30代でリタイアした実践的節約・投資の記録。",
-    tag: "📘 書籍",
+    desc: "カナダ在住の中国系移民夫婦が30代でリタイアした実践的記録。支出率の管理と資産の4%ルールを具体的に解説。",
+    color: "#1b4332",
+    textColor: "#95d5b2",
+    link: "https://www.amazon.co.jp/s?k=FIRE+%E6%9C%80%E5%BC%B7%E3%81%AE%E6%97%A9%E6%9C%9F%E3%83%AA%E3%82%BF%E3%82%A4%E3%82%A2+%E3%82%AF%E3%83%AA%E3%82%B9%E3%83%86%E3%82%A3%E3%83%BC%E3%83%BB%E3%82%B7%E3%82%A7%E3%83%B3",
   },
   {
     title: "ミニマリスト式超節約術",
     author: "植村拓哉",
-    desc: "モノを減らすことで支出そのものの機会を減らす「攻めの節約」の考え方。",
-    tag: "📕 書籍",
+    desc: "モノを減らすことで支出機会を根本から減らす「攻めの倹約」の考え方。所有と幸福の関係を再定義する。",
+    color: "#3d1a1a",
+    textColor: "#f5a0a0",
+    link: "https://www.amazon.co.jp/s?k=%E3%83%9F%E3%83%8B%E3%83%9E%E3%83%AA%E3%82%B9%E3%83%88%E5%BC%8F%E8%B6%85%E7%AF%80%E7%B4%84%E8%A1%93",
   },
 ];
 
@@ -212,11 +220,11 @@ export default function ColumnPage() {
         </div>
       </div>
 
-      {/* ホーチミン節約術 */}
+      {/* 倹約術 */}
       <div className="kg-card-static p-7 mb-6 animate-fade-up" style={{ animationDelay: "160ms" }}>
         <div className="flex items-center gap-2 mb-5">
           <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>
-            ホーチミンでの節約ヒント
+            ホーチミンでの倹約術
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -234,19 +242,38 @@ export default function ColumnPage() {
       <div className="animate-fade-up" style={{ animationDelay: "240ms" }}>
         <div className="flex items-center gap-2 mb-4">
           <ExternalLink size={14} style={{ color: "var(--kg-text-muted)" }} />
-          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>参考文献・おすすめ本</p>
+          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>倹約を深める本</p>
         </div>
         <div className="grid grid-cols-2 gap-4">
           {REFERENCES.map((ref, i) => (
-            <div key={i} className="kg-card-static p-5">
-              <span className="text-xs px-2 py-0.5 rounded-full mb-3 inline-block"
-                style={{ backgroundColor: "var(--kg-surface-2)", color: "var(--kg-text-muted)" }}>
-                {ref.tag}
-              </span>
-              <p className="text-sm font-semibold mb-1" style={{ color: "var(--kg-text)" }}>{ref.title}</p>
-              <p className="text-xs mb-2" style={{ color: "var(--kg-text-muted)" }}>{ref.author}</p>
-              <p className="text-xs leading-5" style={{ color: "var(--kg-text-secondary)" }}>{ref.desc}</p>
-            </div>
+            <a key={i} href={ref.link} target="_blank" rel="noopener noreferrer"
+              className="kg-card-static p-5 flex gap-4 transition-all group"
+              style={{ textDecoration: "none" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; }}>
+              {/* 書籍カバー */}
+              <div className="shrink-0 flex flex-col items-center justify-center rounded-lg px-2 py-3"
+                style={{ width: 64, minHeight: 90, backgroundColor: ref.color }}>
+                <p className="text-center leading-tight" style={{ fontSize: 9, color: ref.textColor, wordBreak: "break-all" }}>
+                  {ref.title}
+                </p>
+                <div className="mt-2 w-8 border-t opacity-30" style={{ borderColor: ref.textColor }} />
+                <p className="mt-1 text-center" style={{ fontSize: 8, color: ref.textColor, opacity: 0.7 }}>
+                  {ref.author}
+                </p>
+              </div>
+              {/* 説明 */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold mb-1 group-hover:underline" style={{ color: "var(--kg-text)" }}>
+                  {ref.title}
+                </p>
+                <p className="text-xs mb-2" style={{ color: "var(--kg-text-muted)" }}>{ref.author}</p>
+                <p className="text-xs leading-5" style={{ color: "var(--kg-text-secondary)" }}>{ref.desc}</p>
+                <span className="inline-flex items-center gap-1 mt-2 text-xs" style={{ color: "var(--kg-accent)" }}>
+                  <ExternalLink size={10} /> Amazon で見る
+                </span>
+              </div>
+            </a>
           ))}
         </div>
       </div>

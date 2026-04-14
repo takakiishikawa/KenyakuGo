@@ -10,3 +10,8 @@ export function formatDate(date: string | Date): string {
     minute: "2-digit",
   });
 }
+
+export function formatDateWithYear(date: string | Date): string {
+  const d = new Date(date);
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}

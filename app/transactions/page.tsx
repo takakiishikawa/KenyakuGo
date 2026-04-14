@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { formatVND, formatDate } from "@/lib/format";
+import { formatVND, formatDateWithYear } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
 
 interface Transaction {
@@ -389,7 +389,7 @@ export default function TransactionsPage() {
                   <span className="text-sm font-medium flex-1 truncate" style={{ color: "var(--kg-text)" }}>{tx.store}</span>
                   <div className="text-right shrink-0">
                     <p className="text-sm font-num font-semibold" style={{ color: "var(--kg-text)" }}>{formatVND(tx.amount)}</p>
-                    <p className="text-xs mt-0.5" style={{ color: "var(--kg-text-muted)" }}>{formatDate(tx.date)}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--kg-text-muted)" }}>{formatDateWithYear(tx.date)}</p>
                   </div>
                 </div>
               );

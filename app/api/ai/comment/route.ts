@@ -105,6 +105,56 @@ export async function POST(req: NextRequest) {
     }
   ]
 }`;
+  } else if (type === "dam-qa") {
+    isStructured = true;
+    const d = data as {
+      cumulativeBalance: number;
+      projectedBalance: number;
+      targetMonthly: number;
+      monthsCount: number;
+      answers: Array<{ question: string; answer: string }>;
+    };
+    const monthlyProjected = d.targetMonthly; // 毎月予算通りなら
+    const futureMonthly = Math.max(0, d.targetMonthly - (d.projectedBalance ?? 0));
+    const qaPairs = d.answers
+      .filter((a) => a.answer.trim())
+      .map((a) => `Q: ${a.question}\nA: ${a.answer}`)
+      .join("\n\n");
+
+    prompt = `あなたはホーチミン在住の日本人の専属ファイナンシャルコーチです。
+倹約哲学「ベース支出を抑えて、使う時に使う」を実践しているユーザーへの具体的提案を行います。
+
+【ユーザーの財務状況】
+- 月予算: ${d.targetMonthly.toLocaleString("vi-VN")} ₫
+- 現在の累計ダム残高: ${d.cumulativeBalance.toLocaleString("vi-VN")} ₫
+- 今月の節約見込み: ${d.projectedBalance.toLocaleString("vi-VN")} ₫
+- 積み立て開始からの月数: ${d.monthsCount}ヶ月
+
+【ユーザーの回答】
+${qaPairs || "（回答なし）"}
+
+【提案の条件】
+- ホーチミン/ベトナムで実際に体験・購入できるものを優先
+- 具体的な店名・サービス名・ブランド名を含める
+- 実際の購入・予約が可能なURLを含める（Lazada.vn, Shopee.vn, Traveloka.com, KKday.com, Klook.com, Booking.comなど実在のサイト）
+- 費用は現実的なVND金額で
+- ユーザーの回答内容に沿った提案を最優先
+
+以下のJSON形式のみで返してください（マークダウン不要）:
+{
+  "theme": "ユーザーの回答を踏まえた一言テーマ（20文字以内）",
+  "recommendations": [
+    {
+      "emoji": "絵文字1つ",
+      "title": "具体的なタイトル（15文字以内）",
+      "description": "ホーチミン/ベトナムの文脈で具体的な説明（2〜3文）",
+      "estimatedCost": "X.XXX.XXX ₫",
+      "link": "https://実在するURL",
+      "linkLabel": "サービス名で予約・購入"
+    }
+  ]
+}
+提案は3〜4件。`;
   } else if (type === "dam") {
     isStructured = true;
     const d = data as {

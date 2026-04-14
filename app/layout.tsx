@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Noto_Sans_JP, DM_Serif_Display } from "next/font/google";
+import { Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Sidebar } from "@/components/sidebar";
@@ -12,12 +12,6 @@ const notoSansJP = Noto_Sans_JP({
   display: "swap",
 });
 
-const dmSerifDisplay = DM_Serif_Display({
-  weight: ["400"],
-  subsets: ["latin"],
-  variable: "--font-dm-serif",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "KenyakuGo",
@@ -30,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className={`${notoSansJP.variable} ${dmSerifDisplay.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="ja" className={`${notoSansJP.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         {/* テーマをページロード前に適用してフラッシュを防止 */}
         <script

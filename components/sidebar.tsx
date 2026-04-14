@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LayoutDashboard, List, BarChart2, Droplets, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { ThemeToggle } from "@/components/theme-provider";
 import type { User } from "@supabase/supabase-js";
 
 const navItems = [
@@ -86,10 +87,11 @@ export function Sidebar() {
         </div>
         <span
           style={{
-            fontFamily: "var(--font-dm-serif), serif",
-            fontSize: 20,
+            fontFamily: "var(--font-noto), sans-serif",
+            fontSize: 18,
+            fontWeight: 600,
             color: "#ffffff",
-            letterSpacing: "0.01em",
+            letterSpacing: "0.02em",
           }}
         >
           KenyakuGo
@@ -173,6 +175,7 @@ export function Sidebar() {
                 ログアウト
               </button>
             </div>
+            <ThemeToggle />
           </div>
         ) : (
           <button

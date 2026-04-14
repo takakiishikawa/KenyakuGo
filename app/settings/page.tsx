@@ -62,13 +62,13 @@ export default function SettingsPage() {
           <p className="text-xs font-medium uppercase tracking-widest mb-6" style={{ color: "var(--kg-text-muted)" }}>予算設定</p>
           <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: "var(--kg-text-secondary)" }}>想定月支出（VND）</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--kg-text-secondary)" }}>合計月支出（VND）</label>
               <input type="number" value={targetMonthly} onChange={(e) => setTargetMonthly(e.target.value)} placeholder="例: 10000000" style={inputStyle} />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: "var(--kg-text-secondary)" }}>固定費合計（VND）</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: "var(--kg-text-secondary)" }}>固定費（VND）</label>
               <input type="number" value={fixedCosts} onChange={(e) => setFixedCosts(e.target.value)} placeholder="例: 3000000" style={inputStyle} />
-              <p className="text-xs mt-2" style={{ color: "var(--kg-text-muted)" }}>家賃・借金返済などの合計</p>
+              <p className="text-xs mt-2" style={{ color: "var(--kg-text-muted)" }}>家賃</p>
             </div>
             <button
               onClick={handleSave} disabled={saving}

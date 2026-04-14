@@ -3,9 +3,8 @@ import { createDb, type Transaction } from "@/lib/supabase/db";
 
 export const maxDuration = 60; // Vercel タイムアウト延長
 
-// データ開始年月（2024年1月）
-const DATA_START_YEAR = 2024;
-const DATA_START_MONTH = 0; // 0-indexed
+// データ開始日（実際の最古レコードより少し前に設定）
+const DATA_START = new Date(2024, 2, 1); // 2024-03-01
 
 function getWeekRange(date: Date) {
   const day = date.getDay();
@@ -48,23 +47,25 @@ export async function GET(req: NextRequest) {
     return q;
   };
 
-  // 全期間: 月単位の並列クエリで Supabase 1000行制限を回避
-  // allSettled を使い、一部クエリが失敗しても取得できた月のデータは返す
+  // 全期間: 週単位の並列クエリで Supabase 1000行制限を回避
+  // 月単位では1ヶ月に1000件超の場合に切れるため、週単位（7日）に分割
+  // allSettled を使い、一部クエリが失敗しても取得できた週のデータは返す
   if (period === "all") {
-    const monthBuckets: { start: Date; end: Date }[] = [];
-    let curYear = DATA_START_YEAR;
-    let curMonth = DATA_START_MONTH;
+    const weekBuckets: { start: Date; end: Date }[] = [];
+    const cursor = new Date(DATA_START);
+    cursor.setHours(0, 0, 0, 0);
 
-    while (curYear < now.getFullYear() || (curYear === now.getFullYear() && curMonth <= now.getMonth())) {
-      const start = new Date(curYear, curMonth, 1);
-      const end = new Date(curYear, curMonth + 1, 0, 23, 59, 59, 999);
-      monthBuckets.push({ start, end });
-      curMonth++;
-      if (curMonth > 11) { curMonth = 0; curYear++; }
+    while (cursor <= now) {
+      const start = new Date(cursor);
+      const end = new Date(cursor);
+      end.setDate(end.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+      weekBuckets.push({ start, end: end > now ? now : end });
+      cursor.setDate(cursor.getDate() + 7);
     }
 
     const results = await Promise.allSettled(
-      monthBuckets.map(({ start, end }) => buildQuery(start, end))
+      weekBuckets.map(({ start, end }) => buildQuery(start, end))
     );
 
     const data: TxRow[] = results

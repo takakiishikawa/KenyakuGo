@@ -29,6 +29,7 @@ const QUESTIONS = [
 ];
 
 const QA_STORAGE_KEY = "kg-dam-qa";
+const QA_RESULT_KEY = "kg-dam-qa-result";
 
 function DamVisual({ level, amount }: { level: number; amount: number }) {
   const pct = Math.max(0, Math.min(level, 100));
@@ -79,13 +80,24 @@ function QASection({ data }: { data: DamData }) {
     if (typeof window === "undefined") return {};
     try { return JSON.parse(localStorage.getItem(QA_STORAGE_KEY) ?? "{}"); } catch { return {}; }
   });
-  const [result, setResult] = useState<QAResult | null>(null);
+  const [result, setResult] = useState<QAResult | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const saved = localStorage.getItem(QA_RESULT_KEY);
+      return saved ? (JSON.parse(saved) as QAResult) : null;
+    } catch { return null; }
+  });
   const [loading, setLoading] = useState(false);
   const [genError, setGenError] = useState(false);
 
   const saveAnswers = (next: Record<string, string>) => {
     setAnswers(next);
     localStorage.setItem(QA_STORAGE_KEY, JSON.stringify(next));
+  };
+
+  const saveResult = (r: QAResult) => {
+    setResult(r);
+    localStorage.setItem(QA_RESULT_KEY, JSON.stringify(r));
   };
 
   const hasAnyAnswer = QUESTIONS.some((q) => answers[q.id]?.trim());
@@ -114,7 +126,7 @@ function QASection({ data }: { data: DamData }) {
       const json = await res.json();
       const fb = json.feedback as Partial<QAResult> | undefined;
       if (Array.isArray(fb?.recommendations) && fb.recommendations.length > 0) {
-        setResult(fb as QAResult);
+        saveResult(fb as QAResult);
       } else {
         setGenError(true);
       }
@@ -130,6 +142,7 @@ function QASection({ data }: { data: DamData }) {
     saveAnswers({});
     setResult(null);
     setGenError(false);
+    localStorage.removeItem(QA_RESULT_KEY);
   };
 
   return (

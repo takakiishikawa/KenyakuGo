@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createDb } from "@/lib/supabase/db";
 
 export async function POST(req: NextRequest) {
-  const { store, category } = await req.json();
-  if (!store || !category) {
-    return NextResponse.json({ error: "store and category required" }, { status: 400 });
+  // store: 完全一致（既存）/ query: 部分一致テキスト（新規）
+  const { store, query, category } = await req.json();
+  if ((!store && !query) || !category) {
+    return NextResponse.json({ error: "store or query, and category required" }, { status: 400 });
   }
 
   const db = createDb();
@@ -20,12 +21,15 @@ export async function POST(req: NextRequest) {
     await db.from("categories").insert({ name: category });
   }
 
-  // 同じ店名の全取引を一括更新（reviewed = true でレビュー済みとしてマーク）
-  const { error, data } = await db
+  // store: 完全一致 / query: 部分一致（大文字小文字無視）
+  const updateQuery = db
     .from("transactions")
     .update({ category, reviewed: true })
-    .eq("store", store)
     .select("id");
+
+  const { error, data } = store
+    ? await updateQuery.eq("store", store)
+    : await updateQuery.ilike("store", `%${query}%`);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

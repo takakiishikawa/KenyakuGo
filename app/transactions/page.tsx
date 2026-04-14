@@ -56,6 +56,8 @@ export default function TransactionsPage() {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [categorizing, setCategorizing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [bulkCategory, setBulkCategory] = useState("");
+  const [bulkApplying, setBulkApplying] = useState(false);
 
   const fetchCategories = useCallback(() => {
     fetch("/api/categories").then((r) => r.json()).then((data) =>
@@ -153,6 +155,28 @@ export default function TransactionsPage() {
     setSavingId(null);
     setEditingId(null);
     fetchTransactions();
+  };
+
+  const handleBulkApply = async () => {
+    if (!bulkCategory || !searchQuery.trim()) return;
+    setBulkApplying(true);
+    try {
+      const res = await fetch("/api/transactions/reclassify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: searchQuery.trim(), category: bulkCategory }),
+      });
+      const { updated, error } = await res.json();
+      if (error) throw new Error(error);
+      toast.success(`「${searchQuery}」を含む${updated}件を「${bulkCategory}」に変更しました`);
+      fetchTransactions();
+      fetchCategories();
+      fetchUncategorizedCount();
+    } catch (e) {
+      toast.error(`変更失敗: ${e instanceof Error ? e.message : "不明なエラー"}`);
+    } finally {
+      setBulkApplying(false);
+    }
   };
 
   const selectStyle = {
@@ -307,6 +331,33 @@ export default function TransactionsPage() {
           </button>
         )}
       </div>
+
+      {/* 一括カテゴリ変更バナー（検索中のみ表示） */}
+      {searchQuery.trim() && filteredTransactions.length > 0 && (
+        <div className="flex items-center gap-3 px-5 py-3 mb-4 rounded-xl"
+          style={{ backgroundColor: "rgba(82,183,136,0.06)", border: "1px solid rgba(82,183,136,0.2)" }}>
+          <p className="text-sm flex-1" style={{ color: "var(--kg-text-muted)" }}>
+            <span className="font-medium" style={{ color: "var(--kg-text)" }}>「{searchQuery}」</span>
+            を含む{filteredTransactions.length}件を一括変更:
+          </p>
+          <select
+            value={bulkCategory}
+            onChange={(e) => setBulkCategory(e.target.value)}
+            style={{ ...selectStyle, minWidth: 150 }}
+          >
+            <option value="">カテゴリ選択</option>
+            {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+          </select>
+          <button
+            onClick={handleBulkApply}
+            disabled={!bulkCategory || bulkApplying}
+            className="px-4 py-2 text-sm rounded-xl font-medium transition-all disabled:opacity-40 whitespace-nowrap"
+            style={{ backgroundColor: "var(--kg-accent)", color: "var(--kg-bg)" }}
+          >
+            {bulkApplying ? "変更中..." : "一括変更"}
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-4 mb-6">

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LayoutDashboard, List, BarChart2, Droplets, Settings } from "lucide-react";
+import { LayoutDashboard, List, BarChart2, Droplets, Settings, BookOpen } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { ThemeToggle } from "@/components/theme-provider";
 import type { User } from "@supabase/supabase-js";
@@ -13,6 +13,7 @@ const navItems = [
   { href: "/weekly", label: "レポート", icon: BarChart2 },
   { href: "/transactions", label: "取引一覧", icon: List },
   { href: "/dam", label: "貯蓄ダム", icon: Droplets },
+  { href: "/column", label: "倹約コラム", icon: BookOpen },
   { href: "/settings", label: "設定", icon: Settings },
 ];
 

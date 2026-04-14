@@ -63,12 +63,21 @@ export default function SettingsPage() {
           <div className="space-y-5">
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: "var(--kg-text-secondary)" }}>合計月支出（VND）</label>
-              <input type="number" value={targetMonthly} onChange={(e) => setTargetMonthly(e.target.value)} placeholder="例: 10000000" style={inputStyle} />
+              <input type="number" value={targetMonthly} onChange={(e) => setTargetMonthly(e.target.value)} placeholder="例: 50000000" style={inputStyle} />
+              {parseInt(targetMonthly) > 0 && (
+                <p className="text-xs mt-2 font-num" style={{ color: "var(--kg-accent)" }}>
+                  = {parseInt(targetMonthly).toLocaleString("vi-VN")} ₫
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: "var(--kg-text-secondary)" }}>固定費（VND）</label>
-              <input type="number" value={fixedCosts} onChange={(e) => setFixedCosts(e.target.value)} placeholder="例: 3000000" style={inputStyle} />
-              <p className="text-xs mt-2" style={{ color: "var(--kg-text-muted)" }}>家賃</p>
+              <input type="number" value={fixedCosts} onChange={(e) => setFixedCosts(e.target.value)} placeholder="例: 17000000" style={inputStyle} />
+              {parseInt(fixedCosts) > 0 && (
+                <p className="text-xs mt-2 font-num" style={{ color: "var(--kg-accent)" }}>
+                  = {parseInt(fixedCosts).toLocaleString("vi-VN")} ₫
+                </p>
+              )}
             </div>
             <button
               onClick={handleSave} disabled={saving}

@@ -67,7 +67,7 @@ export function Sidebar() {
       className="fixed left-0 top-0 h-screen flex flex-col"
       style={{
         width: "260px",
-        background: "linear-gradient(160deg, #1A3320 0%, #0F2318 40%, #0A1A10 100%)",
+        background: "linear-gradient(160deg, #2D5A3D 0%, #1A3825 35%, #0D2118 70%, #071510 100%)",
       }}
     >
       {/* Logo */}
@@ -111,8 +111,8 @@ export function Sidebar() {
               style={{
                 padding: "12px 16px",
                 borderRadius: 12,
-                background: isActive ? "linear-gradient(135deg, rgba(82,183,136,0.25) 0%, rgba(45,106,79,0.15) 100%)" : "transparent",
-                border: isActive ? "1px solid rgba(82,183,136,0.2)" : "1px solid transparent",
+                background: isActive ? "linear-gradient(135deg, rgba(82,183,136,0.35) 0%, rgba(45,106,79,0.2) 100%)" : "transparent",
+                border: isActive ? "1px solid rgba(82,183,136,0.35)" : "1px solid transparent",
                 color: isActive ? "#52B788" : "rgba(255,255,255,0.55)",
                 fontWeight: isActive ? 500 : 400,
                 fontSize: 14,

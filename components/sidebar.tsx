@@ -67,7 +67,7 @@ export function Sidebar() {
       className="fixed left-0 top-0 h-screen flex flex-col"
       style={{
         width: "260px",
-        background: "linear-gradient(160deg, #2D5A3D 0%, #1A3825 35%, #0D2118 70%, #071510 100%)",
+        background: "#0F2318",
       }}
     >
       {/* Logo */}

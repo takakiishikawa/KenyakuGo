@@ -13,7 +13,7 @@ const navItems = [
   { href: "/weekly", label: "レポート", icon: BarChart2 },
   { href: "/transactions", label: "取引一覧", icon: List },
   { href: "/dam", label: "貯蓄ダム", icon: Droplets },
-  { href: "/column", label: "倹約コラム", icon: BookOpen },
+  { href: "/column", label: "マインドセット", icon: BookOpen },
   { href: "/settings", label: "設定", icon: Settings },
 ];
 

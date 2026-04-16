@@ -22,15 +22,8 @@ interface DamData {
   damStartLabel: string;
 }
 
-const QUESTIONS = [
-  { id: "want", question: "今このお金で最もやりたいこと・欲しいものは？（旅行・体験・モノなど具体的に）" },
-  { id: "budget", question: "使いたい金額のイメージは？（例：全額・半分・50万VNDだけなど）" },
-  { id: "timing", question: "いつ頃使いたいですか？（例：来月・3ヶ月以内・年内など）" },
-  { id: "location", question: "ベトナム国内？それとも海外旅行なども視野に入れていますか？" },
-  { id: "with", question: "一人で？誰かと一緒に？（家族・友人・パートナーなど）" },
-];
+const FREE_TEXT_KEY = "kg-dam-freetext";
 
-const QA_STORAGE_KEY = "kg-dam-qa";
 const QA_RESULT_KEY = "kg-dam-qa-result";
 const QA_SUBMITTED_AT_KEY = "kg-dam-qa-submitted-at";
 const PROMPT_INTERVAL_DAYS = 14;
@@ -71,9 +64,9 @@ function DamVisual({ level }: { level: number }) {
 }
 
 function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
-  const [answers, setAnswers] = useState<Record<string, string>>(() => {
-    if (typeof window === "undefined") return {};
-    try { return JSON.parse(localStorage.getItem(QA_STORAGE_KEY) ?? "{}"); } catch { return {}; }
+  const [freeText, setFreeText] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem(FREE_TEXT_KEY) ?? "";
   });
   const [result, setResult] = useState<QAResult | null>(() => {
     if (typeof window === "undefined") return null;
@@ -85,24 +78,18 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const [genError, setGenError] = useState(false);
 
-  const saveAnswers = (next: Record<string, string>) => {
-    setAnswers(next);
-    localStorage.setItem(QA_STORAGE_KEY, JSON.stringify(next));
-  };
-
   const saveResult = (r: QAResult) => {
     setResult(r);
     localStorage.setItem(QA_RESULT_KEY, JSON.stringify(r));
     localStorage.setItem(QA_SUBMITTED_AT_KEY, new Date().toISOString());
   };
 
-  const hasAnyAnswer = QUESTIONS.some((q) => answers[q.id]?.trim());
-
   const handleGenerate = useCallback(async () => {
+    if (!freeText.trim()) return;
+    localStorage.setItem(FREE_TEXT_KEY, freeText);
     setLoading(true);
     setGenError(false);
     try {
-      const qaList = QUESTIONS.map((q) => ({ question: q.question, answer: answers[q.id] ?? "" }));
       const res = await fetch("/api/ai/comment", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,7 +100,7 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
             projectedBalance: data.currentBalance,
             targetMonthly: data.targetMonthly,
             monthsCount: data.months.length,
-            answers: qaList,
+            answers: [{ question: "欲しいもの・やりたいこと", answer: freeText }],
           },
         }),
       });
@@ -131,12 +118,13 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
     } finally {
       setLoading(false);
     }
-  }, [answers, data]);
+  }, [freeText, data]);
 
   const handleReset = () => {
-    saveAnswers({});
+    setFreeText("");
     setResult(null);
     setGenError(false);
+    localStorage.removeItem(FREE_TEXT_KEY);
     localStorage.removeItem(QA_RESULT_KEY);
     localStorage.removeItem(QA_SUBMITTED_AT_KEY);
   };
@@ -145,7 +133,7 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl overflow-hidden animate-fade-up"
+      <div className="w-full sm:max-w-xl rounded-t-2xl sm:rounded-2xl overflow-hidden animate-fade-up"
         style={{ backgroundColor: "var(--kg-surface)", border: "1px solid var(--kg-border-medium)", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
 
         {/* Header */}
@@ -158,7 +146,7 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            {hasAnyAnswer && (
+            {(freeText || result) && (
               <button onClick={handleReset} className="flex items-center gap-1 text-xs transition-colors"
                 style={{ color: "var(--kg-text-muted)" }}
                 onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--kg-text)")}
@@ -172,29 +160,32 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
           </div>
         </div>
 
-        <div className="overflow-y-auto flex-1 px-7 py-6 space-y-6">
-          {/* Q&Aフォーム */}
-          <div className="space-y-3">
-            {QUESTIONS.map((q) => (
-              <div key={q.id} className="rounded-xl p-4" style={{ backgroundColor: "var(--kg-surface-2)" }}>
-                <p className="text-xs font-medium mb-2" style={{ color: "var(--kg-accent)" }}>
-                  Q. {q.question}
-                </p>
-                <textarea
-                  value={answers[q.id] ?? ""}
-                  onChange={(e) => saveAnswers({ ...answers, [q.id]: e.target.value })}
-                  placeholder="ここに入力..."
-                  rows={2}
-                  className="w-full resize-none text-sm outline-none bg-transparent"
-                  style={{ color: "var(--kg-text)", caretColor: "var(--kg-accent)" }}
-                />
-              </div>
-            ))}
+        <div className="overflow-y-auto flex-1 px-7 py-6 space-y-5">
+          {/* フリーテキスト入力 */}
+          <div>
+            <p className="text-xs mb-3" style={{ color: "var(--kg-text-muted)" }}>
+              欲しいもの・やりたいことを自由に書いてください
+            </p>
+            <textarea
+              value={freeText}
+              onChange={(e) => setFreeText(e.target.value)}
+              placeholder="例：髭剃りが欲しいしスマホも新しくしたい。あとバリ島旅行も考えてる"
+              rows={4}
+              className="w-full resize-none text-sm outline-none rounded-xl p-4"
+              style={{
+                backgroundColor: "var(--kg-surface-2)",
+                color: "var(--kg-text)",
+                caretColor: "var(--kg-accent)",
+                border: "1px solid var(--kg-border-medium)",
+              }}
+              onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleGenerate(); }}
+            />
+            <p className="text-xs mt-1.5" style={{ color: "var(--kg-text-muted)" }}>⌘+Enter で送信</p>
           </div>
 
           <button
             onClick={handleGenerate}
-            disabled={loading || !hasAnyAnswer}
+            disabled={loading || !freeText.trim()}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-40"
             style={{ backgroundColor: "var(--kg-accent)", color: "var(--kg-bg)" }}>
             <Send size={13} />
@@ -207,7 +198,6 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
             </div>
           )}
 
-          {/* ローディングスケルトン */}
           {loading && (
             <div className="grid grid-cols-2 gap-4">
               {[1, 2, 3, 4].map((i) => (
@@ -221,7 +211,6 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
             </div>
           )}
 
-          {/* 提案カード */}
           {result && !loading && (
             <div>
               {result.theme && (

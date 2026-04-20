@@ -20,7 +20,7 @@ export async function GET() {
 
     if (!accessToken) {
       // セッション更新後に provider_token が消えるため、DB のリフレッシュトークンで再取得
-      const db = createDb();
+      const db = createDb(session.access_token);
       const { data: settings } = await db
         .from("settings")
         .select("google_refresh_token")
@@ -71,7 +71,7 @@ export async function GET() {
       );
     }
 
-    const db = createDb();
+    const db = createDb(session.access_token);
 
     // 2. DB に既存の gmail_id を取得してセットに + 店舗→カテゴリのマップを作成
     // Supabase はサーバー側で1000行上限があるため、ページネーションで全件取得

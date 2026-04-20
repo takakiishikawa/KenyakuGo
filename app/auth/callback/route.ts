@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       const refreshToken = data.session?.provider_refresh_token;
       if (refreshToken) {
         const { createDb } = await import("@/lib/supabase/db");
-        const db = createDb();
+        const db = createDb(data.session?.access_token);
         await db.from("settings").upsert({
           id: "singleton",
           google_refresh_token: refreshToken,

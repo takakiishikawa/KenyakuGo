@@ -38,6 +38,7 @@ import {
   ChevronsUpDown,
   Check,
   JapaneseYen,
+  Lightbulb,
 } from "lucide-react"
 import type { User } from "@supabase/supabase-js"
 
@@ -57,6 +58,7 @@ const navItems = [
   { href: "/transactions", label: "取引一覧",       icon: List },
   { href: "/dam",          label: "貯蓄ダム",       icon: Droplets },
   { href: "/column",       label: "マインドセット", icon: BookOpen },
+  { href: "/concept",      label: "コンセプト",     icon: Lightbulb },
   { href: "/settings",     label: "設定",           icon: Settings },
 ]
 
@@ -95,16 +97,7 @@ export function KenyakuGoSidebar() {
   }
 
   const handleSignIn = () => {
-    if (!supabaseConfigured) return
-    const supabase = createClient()
-    supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        scopes: "https://www.googleapis.com/auth/gmail.readonly",
-        queryParams: { access_type: "offline", prompt: "consent" },
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
+    router.push("/login")
   }
 
   const handleSignOut = async () => {

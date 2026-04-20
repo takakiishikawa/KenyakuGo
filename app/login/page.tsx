@@ -1,0 +1,28 @@
+"use client";
+
+import { LoginPage } from "@takaki/go-design-system";
+import { createClient } from "@/lib/supabase/client";
+import { Leaf } from "lucide-react";
+
+export default function LoginPageRoute() {
+  async function handleGoogleSignIn() {
+    const supabase = createClient();
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        scopes: "https://www.googleapis.com/auth/gmail.readonly",
+        queryParams: { access_type: "offline", prompt: "consent" },
+      },
+    });
+  }
+
+  return (
+    <LoginPage
+      productName="KenyakuGo"
+      productLogo={<Leaf size={24} style={{ color: "var(--color-primary)" }} />}
+      tagline="ベース支出を抑えて、使う時に使う。"
+      onGoogleSignIn={handleGoogleSignIn}
+    />
+  );
+}

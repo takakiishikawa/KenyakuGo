@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
-import { DesignTokens, AppLayout, Toaster } from "@takaki/go-design-system";
-import { KenyakuGoSidebar } from "@/components/kenyaku-sidebar";
+import { DesignTokens, Toaster } from "@takaki/go-design-system";
 
 const notoSansJP = Noto_Sans_JP({
   weight: ["300", "400", "500", "600", "700"],
@@ -32,9 +31,7 @@ export default function RootLayout({
         <DesignTokens primaryColor="#1A7A4A" primaryColorHover="#145C38" />
       </head>
       <body className="min-h-full">
-        <AppLayout sidebar={<KenyakuGoSidebar />}>
-          {children}
-        </AppLayout>
+        {children}
         <Toaster />
       </body>
     </html>

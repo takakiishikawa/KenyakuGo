@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
-import { Providers } from "@/components/providers";
-import { Sidebar } from "@/components/sidebar";
-import { ThemeProvider } from "@/components/theme-provider";
+import { DesignTokens, AppLayout, Toaster } from "@takaki/go-design-system";
+import { KenyakuGoSidebar } from "@/components/kenyaku-sidebar";
 
 const notoSansJP = Noto_Sans_JP({
   weight: ["300", "400", "500", "600", "700"],
@@ -11,7 +10,6 @@ const notoSansJP = Noto_Sans_JP({
   variable: "--font-noto",
   display: "swap",
 });
-
 
 export const metadata: Metadata = {
   title: "KenyakuGo",
@@ -26,24 +24,18 @@ export default function RootLayout({
   return (
     <html lang="ja" className={`${notoSansJP.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
-        {/* テーマをページロード前に適用してフラッシュを防止 */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){var s=localStorage.getItem('kg-theme');var d=s||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.classList.add(d);})();`,
           }}
         />
+        <DesignTokens primaryColor="#1A7A4A" primaryColorHover="#145C38" />
       </head>
       <body className="min-h-full">
-        <ThemeProvider>
-          <Providers>
-            <div className="flex h-screen" style={{ backgroundColor: "var(--kg-bg)" }}>
-              <Sidebar />
-              <main className="ml-[260px] flex-1 overflow-y-auto p-10" style={{ backgroundColor: "var(--kg-bg)" }}>
-                {children}
-              </main>
-            </div>
-          </Providers>
-        </ThemeProvider>
+        <AppLayout sidebar={<KenyakuGoSidebar />}>
+          {children}
+        </AppLayout>
+        <Toaster />
       </body>
     </html>
   );

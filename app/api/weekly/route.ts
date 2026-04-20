@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createDb, type Transaction, type Settings } from "@/lib/supabase/db";
+import { getAuthDb } from "@/lib/supabase/auth-db";
+import { type Transaction, type Settings } from "@/lib/supabase/db";
 
 function getWeekStart(date: Date): Date {
   const d = new Date(date);
@@ -26,15 +27,16 @@ type PeriodItem = {
 type BucketDef = { label: string; start: Date; end: Date };
 
 export async function GET(req: NextRequest) {
+  const result = await getAuthDb();
+  if (result instanceof NextResponse) return result;
+  const { db } = result;
+
   const period = req.nextUrl.searchParams.get("period") ?? "week";
-  const db = createDb();
   const now = new Date();
 
-  // ── バケット定義（現在日付ベース、全件スキャン不要）──
   const bucketDefs: BucketDef[] = [];
 
   if (period === "week") {
-    // 直近4週（今週 + 過去3週）
     const thisWeekStart = getWeekStart(now);
     for (let i = 3; i >= 0; i--) {
       const ws = new Date(thisWeekStart);
@@ -45,7 +47,6 @@ export async function GET(req: NextRequest) {
       bucketDefs.push({ label: `${m}月${weekNum}週目`, start: ws, end: we });
     }
   } else if (period === "month") {
-    // 直近6ヶ月（今月 + 過去5ヶ月）
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const start = new Date(d.getFullYear(), d.getMonth(), 1);
@@ -55,7 +56,6 @@ export async function GET(req: NextRequest) {
       bucketDefs.push({ label: `${yr}年${m}月`, start, end });
     }
   } else {
-    // 直近3年（今年 + 過去2年）
     const currentYear = now.getFullYear();
     for (let y = currentYear - 2; y <= currentYear; y++) {
       bucketDefs.push({
@@ -66,7 +66,6 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── バケットクエリ + 設定クエリを並列実行 ──
   const [settingsRes, ...results] = await Promise.all([
     db.from("settings").select("target_monthly, fixed_costs").eq("id", "singleton").maybeSingle(),
     ...bucketDefs.map(({ start, end }) =>
@@ -95,7 +94,6 @@ export async function GET(req: NextRequest) {
     return { label, total, byCategory };
   });
 
-  // 全カテゴリ集計（合計上位5カテゴリをグラフに表示）
   const categoryTotals: Record<string, number> = {};
   for (const p of periods) {
     for (const [cat, amt] of Object.entries(p.byCategory)) {
@@ -113,30 +111,26 @@ export async function GET(req: NextRequest) {
   const topCategory =
     Object.entries(currentPeriod?.byCategory ?? {}).sort(([, a], [, b]) => b - a)[0]?.[0] ?? "—";
 
-  // 期間ごとの予測（今のペースが続いた場合の期末予測）
   const currentTotal = currentPeriod?.total ?? 0;
   const prevTotal = prevPeriod?.total ?? 0;
   let projectedTotal: number | null = null;
 
   if (period === "month" && currentTotal > 0) {
-    // 月: 固定費を除いた変動費ペースで推計
     const dayOfMonth = now.getDate();
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const variableSpend = Math.max(0, currentTotal - fixedCosts);
     projectedTotal = Math.round(fixedCosts + (variableSpend / dayOfMonth) * daysInMonth);
   } else if (period === "week" && currentTotal > 0) {
-    // 週: 今日が週の何日目か（月=1 ... 日=7）
     const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
     projectedTotal = Math.round((currentTotal / dayOfWeek) * 7);
   } else if (period === "year" && currentTotal > 0) {
-    // 年: 今年の何日目か
     const startOfYear = new Date(now.getFullYear(), 0, 1);
-    const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / 86400000) + 1;
+    const dayOfYear =
+      Math.floor((now.getTime() - startOfYear.getTime()) / 86400000) + 1;
     const daysInYear = new Date(now.getFullYear(), 1, 29).getMonth() === 1 ? 366 : 365;
     projectedTotal = Math.round((currentTotal / dayOfYear) * daysInYear);
   }
 
-  // 予測ベースの差額（Card2 に使用）
   const projectedDiff = projectedTotal != null ? projectedTotal - prevTotal : null;
 
   return NextResponse.json({

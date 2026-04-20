@@ -174,11 +174,11 @@ function WeekComparePopup({
         {/* Totals row */}
         <div className="grid grid-cols-2 border-b text-center">
           <div className="px-6 py-4 border-r">
-            <p className="text-xs text-muted-foreground mb-1">直近7日間</p>
+            <p className="text-sm text-muted-foreground mb-1">直近7日間</p>
             <p className="font-num text-lg font-semibold text-foreground">{formatVND(thisWeekTotal)}</p>
           </div>
           <div className="px-6 py-4">
-            <p className="text-xs text-muted-foreground mb-1">前の7日間</p>
+            <p className="text-sm text-muted-foreground mb-1">前の7日間</p>
             <p className="font-num text-lg font-semibold text-muted-foreground">{formatVND(lastWeekTotal)}</p>
           </div>
         </div>
@@ -202,7 +202,7 @@ function WeekComparePopup({
               <span className="font-num text-sm font-medium text-foreground text-right w-24">
                 {current > 0 ? formatVND(current) : "—"}
               </span>
-              <span className="font-num text-xs font-semibold text-right w-12"
+              <span className="font-num text-sm font-semibold text-right w-12"
                 style={{ color: diff === null ? "var(--kg-text-muted)" : diff <= 0 ? "var(--kg-success)" : "var(--kg-danger)" }}>
                 {diff !== null ? `${diff > 0 ? "+" : ""}${diff}%` : "—"}
               </span>
@@ -347,7 +347,7 @@ export default function Dashboard() {
             </p>
           )}
           {projVsTarget && (
-            <p className="mt-1 text-xs flex items-center gap-1"
+            <p className="mt-1 text-sm flex items-center gap-1"
               style={{ color: projVsTarget.ok ? "var(--kg-success)" : "var(--kg-danger)" }}>
               {projVsTarget.ok ? <TrendingDown size={12} /> : <TrendingUp size={12} />}
               {projVsTarget.text}
@@ -462,15 +462,15 @@ export default function Dashboard() {
           ) : feedback ? (
             <div className="space-y-3">
               <div className="rounded-xl p-4" style={{ backgroundColor: "var(--kg-surface-2)" }}>
-                <p className="text-xs font-medium mb-1.5 text-muted-foreground">今週の状況</p>
+                <p className="text-sm font-medium mb-1.5 text-muted-foreground">今週の状況</p>
                 <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{feedback.summary}</p>
               </div>
               <div className="rounded-xl p-4" style={{ backgroundColor: "var(--kg-surface-2)" }}>
-                <p className="text-xs font-medium mb-1.5" style={{ color: "var(--kg-accent)" }}>注目のポイント</p>
+                <p className="text-sm font-medium mb-1.5" style={{ color: "var(--kg-accent)" }}>注目のポイント</p>
                 <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{feedback.point}</p>
               </div>
               <div className="rounded-xl p-4" style={{ backgroundColor: "var(--kg-surface-2)" }}>
-                <p className="text-xs font-medium mb-1.5 text-muted-foreground">一言アドバイス</p>
+                <p className="text-sm font-medium mb-1.5 text-muted-foreground">一言アドバイス</p>
                 <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{feedback.tip}</p>
               </div>
             </div>

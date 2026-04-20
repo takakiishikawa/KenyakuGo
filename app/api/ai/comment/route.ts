@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createDb } from "@/lib/supabase/db";
+import { getAuthDb } from "@/lib/supabase/auth-db";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(req: NextRequest) {
+  const result = await getAuthDb();
+  if (result instanceof NextResponse) return result;
+  const { db } = result;
+
   const { type, data, periodKey } = await req.json();
-  const db = createDb();
 
   // キャッシュ確認（periodKey がある場合のみ）
   if (periodKey) {

@@ -1,14 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createDb } from "@/lib/supabase/db";
+import { getAuthDb } from "@/lib/supabase/auth-db";
 
 export async function POST(req: NextRequest) {
-  // store: 完全一致（既存）/ query: 部分一致テキスト（新規）
-  const { store, query, category } = await req.json();
-  if ((!store && !query) || !category) {
-    return NextResponse.json({ error: "store or query, and category required" }, { status: 400 });
-  }
+  const result = await getAuthDb();
+  if (result instanceof NextResponse) return result;
+  const { db } = result;
 
-  const db = createDb();
+  const body = await req.json();
+  const store = typeof body.store === "string" ? body.store.trim() : null;
+  const query = typeof body.query === "string" ? body.query.trim() : null;
+  const category = typeof body.category === "string" ? body.category.trim() : null;
+
+  if ((!store && !query) || !category) {
+    return NextResponse.json(
+      { error: "store or query, and category are required" },
+      { status: 400 }
+    );
+  }
 
   // カテゴリが存在しなければ追加
   const { data: existing } = await db
@@ -21,7 +29,6 @@ export async function POST(req: NextRequest) {
     await db.from("categories").insert({ name: category });
   }
 
-  // store: 完全一致 / query: 部分一致（大文字小文字無視）
   const updateQuery = db
     .from("transactions")
     .update({ category, reviewed: true })

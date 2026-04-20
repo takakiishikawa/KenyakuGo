@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createDb } from "@/lib/supabase/db";
+import { getAuthDb } from "@/lib/supabase/auth-db";
 
 export async function GET() {
-  const db = createDb();
+  const result = await getAuthDb();
+  if (result instanceof NextResponse) return result;
+  const { db } = result;
+
   const { data, error } = await db
     .from("categories")
     .select("id, name")
@@ -16,13 +19,16 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const { name } = await req.json();
-  const trimmed = name?.trim();
-  if (!trimmed) {
-    return NextResponse.json({ error: "name required" }, { status: 400 });
+  const result = await getAuthDb();
+  if (result instanceof NextResponse) return result;
+  const { db } = result;
+
+  const body = await req.json();
+  const trimmed = typeof body.name === "string" ? body.name.trim() : "";
+  if (!trimmed || trimmed.length > 50) {
+    return NextResponse.json({ error: "name must be 1–50 characters" }, { status: 400 });
   }
 
-  const db = createDb();
   const { data, error } = await db
     .from("categories")
     .insert({ name: trimmed })
@@ -30,7 +36,6 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) {
-    // unique 制約違反は 409
     if (error.code === "23505") {
       return NextResponse.json({ error: "already exists" }, { status: 409 });
     }

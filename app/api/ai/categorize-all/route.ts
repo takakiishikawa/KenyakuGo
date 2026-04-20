@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createDb } from "@/lib/supabase/db";
+import { getAuthDb } from "@/lib/supabase/auth-db";
+import { AI_CATEGORIZE_BATCH_SIZE } from "@/lib/constants";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export const maxDuration = 60;
 
 export async function POST() {
-  const db = createDb();
+  const result = await getAuthDb();
+  if (result instanceof NextResponse) return result;
+  const { db } = result;
 
-  // 「その他」かつ未レビューの取引を全件取得
   const { data: uncategorized, error } = await db
     .from("transactions")
     .select("id, store, amount")
@@ -23,12 +25,10 @@ export async function POST() {
   const txs = uncategorized ?? [];
   if (txs.length === 0) return NextResponse.json({ updated: 0, total: 0 });
 
-  // 既存カテゴリ一覧
   const { data: categoryRows } = await db.from("categories").select("name").order("created_at");
   const existingCategories = (categoryRows ?? []).map((r) => r.name);
   const existingCatSet = new Set(existingCategories);
 
-  // すでに分類済みの店名→カテゴリ マップを構築（その他以外）
   const { data: classified } = await db
     .from("transactions")
     .select("store, category")
@@ -41,29 +41,27 @@ export async function POST() {
     }
   }
 
-  // 転送・家賃パターンをルールベースで先に処理
+  // ルールベース処理（転送・家賃パターン）
   for (const tx of txs) {
     const store = tx.store?.trim() ?? "";
     const amount = tx.amount ?? 0;
     if (!store || storeMap[store]) continue;
     if (/chuyen|transfer|remit|remittance/i.test(store)) {
-      const isRent = amount === 9000000 || amount === 8000000;
-      storeMap[store] = isRent ? "家賃" : "転送";
+      storeMap[store] = amount === 9000000 || amount === 8000000 ? "家賃" : "転送";
     }
   }
 
-  // ユニーク未知店名（ルールベース済みを除く）
-  const unknownStores = [...new Set(
-    txs
-      .map((t) => t.store?.trim())
-      .filter((s): s is string => !!s && !storeMap[s])
-  )];
+  const unknownStores = [
+    ...new Set(
+      txs
+        .map((t) => t.store?.trim())
+        .filter((s): s is string => !!s && !storeMap[s])
+    ),
+  ];
 
-  // 100店名ずつバッチに分けて並列AI呼び出し
-  const BATCH_SIZE = 100;
   const batches: string[][] = [];
-  for (let i = 0; i < unknownStores.length; i += BATCH_SIZE) {
-    batches.push(unknownStores.slice(i, i + BATCH_SIZE));
+  for (let i = 0; i < unknownStores.length; i += AI_CATEGORIZE_BATCH_SIZE) {
+    batches.push(unknownStores.slice(i, i + AI_CATEGORIZE_BATCH_SIZE));
   }
 
   const batchResults = await Promise.all(
@@ -99,17 +97,17 @@ ${storeList}
             if (s.store && s.category) map[s.store.trim()] = s.category.trim();
           }
         }
-      } catch { /* バッチ失敗時はスキップ */ }
+      } catch {
+        // バッチ失敗時はスキップ
+      }
       return map;
     })
   );
 
-  // バッチ結果をマージ
   for (const batchMap of batchResults) {
     Object.assign(storeMap, batchMap);
   }
 
-  // 新カテゴリを一括作成
   const newCats = [...new Set(Object.values(storeMap))].filter(
     (c) => c !== "その他" && !existingCatSet.has(c)
   );
@@ -118,7 +116,6 @@ ${storeList}
     existingCatSet.add(cat);
   }
 
-  // カテゴリ別に対象店名をグループ化して一括更新
   const catToStores: Record<string, string[]> = {};
   for (const [store, cat] of Object.entries(storeMap)) {
     if (cat && cat !== "その他") {

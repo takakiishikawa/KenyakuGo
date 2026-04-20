@@ -1,20 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createDb } from "@/lib/supabase/db";
+import { getAuthDb } from "@/lib/supabase/auth-db";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const { category } = await req.json();
-  const db = createDb();
+  const result = await getAuthDb();
+  if (result instanceof NextResponse) return result;
+  const { db } = result;
 
-  const { data } = await db
+  const { id } = await params;
+  const body = await req.json();
+  const category = typeof body.category === "string" ? body.category.trim() : null;
+
+  if (!category) {
+    return NextResponse.json({ error: "category is required" }, { status: 400 });
+  }
+
+  const { data, error } = await db
     .from("transactions")
     .update({ category, reviewed: true })
     .eq("id", id)
     .select("id, store, amount, category, date")
     .single();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json(data);
 }

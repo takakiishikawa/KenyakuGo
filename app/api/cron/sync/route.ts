@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createDb, type Transaction } from "@/lib/supabase/db";
+import { createDb, type Transaction, type Settings } from "@/lib/supabase/db";
 import { listVietcombankMessageIds, fetchEmailBody } from "@/lib/gmail";
 import { parseVietcombankEmail } from "@/lib/parser";
 
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     .eq("id", "singleton")
     .maybeSingle();
 
-  const refreshToken = (settings as { google_refresh_token?: string } | null)
+  const refreshToken = (settings as Pick<Settings, "google_refresh_token"> | null)
     ?.google_refresh_token;
 
   if (!refreshToken) {

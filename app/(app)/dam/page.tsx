@@ -157,7 +157,7 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
 
         <div className="overflow-y-auto flex-1 px-7 py-6 space-y-5">
           <div>
-            <p className="text-xs mb-3 text-muted-foreground">
+            <p className="text-sm mb-3 text-muted-foreground">
               欲しいもの・やりたいことを自由に書いてください
             </p>
             <Textarea
@@ -168,7 +168,7 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
               className="resize-none"
               onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleGenerate(); }}
             />
-            <p className="text-xs mt-1.5 text-muted-foreground">⌘+Enter で送信</p>
+            <p className="text-sm mt-1.5 text-muted-foreground">⌘+Enter で送信</p>
           </div>
 
           <Button
@@ -218,10 +218,10 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
                       </span>
                     </div>
                     <p className="text-sm font-semibold" style={{ color: "var(--kg-text)" }}>{rec.title}</p>
-                    <p className="text-xs leading-5 flex-1 text-muted-foreground">{rec.description}</p>
+                    <p className="text-sm leading-6 flex-1 text-muted-foreground">{rec.description}</p>
                     {rec.link && (
                       <a href={rec.link} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all w-fit mt-1"
+                        className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-all w-fit mt-1"
                         style={{ backgroundColor: "rgba(82,183,136,0.12)", color: "var(--kg-accent)" }}
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(82,183,136,0.2)"; }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(82,183,136,0.12)"; }}>

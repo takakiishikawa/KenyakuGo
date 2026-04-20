@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createDb, type Transaction } from "@/lib/supabase/db";
+import { getAuthDb } from "@/lib/supabase/auth-db";
+import { type Transaction } from "@/lib/supabase/db";
 
-export const maxDuration = 60; // Vercel タイムアウト延長
+export const maxDuration = 60;
 
-// データ開始日（実際の最古レコードより少し前に設定）
-const DATA_START = new Date(2024, 2, 1); // 2024-03-01
+const DATA_START = new Date(2024, 2, 1);
 
 function getWeekRange(date: Date) {
   const day = date.getDay();
@@ -25,11 +25,13 @@ function getMonthRange(date: Date) {
 }
 
 export async function GET(req: NextRequest) {
+  const result = await getAuthDb();
+  if (result instanceof NextResponse) return result;
+  const { db } = result;
+
   const { searchParams } = new URL(req.url);
   const period = searchParams.get("period") ?? "all";
   const category = searchParams.get("category");
-
-  const db = createDb();
   const now = new Date();
 
   type TxRow = Pick<Transaction, "id" | "store" | "amount" | "category" | "date">;
@@ -47,9 +49,6 @@ export async function GET(req: NextRequest) {
     return q;
   };
 
-  // 全期間: 週単位の並列クエリで Supabase 1000行制限を回避
-  // 月単位では1ヶ月に1000件超の場合に切れるため、週単位（7日）に分割
-  // allSettled を使い、一部クエリが失敗しても取得できた週のデータは返す
   if (period === "all") {
     const weekBuckets: { start: Date; end: Date }[] = [];
     const cursor = new Date(DATA_START);
@@ -69,8 +68,9 @@ export async function GET(req: NextRequest) {
     );
 
     const data: TxRow[] = results
-      .filter((r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof buildQuery>>> =>
-        r.status === "fulfilled"
+      .filter(
+        (r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof buildQuery>>> =>
+          r.status === "fulfilled"
       )
       .flatMap((r) => (r.value.data ?? []) as TxRow[])
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -78,11 +78,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(data);
   }
 
-  // 週・月は単一クエリで十分
   let range: { start: Date; end: Date } | null = null;
   if (period === "week") range = getWeekRange(now);
   else if (period === "month") range = getMonthRange(now);
 
-  const { data } = await buildQuery(range?.start, range?.end);
+  const { data, error } = await buildQuery(range?.start, range?.end);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json((data ?? []) as TxRow[]);
 }

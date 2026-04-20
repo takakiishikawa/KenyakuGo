@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-import { createDb } from "@/lib/supabase/db";
+import { getAuthDb } from "@/lib/supabase/auth-db";
 
 export async function GET() {
-  const db = createDb();
+  const result = await getAuthDb();
+  if (result instanceof NextResponse) return result;
+  const { db } = result;
 
   const { data, error } = await db
     .from("transactions")

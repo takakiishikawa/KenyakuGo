@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createDb, type Transaction } from "@/lib/supabase/db";
+import { createDb, type Transaction, type Settings } from "@/lib/supabase/db";
+import { GMAIL_SYNC_BATCH_SIZE } from "@/lib/constants";
 import { listVietcombankMessageIds, fetchEmailBody } from "@/lib/gmail";
 import { parseVietcombankEmail } from "@/lib/parser";
 
@@ -27,7 +28,7 @@ export async function GET() {
         .eq("id", "singleton")
         .maybeSingle();
 
-      const refreshToken = (settings as { google_refresh_token?: string } | null)
+      const refreshToken = (settings as Pick<Settings, "google_refresh_token"> | null)
         ?.google_refresh_token;
 
       if (!refreshToken) {
@@ -95,11 +96,10 @@ export async function GET() {
       page++;
     }
 
-    // 3. 新規IDのみ抽出（1回あたり最大200件でタイムアウト回避）
+    // 3. 新規IDのみ抽出（タイムアウト回避のため最大GMAIL_SYNC_BATCH_SIZE件）
     const allNewIds = allIds.filter((id) => !existingIds.has(id));
-    const BATCH = 200;
-    const newIds = allNewIds.slice(0, BATCH);
-    const remaining = Math.max(0, allNewIds.length - BATCH);
+    const newIds = allNewIds.slice(0, GMAIL_SYNC_BATCH_SIZE);
+    const remaining = Math.max(0, allNewIds.length - GMAIL_SYNC_BATCH_SIZE);
 
     let synced = 0;
     let insertError: string | null = null;

@@ -141,9 +141,9 @@ export default function ReportPage() {
             </p>
           )}
           {projVsTarget && (
-            <p className="mt-1 text-xs flex items-center gap-1"
+            <p className="mt-1 text-sm flex items-center gap-1"
               style={{ color: projVsTarget.ok ? "var(--kg-success)" : "var(--kg-danger)" }}>
-              {projVsTarget.ok ? <TrendingDown size={11} /> : <TrendingUp size={11} />}
+              {projVsTarget.ok ? <TrendingDown size={12} /> : <TrendingUp size={12} />}
               {projVsTarget.text}
             </p>
           )}
@@ -165,7 +165,7 @@ export default function ReportPage() {
             </p>
           )}
           {projected != null && (
-            <p className="text-xs mt-1 text-muted-foreground" style={{ opacity: 0.7 }}>
+            <p className="text-sm mt-1 text-muted-foreground" style={{ opacity: 0.8 }}>
               {period === "week" ? "今週" : period === "month" ? "今月" : "今年"}の予測: {formatVND(projected)}
             </p>
           )}
@@ -232,13 +232,13 @@ export default function ReportPage() {
         ) : feedback ? (
           <div className="space-y-3">
             <div className="rounded-xl p-4" style={{ backgroundColor: "var(--kg-surface-2)" }}>
-              <p className="text-xs font-medium mb-2 text-muted-foreground">まとめ</p>
+              <p className="text-sm font-medium mb-2 text-muted-foreground">まとめ</p>
               <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{feedback.analysis}</p>
             </div>
 
             {feedback.savingsCategory && (
               <div className="rounded-xl p-4" style={{ backgroundColor: "rgba(255,183,77,0.07)", border: "1px solid rgba(255,183,77,0.15)" }}>
-                <p className="text-xs font-medium mb-2" style={{ color: "var(--kg-warning)" }}>少し使いすぎかも</p>
+                <p className="text-sm font-medium mb-2" style={{ color: "var(--kg-warning)" }}>少し使いすぎかも</p>
                 <p className="text-base font-semibold mb-1" style={{ color: "var(--kg-warning)" }}>{feedback.savingsCategory}</p>
                 <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{feedback.savingsReason}</p>
               </div>
@@ -246,7 +246,7 @@ export default function ReportPage() {
 
             {feedback.savingsSuggestion && (
               <div className="rounded-xl p-4" style={{ backgroundColor: "var(--kg-surface-2)" }}>
-                <p className="text-xs font-medium mb-3 text-muted-foreground">こうしてみては？</p>
+                <p className="text-sm font-medium mb-3 text-muted-foreground">こうしてみては？</p>
                 <div className="space-y-2.5">
                   {feedback.savingsSuggestion
                     .split("\n")

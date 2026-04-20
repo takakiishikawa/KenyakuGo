@@ -27,6 +27,7 @@ export interface Settings {
   id: string;
   target_monthly: number;
   fixed_costs: number;
+  google_refresh_token?: string;
   updated_at: string;
 }
 

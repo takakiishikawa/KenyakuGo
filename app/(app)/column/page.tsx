@@ -86,7 +86,7 @@ export default function ColumnPage() {
           <div>
             <p className="text-sm font-medium" style={{ color: "var(--kg-text)" }}>{quote.author}</p>
             {quote.bio && (
-              <p className="text-xs leading-5 mt-1 text-muted-foreground">{quote.bio}</p>
+              <p className="text-sm leading-6 mt-1 text-muted-foreground">{quote.bio}</p>
             )}
           </div>
         </div>
@@ -136,7 +136,7 @@ export default function ColumnPage() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold mb-1" style={{ color: "var(--kg-text)" }}>{h.title}</p>
-                  <p className="text-xs leading-5" style={{ color: "var(--kg-text-secondary)" }}>{h.desc}</p>
+                  <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{h.desc}</p>
                 </div>
               </div>
             );

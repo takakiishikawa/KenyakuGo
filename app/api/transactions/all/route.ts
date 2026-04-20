@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
-import { createDb } from "@/lib/supabase/db";
+import { getAuthDb } from "@/lib/supabase/auth-db";
 
 export async function DELETE() {
-  const db = createDb();
-  // Supabase requires a filter — .not("id","is",null) matches all rows
-  await db.from("transactions").delete().not("id", "is", null);
+  const result = await getAuthDb();
+  if (result instanceof NextResponse) return result;
+  const { db } = result;
+
+  const { error } = await db.from("transactions").delete().not("id", "is", null);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }

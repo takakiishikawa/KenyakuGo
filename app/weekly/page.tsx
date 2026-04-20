@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer } from "recharts";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { formatVND } from "@/lib/format";
-import { Badge, Card, PageHeader, Skeleton, Tabs, TabsList, TabsTrigger } from "@takaki/go-design-system";
+import {
+  Badge, Card, PageHeader, Skeleton, Tabs, TabsList, TabsTrigger,
+  ChartContainer, ChartTooltip, ChartTooltipContent,
+  type ChartConfig,
+} from "@takaki/go-design-system";
 
 interface PeriodItem { label: string; total: number; byCategory: Record<string, number>; }
 interface ReportData {
@@ -42,23 +46,6 @@ const LABELS: Record<Period, {current:string;prev:string}> = {
 };
 const LINE_COLORS = ["#52B788","#FFB74D","#C084FC","#38BDF8","#F87171"];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-xl px-4 py-3 text-sm space-y-1"
-      style={{ backgroundColor: "var(--kg-surface-2)", border: "1px solid var(--kg-border-medium)", color: "var(--kg-text)", boxShadow: "0 8px 24px rgba(0,0,0,0.2)" }}>
-      <p className="font-medium mb-2" style={{ color: "var(--kg-accent)" }}>{label}</p>
-      {payload.map((e: {name:string;value:number;color:string}) => (
-        <div key={e.name} className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: e.color }} />
-          <span className="text-muted-foreground">{e.name}</span>
-          <span className="font-num font-medium ml-auto pl-4">{formatVND(e.value)}</span>
-        </div>
-      ))}
-    </div>
-  );
-};
 
 export default function ReportPage() {
   const [period, setPeriod] = useState<Period>("week");
@@ -98,6 +85,14 @@ export default function ReportPage() {
     ...Object.fromEntries((data.topCategories ?? []).map((cat) => [cat, p.byCategory[cat] ?? 0])),
   })) ?? [];
 
+  const chartConfig = useMemo<ChartConfig>(() => {
+    const cfg: ChartConfig = { 合計: { label: "合計", color: "var(--color-border-strong)" } };
+    (data?.topCategories ?? []).forEach((cat, i) => {
+      cfg[cat] = { label: cat, color: LINE_COLORS[i % LINE_COLORS.length] };
+    });
+    return cfg;
+  }, [data?.topCategories]);
+
   const labels = LABELS[period];
 
   const projected = data?.projectedTotal ?? null;
@@ -119,20 +114,19 @@ export default function ReportPage() {
 
   return (
     <div>
-      <PageHeader
-        title="レポート"
-        actions={
-          <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
-            <TabsList>
-              <TabsTrigger value="week">今週</TabsTrigger>
-              <TabsTrigger value="month">今月</TabsTrigger>
-              <TabsTrigger value="year">年</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        }
-      />
+      <PageHeader title="レポート" />
 
-      <div className="mt-8 grid grid-cols-3 gap-5 mb-8">
+      <div className="mt-6 mb-8">
+        <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
+          <TabsList>
+            <TabsTrigger value="week">今週</TabsTrigger>
+            <TabsTrigger value="month">今月</TabsTrigger>
+            <TabsTrigger value="year">年</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      <div className="grid grid-cols-3 gap-5 mb-8">
         <Card className="p-7 animate-fade-up" style={{ animationDelay: "0ms", animationFillMode: "both" }}>
           <p className="text-xs font-medium uppercase tracking-widest mb-3 text-muted-foreground">{labels.current}の出費</p>
           <p className="font-num text-3xl font-semibold leading-none" style={{ color: "var(--kg-text)" }}>
@@ -194,20 +188,26 @@ export default function ReportPage() {
           使い道の推移（上位5カテゴリ）
         </p>
         {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={320}>
+          <ChartContainer config={chartConfig} className="aspect-auto h-[320px] w-full">
             <LineChart data={chartData}>
-              <CartesianGrid stroke="var(--kg-border-subtle)" strokeDasharray="0" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 13, fill: "var(--kg-text-muted)" }} axisLine={{ stroke: "var(--kg-border)" }} tickLine={false} />
-              <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 13, fill: "var(--kg-text-muted)" }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ fontSize: 13, color: "var(--kg-text-muted)", paddingTop: 16 }} />
-              <Line type="monotone" dataKey="合計" stroke="var(--kg-border-medium)" strokeWidth={2} strokeDasharray="5 4" dot={false} />
+              <CartesianGrid stroke="var(--color-border-subtle)" strokeDasharray="0" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 13, fill: "var(--color-text-subtle)" }} axisLine={{ stroke: "var(--color-border-default)" }} tickLine={false} />
+              <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 13, fill: "var(--color-text-subtle)" }} axisLine={false} tickLine={false} />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    formatter={(value) => formatVND(value as number)}
+                  />
+                }
+              />
+              <Legend wrapperStyle={{ fontSize: 13, color: "var(--color-text-subtle)", paddingTop: 16 }} />
+              <Line type="monotone" dataKey="合計" stroke="var(--color-border-strong)" strokeWidth={2} strokeDasharray="5 4" dot={false} />
               {(data?.topCategories ?? []).map((cat, i) => (
                 <Line key={cat} type="monotone" dataKey={cat} stroke={LINE_COLORS[i % LINE_COLORS.length]} strokeWidth={2}
                   dot={{ r: 3, fill: LINE_COLORS[i % LINE_COLORS.length] }} activeDot={{ r: 5 }} />
               ))}
             </LineChart>
-          </ResponsiveContainer>
+          </ChartContainer>
         ) : (
           <div className="flex items-center justify-center h-64">
             <p className="text-sm text-muted-foreground">データがありません</p>

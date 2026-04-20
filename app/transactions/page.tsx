@@ -8,7 +8,7 @@ import {
   Button, Card, Input,
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
   Tabs, TabsList, TabsTrigger,
-  PageHeader,
+  PageHeader, Tag,
 } from "@takaki/go-design-system";
 
 interface Transaction {
@@ -31,16 +31,12 @@ function CategoryBadge({ category }: { category: string }) {
   const { bg, text } = getCategoryColors(category);
   const isUncategorized = category === "その他";
   return (
-    <span
-      className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap"
-      style={{
-        backgroundColor: isUncategorized ? "rgba(239,83,80,0.12)" : bg,
-        color: isUncategorized ? "var(--kg-danger)" : text,
-        border: `1px solid ${isUncategorized ? "rgba(239,83,80,0.25)" : "transparent"}`,
-      }}
+    <Tag
+      color={isUncategorized ? "danger" : undefined}
+      style={isUncategorized ? undefined : { backgroundColor: bg, color: text, borderColor: "transparent" }}
     >
       {isUncategorized ? "未分類" : category}
-    </span>
+    </Tag>
   );
 }
 
@@ -232,7 +228,7 @@ export default function TransactionsPage() {
 
       {/* 要確認ストア */}
       {uncategorizedStores.length > 0 && (
-        <Card className="mt-8 mb-6" style={{ border: "1px solid rgba(255,183,77,0.2)", background: "rgba(255,183,77,0.04)" }}>
+        <Card className="mt-6 mb-6" style={{ border: "1px solid rgba(255,183,77,0.2)", background: "rgba(255,183,77,0.04)" }}>
           <div className="px-6 py-4 border-b" style={{ borderColor: "rgba(255,183,77,0.15)" }}>
             <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-warning)" }}>
               ⚠ 要確認ストア（{uncategorizedStores.length}件）
@@ -273,8 +269,28 @@ export default function TransactionsPage() {
         </Card>
       )}
 
+      {/* Filters row: Tabs + Select */}
+      <div className="flex items-center gap-4 mb-4 mt-6">
+        <Tabs value={period} onValueChange={setPeriod}>
+          <TabsList>
+            <TabsTrigger value="week">今週</TabsTrigger>
+            <TabsTrigger value="month">今月</TabsTrigger>
+            <TabsTrigger value="all">全期間</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">すべてのカテゴリ</SelectItem>
+            {categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* 検索 + カテゴリ追加 */}
-      <div className={`flex gap-3 mb-5 ${uncategorizedStores.length === 0 ? "mt-8" : ""}`}>
+      <div className="flex gap-3 mb-4">
         <div className="relative flex-1" style={{ maxWidth: 320 }}>
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
@@ -352,26 +368,6 @@ export default function TransactionsPage() {
           </Button>
         </div>
       )}
-
-      {/* Filters */}
-      <div className="flex gap-4 mb-6">
-        <Tabs value={period} onValueChange={setPeriod}>
-          <TabsList>
-            <TabsTrigger value="week">今週</TabsTrigger>
-            <TabsTrigger value="month">今月</TabsTrigger>
-            <TabsTrigger value="all">全期間</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">すべてのカテゴリ</SelectItem>
-            {categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
 
       <Card>
         <div className="px-7 py-5 border-b" style={{ borderColor: "var(--kg-border-subtle)" }}>

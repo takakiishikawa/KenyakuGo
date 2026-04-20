@@ -62,7 +62,6 @@ export async function GET() {
 
   const targetMonthly = settings?.target_monthly ?? 0;
   const fixedCosts = settings?.fixed_costs ?? 0;
-  const damBalance = targetMonthly - thisMonthTotal;
 
   // 月末予測（固定費は1回払いとして除外してペース推計）
   const dayOfMonth = now.getDate();
@@ -71,6 +70,41 @@ export async function GET() {
   const projectedMonthTotal = thisMonthTotal > 0
     ? Math.round(fixedCosts + (variableSpend / dayOfMonth) * daysInMonth)
     : null;
+
+  // Cumulative dam balance (matches dam page logic)
+  const DAM_START = new Date(2026, 3, 1); // April 1, 2026
+  const allMonthsRes = await db
+    .from("transactions")
+    .select("amount, date")
+    .gt("amount", 0)
+    .gte("date", DAM_START.toISOString());
+
+  const allMonthTxs = (allMonthsRes.data ?? []) as Pick<Transaction, "amount" | "date">[];
+  const spendMap: Record<string, number> = {};
+  for (const tx of allMonthTxs) {
+    const d = new Date(tx.date);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    spendMap[key] = (spendMap[key] ?? 0) + tx.amount;
+  }
+
+  let cumulativeBalance = 0;
+  let cursor = new Date(DAM_START);
+  while (cursor <= now) {
+    const year = cursor.getFullYear();
+    const month = cursor.getMonth();
+    const key = `${year}-${String(month + 1).padStart(2, "0")}`;
+    const spent = spendMap[key] ?? 0;
+    const isCurrent = year === now.getFullYear() && month === now.getMonth();
+    let projected: number;
+    if (isCurrent && spent > 0) {
+      const variableSpendMonth = Math.max(0, spent - fixedCosts);
+      projected = Math.round(fixedCosts + (variableSpendMonth / dayOfMonth) * daysInMonth);
+    } else {
+      projected = spent;
+    }
+    cumulativeBalance += targetMonthly - projected;
+    cursor = new Date(year, month + 1, 1);
+  }
 
   const categoryMap: Record<string, number> = {};
   for (const tx of last7Txs) {
@@ -91,7 +125,7 @@ export async function GET() {
     thisWeekTotal: last7Total,
     lastWeekTotal: prev7Total,
     weekDiff,
-    damBalance,
+    cumulativeBalance,
     targetMonthly,
     categoryBreakdown,
     prevCategoryBreakdown: prevCategoryMap,

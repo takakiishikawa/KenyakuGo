@@ -4,6 +4,12 @@ import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { formatVND, formatDateWithYear } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
+import {
+  Button, Card, Input,
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+  Tabs, TabsList, TabsTrigger,
+  PageHeader,
+} from "@takaki/go-design-system";
 
 interface Transaction {
   id: string;
@@ -179,16 +185,6 @@ export default function TransactionsPage() {
     }
   };
 
-  const selectStyle = {
-    backgroundColor: "var(--kg-surface-2)",
-    border: "1px solid var(--kg-border-medium)",
-    color: "var(--kg-text)",
-    borderRadius: "8px",
-    padding: "6px 10px",
-    fontSize: "14px",
-    outline: "none",
-  };
-
   const filteredTransactions = searchQuery.trim()
     ? transactions.filter((tx) => tx.store.toLowerCase().includes(searchQuery.toLowerCase()))
     : transactions;
@@ -197,49 +193,46 @@ export default function TransactionsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-10">
-        <h1 className="text-3xl font-semibold" style={{ color: "var(--kg-text)" }}>取引一覧</h1>
-        <div className="flex gap-3">
-          {/* 要確認リスト */}
-          {allCategorized ? (
-            <div className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-xl font-medium"
-              style={{ color: "var(--kg-success)", backgroundColor: "rgba(82,183,136,0.08)", border: "1px solid rgba(82,183,136,0.2)" }}>
-              <span>✓</span>
-              <span>全て分類済み</span>
-            </div>
-          ) : (
-            <button
-              onClick={fetchUncategorizedStores}
-              disabled={reviewLoading}
-              className="px-4 py-2 text-sm rounded-xl font-medium transition-all disabled:opacity-50"
-              style={{
-                border: `1px solid ${uncategorizedCount && uncategorizedCount > 0 ? "rgba(255,183,77,0.35)" : "var(--kg-border-medium)"}`,
-                color: uncategorizedCount && uncategorizedCount > 0 ? "var(--kg-warning)" : "var(--kg-text-muted)",
-                backgroundColor: uncategorizedCount && uncategorizedCount > 0 ? "rgba(255,183,77,0.08)" : "transparent",
-              }}
+      <PageHeader
+        title="取引一覧"
+        actions={
+          <div className="flex gap-2">
+            {allCategorized ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md font-medium"
+                style={{ color: "var(--kg-success)", backgroundColor: "rgba(82,183,136,0.08)", border: "1px solid rgba(82,183,136,0.2)" }}>
+                <span>✓</span>
+                <span>全て分類済み</span>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchUncategorizedStores}
+                disabled={reviewLoading}
+                style={uncategorizedCount && uncategorizedCount > 0 ? {
+                  borderColor: "rgba(255,183,77,0.35)",
+                  color: "var(--kg-warning)",
+                  backgroundColor: "rgba(255,183,77,0.08)",
+                } : undefined}
+              >
+                {reviewLoading ? "読込中..." : `要確認リスト${uncategorizedCount ? `（${uncategorizedCount}）` : ""}`}
+              </Button>
+            )}
+            <Button
+              size="sm"
+              onClick={handleCategorizeAll}
+              disabled={categorizing || allCategorized}
+              variant={allCategorized ? "outline" : "default"}
             >
-              {reviewLoading ? "読込中..." : `要確認リスト${uncategorizedCount ? `（${uncategorizedCount}）` : ""}`}
-            </button>
-          )}
-          {/* AI一括分類 */}
-          <button
-            onClick={handleCategorizeAll}
-            disabled={categorizing || allCategorized}
-            className="px-4 py-2 text-sm rounded-xl font-medium transition-all disabled:opacity-50"
-            style={{
-              backgroundColor: allCategorized ? "transparent" : "var(--kg-accent)",
-              color: allCategorized ? "var(--kg-text-muted)" : "var(--kg-bg)",
-              border: allCategorized ? "1px solid var(--kg-border)" : "none",
-            }}
-          >
-            {categorizing ? "分類中..." : allCategorized ? "AI一括分類" : "AI一括分類"}
-          </button>
-        </div>
-      </div>
+              {categorizing ? "分類中..." : "AI一括分類"}
+            </Button>
+          </div>
+        }
+      />
 
       {/* 要確認ストア */}
       {uncategorizedStores.length > 0 && (
-        <div className="kg-card-static mb-6" style={{ border: "1px solid rgba(255,183,77,0.2)", background: "rgba(255,183,77,0.04)" }}>
+        <Card className="mt-8 mb-6" style={{ border: "1px solid rgba(255,183,77,0.2)", background: "rgba(255,183,77,0.04)" }}>
           <div className="px-6 py-4 border-b" style={{ borderColor: "rgba(255,183,77,0.15)" }}>
             <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-warning)" }}>
               ⚠ 要確認ストア（{uncategorizedStores.length}件）
@@ -249,7 +242,7 @@ export default function TransactionsPage() {
             <div key={s.store} className="flex items-center gap-3 px-6 py-3 border-b last:border-0" style={{ borderColor: "rgba(255,183,77,0.1)" }}>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate" style={{ color: "var(--kg-text)" }}>{s.store}</p>
-                <p className="text-xs" style={{ color: "var(--kg-text-muted)" }}>{s.count}件 · {formatVND(s.totalAmount)}</p>
+                <p className="text-xs text-muted-foreground">{s.count}件 · {formatVND(s.totalAmount)}</p>
               </div>
               {s.hint && (
                 <span className="text-xs px-2 py-1 rounded-full whitespace-nowrap"
@@ -257,135 +250,132 @@ export default function TransactionsPage() {
                   {s.hint}
                 </span>
               )}
-              <select
-                value={reviewSelections[s.store] ?? ""}
-                onChange={(e) => setReviewSelections((prev) => ({ ...prev, [s.store]: e.target.value }))}
-                style={{ ...selectStyle, minWidth: 140 }}
+              <Select
+                value={reviewSelections[s.store] || undefined}
+                onValueChange={(val) => setReviewSelections((prev) => ({ ...prev, [s.store]: val }))}
               >
-                <option value="">カテゴリ選択</option>
-                {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-              </select>
-              <button
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="カテゴリ選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
                 onClick={() => handleApplyStore(s.store)}
                 disabled={!reviewSelections[s.store] || applyingStore === s.store}
-                className="px-3 py-1.5 text-xs rounded-lg font-medium disabled:opacity-40 whitespace-nowrap"
-                style={{ backgroundColor: "var(--kg-accent)", color: "var(--kg-bg)" }}
               >
                 {applyingStore === s.store ? "適用中..." : "全件適用"}
-              </button>
+              </Button>
             </div>
           ))}
-        </div>
+        </Card>
       )}
 
       {/* 検索 + カテゴリ追加 */}
-      <div className="flex gap-3 mb-5">
+      <div className={`flex gap-3 mb-5 ${uncategorizedStores.length === 0 ? "mt-8" : ""}`}>
         <div className="relative flex-1" style={{ maxWidth: 320 }}>
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: "var(--kg-text-muted)" }}>
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
           </svg>
-          <input
+          <Input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="店名で検索..."
-            className="kg-input"
-            style={{ paddingLeft: 36, width: "100%" }}
+            className="pl-9"
           />
         </div>
         {showAddCategory ? (
           <div className="flex gap-2">
-            <input
+            <Input
               type="text"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleAddCategory(); if (e.key === "Escape") { setShowAddCategory(false); setNewCategoryName(""); } }}
               placeholder="カテゴリ名..."
               autoFocus
-              className="kg-input"
-              style={{ width: 180 }}
+              className="w-44"
             />
-            <button
+            <Button
               onClick={handleAddCategory}
               disabled={addingCategory || !newCategoryName.trim()}
-              className="px-4 py-2 text-sm rounded-xl font-medium transition-all disabled:opacity-40"
-              style={{ backgroundColor: "var(--kg-accent)", color: "var(--kg-bg)" }}
+              size="sm"
             >
               {addingCategory ? "..." : "追加"}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => { setShowAddCategory(false); setNewCategoryName(""); }}
-              className="px-3 py-2 text-sm rounded-xl transition-all"
-              style={{ color: "var(--kg-text-muted)", border: "1px solid var(--kg-border)" }}
             >
               ✕
-            </button>
+            </Button>
           </div>
         ) : (
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setShowAddCategory(true)}
-            className="px-4 py-2 text-sm rounded-xl font-medium transition-all whitespace-nowrap"
-            style={{ backgroundColor: "var(--kg-surface-2)", color: "var(--kg-text-muted)", border: "1px solid var(--kg-border-medium)" }}
           >
             + カテゴリ追加
-          </button>
+          </Button>
         )}
       </div>
 
-      {/* 一括カテゴリ変更バナー（検索中のみ表示） */}
+      {/* 一括カテゴリ変更バナー */}
       {searchQuery.trim() && filteredTransactions.length > 0 && (
-        <div className="flex items-center gap-3 px-5 py-3 mb-4 rounded-xl"
+        <div className="flex items-center gap-3 px-5 py-3 mb-4 rounded-md"
           style={{ backgroundColor: "rgba(82,183,136,0.06)", border: "1px solid rgba(82,183,136,0.2)" }}>
-          <p className="text-sm flex-1" style={{ color: "var(--kg-text-muted)" }}>
-            <span className="font-medium" style={{ color: "var(--kg-text)" }}>「{searchQuery}」</span>
+          <p className="text-sm flex-1 text-muted-foreground">
+            <span className="font-medium text-foreground">「{searchQuery}」</span>
             を含む{filteredTransactions.length}件を一括変更:
           </p>
-          <select
-            value={bulkCategory}
-            onChange={(e) => setBulkCategory(e.target.value)}
-            style={{ ...selectStyle, minWidth: 150 }}
+          <Select
+            value={bulkCategory || undefined}
+            onValueChange={setBulkCategory}
           >
-            <option value="">カテゴリ選択</option>
-            {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-          </select>
-          <button
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="カテゴリ選択" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
             onClick={handleBulkApply}
             disabled={!bulkCategory || bulkApplying}
-            className="px-4 py-2 text-sm rounded-xl font-medium transition-all disabled:opacity-40 whitespace-nowrap"
-            style={{ backgroundColor: "var(--kg-accent)", color: "var(--kg-bg)" }}
           >
             {bulkApplying ? "変更中..." : "一括変更"}
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Filters */}
       <div className="flex gap-4 mb-6">
-        <div className="flex rounded-xl overflow-hidden" style={{ border: "1px solid var(--kg-border)", backgroundColor: "var(--kg-surface)" }}>
-          {[{ value: "week", label: "今週" }, { value: "month", label: "今月" }, { value: "all", label: "全期間" }].map((tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setPeriod(tab.value)}
-              className="px-5 py-2 text-sm font-medium transition-all"
-              style={{
-                backgroundColor: period === tab.value ? "var(--kg-accent)" : "transparent",
-                color: period === tab.value ? "var(--kg-bg)" : "var(--kg-text-muted)",
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={selectStyle}>
-          <option value="all">すべてのカテゴリ</option>
-          {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-        </select>
+        <Tabs value={period} onValueChange={setPeriod}>
+          <TabsList>
+            <TabsTrigger value="week">今週</TabsTrigger>
+            <TabsTrigger value="month">今月</TabsTrigger>
+            <TabsTrigger value="all">全期間</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">すべてのカテゴリ</SelectItem>
+            {categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* List */}
-      <div className="kg-card-static">
+      <Card>
         <div className="px-7 py-5 border-b" style={{ borderColor: "var(--kg-border-subtle)" }}>
-          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             {filteredTransactions.length}件の取引{searchQuery.trim() ? ` — 「${searchQuery}」で絞り込み中` : ""}
           </p>
         </div>
@@ -414,23 +404,25 @@ export default function TransactionsPage() {
                 >
                   {isEditing ? (
                     <div className="flex items-center gap-2">
-                      <select
+                      <Select
                         value={editCategory}
-                        onChange={(e) => setEditCategory(e.target.value)}
-                        autoFocus
-                        style={{ ...selectStyle, minWidth: 130 }}
+                        onValueChange={setEditCategory}
                       >
-                        {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
-                      </select>
-                      <button
+                        <SelectTrigger className="w-36">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        size="sm"
                         onClick={() => handleSaveCategory(tx)}
                         disabled={savingId === tx.id}
-                        className="px-2.5 py-1 text-xs rounded-lg font-medium disabled:opacity-40"
-                        style={{ backgroundColor: "var(--kg-accent)", color: "var(--kg-bg)" }}
                       >
                         {savingId === tx.id ? "…" : "保存"}
-                      </button>
-                      <button onClick={() => setEditingId(null)} className="px-2 py-1 text-xs rounded-lg" style={{ color: "var(--kg-text-muted)" }}>✕</button>
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>✕</Button>
                     </div>
                   ) : (
                     <button onClick={() => { setEditingId(tx.id); setEditCategory(tx.category); }} className="cursor-pointer">
@@ -440,18 +432,18 @@ export default function TransactionsPage() {
                   <span className="text-sm font-medium flex-1 truncate" style={{ color: "var(--kg-text)" }}>{tx.store}</span>
                   <div className="text-right shrink-0">
                     <p className="text-sm font-num font-semibold" style={{ color: "var(--kg-text)" }}>{formatVND(tx.amount)}</p>
-                    <p className="text-xs mt-0.5" style={{ color: "var(--kg-text-muted)" }}>{formatDateWithYear(tx.date)}</p>
+                    <p className="text-xs mt-0.5 text-muted-foreground">{formatDateWithYear(tx.date)}</p>
                   </div>
                 </div>
               );
             })}
           </div>
         ) : (
-          <p className="text-center py-16 text-sm" style={{ color: "var(--kg-text-muted)" }}>
+          <p className="text-center py-16 text-sm text-muted-foreground">
             {searchQuery.trim() ? `「${searchQuery}」に一致する取引はありません` : "取引データがありません"}
           </p>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

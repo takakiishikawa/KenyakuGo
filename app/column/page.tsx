@@ -1,6 +1,7 @@
 "use client";
 
 import { Brain, Zap, Quote, Lightbulb, Clock, ShoppingCart, RefreshCw, Target, Users, Star } from "lucide-react";
+import { Badge, Card, PageHeader } from "@takaki/go-design-system";
 
 const QUOTES = [
   { text: "収入を上げるより、支出を下げる方が確実で、即効性がある。", author: "倹約家の格言", bio: null },
@@ -61,16 +62,14 @@ export default function ColumnPage() {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-10">
-        <h1 className="text-3xl font-semibold" style={{ color: "var(--kg-text)" }}>マインドセット</h1>
-        <span className="text-xs px-2.5 py-1 rounded-full font-medium"
-          style={{ backgroundColor: "rgba(82,183,136,0.12)", color: "var(--kg-accent)" }}>
-          Learn
-        </span>
-      </div>
+      <PageHeader
+        title="マインドセット"
+        actions={
+          <Badge className="bg-primary/10 text-primary border-0">Learn</Badge>
+        }
+      />
 
-      {/* 今日の格言 */}
-      <div className="kg-card-static p-8 mb-6 animate-fade-up"
+      <Card className="p-8 mt-8 mb-6 animate-fade-up"
         style={{ background: "linear-gradient(135deg, rgba(82,183,136,0.06) 0%, rgba(45,106,79,0.03) 100%)", border: "1px solid rgba(82,183,136,0.15)" }}>
         <div className="flex items-center gap-2 mb-5">
           <Quote size={15} style={{ color: "var(--kg-accent)" }} />
@@ -87,23 +86,22 @@ export default function ColumnPage() {
           <div>
             <p className="text-sm font-medium" style={{ color: "var(--kg-text)" }}>{quote.author}</p>
             {quote.bio && (
-              <p className="text-xs leading-5 mt-1" style={{ color: "var(--kg-text-muted)" }}>{quote.bio}</p>
+              <p className="text-xs leading-5 mt-1 text-muted-foreground">{quote.bio}</p>
             )}
           </div>
         </div>
-      </div>
+      </Card>
 
-      {/* 倹約の哲学 */}
       <div className="mb-6 animate-fade-up" style={{ animationDelay: "60ms" }}>
         <div className="flex items-center gap-2 mb-4">
-          <Brain size={15} style={{ color: "var(--kg-text-muted)" }} />
-          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>倹約の哲学</p>
+          <Brain size={15} className="text-muted-foreground" />
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">倹約の哲学</p>
         </div>
         <div className="space-y-3">
           {PHILOSOPHY.map((p, i) => {
             const Icon = p.icon;
             return (
-              <div key={i} className="kg-card-static p-6 flex gap-4"
+              <Card key={i} className="p-6 flex gap-4"
                 style={{ borderLeft: `3px solid ${p.accent}` }}>
                 <div className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center mt-0.5"
                   style={{ backgroundColor: `${p.accent}18` }}>
@@ -113,17 +111,16 @@ export default function ColumnPage() {
                   <p className="text-sm font-semibold mb-2" style={{ color: "var(--kg-text)" }}>{p.title}</p>
                   <p className="text-sm leading-7" style={{ color: "var(--kg-text-secondary)" }}>{p.body}</p>
                 </div>
-              </div>
+              </Card>
             );
           })}
         </div>
       </div>
 
-      {/* 倹約の習慣 */}
-      <div className="kg-card-static p-7 animate-fade-up" style={{ animationDelay: "120ms" }}>
+      <Card className="p-7 animate-fade-up" style={{ animationDelay: "120ms" }}>
         <div className="flex items-center gap-2 mb-5">
-          <Zap size={15} style={{ color: "var(--kg-text-muted)" }} />
-          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>
+          <Zap size={15} className="text-muted-foreground" />
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             今日からできる倹約の習慣
           </p>
         </div>
@@ -145,7 +142,7 @@ export default function ColumnPage() {
             );
           })}
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

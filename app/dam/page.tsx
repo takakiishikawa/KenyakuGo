@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Sparkles, TrendingDown, TrendingUp, Send, RotateCcw, X, MessageSquarePlus } from "lucide-react";
 import { formatVND } from "@/lib/format";
 import type { MonthRecord } from "@/app/api/dam/route";
+import { Badge, Button, Card, PageHeader, Skeleton, Textarea } from "@takaki/go-design-system";
 
 interface Recommendation { emoji: string; title: string; description: string; estimatedCost: string; link: string; linkLabel: string; }
 interface QAResult { theme: string; recommendations: Recommendation[]; }
@@ -23,7 +24,6 @@ interface DamData {
 }
 
 const FREE_TEXT_KEY = "kg-dam-freetext";
-
 const QA_RESULT_KEY = "kg-dam-qa-result";
 const QA_SUBMITTED_AT_KEY = "kg-dam-qa-submitted-at";
 const PROMPT_INTERVAL_DAYS = 14;
@@ -136,61 +136,49 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
       <div className="w-full sm:max-w-xl rounded-t-2xl sm:rounded-2xl overflow-hidden animate-fade-up"
         style={{ backgroundColor: "var(--kg-surface)", border: "1px solid var(--kg-border-medium)", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
 
-        {/* Header */}
         <div className="flex items-center justify-between px-7 py-5 border-b shrink-0" style={{ borderColor: "var(--kg-border-subtle)" }}>
           <div className="flex items-center gap-2">
             <p className="text-base font-semibold" style={{ color: "var(--kg-text)" }}>このお金で何をする？</p>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-              style={{ backgroundColor: "rgba(82,183,136,0.12)", color: "var(--kg-accent)" }}>
+            <Badge className="gap-1 bg-primary/10 text-primary border-0 px-2 py-0.5">
               <Sparkles size={10} /> AI提案
-            </span>
+            </Badge>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {(freeText || result) && (
-              <button onClick={handleReset} className="flex items-center gap-1 text-xs transition-colors"
-                style={{ color: "var(--kg-text-muted)" }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--kg-text)")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--kg-text-muted)")}>
+              <Button variant="ghost" size="sm" onClick={handleReset} className="gap-1 text-muted-foreground h-8">
                 <RotateCcw size={11} /> リセット
-              </button>
+              </Button>
             )}
-            <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: "var(--kg-text-muted)" }}>
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
               <X size={18} />
-            </button>
+            </Button>
           </div>
         </div>
 
         <div className="overflow-y-auto flex-1 px-7 py-6 space-y-5">
-          {/* フリーテキスト入力 */}
           <div>
-            <p className="text-xs mb-3" style={{ color: "var(--kg-text-muted)" }}>
+            <p className="text-xs mb-3 text-muted-foreground">
               欲しいもの・やりたいことを自由に書いてください
             </p>
-            <textarea
+            <Textarea
               value={freeText}
               onChange={(e) => setFreeText(e.target.value)}
               placeholder="例：髭剃りが欲しいしスマホも新しくしたい。あとバリ島旅行も考えてる"
               rows={4}
-              className="w-full resize-none text-sm outline-none rounded-xl p-4"
-              style={{
-                backgroundColor: "var(--kg-surface-2)",
-                color: "var(--kg-text)",
-                caretColor: "var(--kg-accent)",
-                border: "1px solid var(--kg-border-medium)",
-              }}
+              className="resize-none"
               onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleGenerate(); }}
             />
-            <p className="text-xs mt-1.5" style={{ color: "var(--kg-text-muted)" }}>⌘+Enter で送信</p>
+            <p className="text-xs mt-1.5 text-muted-foreground">⌘+Enter で送信</p>
           </div>
 
-          <button
+          <Button
             onClick={handleGenerate}
             disabled={loading || !freeText.trim()}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-40"
-            style={{ backgroundColor: "var(--kg-accent)", color: "var(--kg-bg)" }}>
+            className="gap-2"
+          >
             <Send size={13} />
             {loading ? "提案を生成中..." : "提案を見る"}
-          </button>
+          </Button>
 
           {genError && !loading && (
             <div className="rounded-xl p-4 text-sm" style={{ backgroundColor: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "var(--kg-danger)" }}>
@@ -202,10 +190,10 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
             <div className="grid grid-cols-2 gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="rounded-xl p-5 space-y-3" style={{ backgroundColor: "var(--kg-surface-2)" }}>
-                  <div className="skeleton h-8 w-8 rounded-full" />
-                  <div className="skeleton h-4 w-3/4 rounded" />
-                  <div className="skeleton h-3 w-full rounded" />
-                  <div className="skeleton h-7 w-1/2 rounded-lg" />
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <Skeleton className="h-4 w-3/4 rounded" />
+                  <Skeleton className="h-3 w-full rounded" />
+                  <Skeleton className="h-7 w-1/2 rounded-lg" />
                 </div>
               ))}
             </div>
@@ -230,7 +218,7 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
                       </span>
                     </div>
                     <p className="text-sm font-semibold" style={{ color: "var(--kg-text)" }}>{rec.title}</p>
-                    <p className="text-xs leading-5 flex-1" style={{ color: "var(--kg-text-muted)" }}>{rec.description}</p>
+                    <p className="text-xs leading-5 flex-1 text-muted-foreground">{rec.description}</p>
                     {rec.link && (
                       <a href={rec.link} target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all w-fit mt-1"
@@ -284,87 +272,81 @@ export default function DamPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-10">
-        <h1 className="text-3xl font-semibold" style={{ color: "var(--kg-text)" }}>貯蓄ダム</h1>
-        <div className="flex items-center gap-3">
-          {data && (
-            <p className="text-xs" style={{ color: "var(--kg-text-muted)" }}>
-              {data.damStartLabel}〜 · 予算 {formatVND(data.targetMonthly)}/月
-            </p>
-          )}
-          <button
-            onClick={() => setShowQA(true)}
-            className="relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
-            style={{ backgroundColor: "var(--kg-surface-2)", color: "var(--kg-accent)", border: "1px solid var(--kg-border-medium)" }}>
-            <MessageSquarePlus size={15} />
-            このお金で何をする？
-            {showBadge && (
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full"
-                style={{ backgroundColor: "var(--kg-accent)" }} />
+      <PageHeader
+        title="貯蓄ダム"
+        actions={
+          <div className="flex items-center gap-3">
+            {data && (
+              <p className="text-xs text-muted-foreground">
+                {data.damStartLabel}〜 · 予算 {formatVND(data.targetMonthly)}/月
+              </p>
             )}
-          </button>
-        </div>
-      </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowQA(true)}
+              className="relative gap-2"
+            >
+              <MessageSquarePlus size={15} />
+              このお金で何をする？
+              {showBadge && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-primary" />
+              )}
+            </Button>
+          </div>
+        }
+      />
 
-      <div className="grid grid-cols-2 gap-5 mb-6">
-        {/* ダムビジュアル */}
-        <div className="kg-card-static p-6 animate-fade-up flex flex-col items-center justify-center">
-          <p className="text-xs font-medium uppercase tracking-widest mb-4 self-start" style={{ color: "var(--kg-text-muted)" }}>
+      <div className="mt-8 grid grid-cols-2 gap-5 mb-6">
+        <Card className="p-6 animate-fade-up flex flex-col items-center justify-center">
+          <p className="text-xs font-medium uppercase tracking-widest mb-4 self-start text-muted-foreground">
             累計ダム貯水状況
           </p>
           <DamVisual level={data?.damLevel ?? 0} />
-        </div>
+        </Card>
 
-        {/* カード群 */}
         <div className="flex flex-col gap-4">
-          {/* 今月の倹約額 */}
-          <div className="kg-card p-6 animate-fade-up" style={{ animationDelay: "80ms", animationFillMode: "both" }}>
-            <p className="text-xs font-medium uppercase tracking-widest mb-2" style={{ color: "var(--kg-text-muted)" }}>今月の倹約額（予測）</p>
+          <Card className="p-6 animate-fade-up" style={{ animationDelay: "80ms", animationFillMode: "both" }}>
+            <p className="text-xs font-medium uppercase tracking-widest mb-2 text-muted-foreground">今月の倹約額（予測）</p>
             <p className="font-num text-3xl font-semibold" style={{ color: saved ? "var(--kg-success)" : "var(--kg-danger)" }}>
               {data ? formatVND(data.currentBalance) : "—"}
             </p>
             {data && (
               <div className="mt-2 space-y-0.5">
-                <p className="text-xs" style={{ color: "var(--kg-text-muted)" }}>
+                <p className="text-xs text-muted-foreground">
                   支出実績: <span className="font-num" style={{ color: "var(--kg-text)" }}>{formatVND(data.thisMonthTotal)}</span>
                   &nbsp;/&nbsp;月末予測: <span className="font-num" style={{ color: saved ? "var(--kg-success)" : "var(--kg-danger)" }}>{formatVND(data.projectedMonthTotal)}</span>
                 </p>
               </div>
             )}
-            <div className="mt-3 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
-          </div>
+          </Card>
 
-          {/* 今月の達成率 */}
-          <div className="kg-card p-6 animate-fade-up" style={{ animationDelay: "160ms", animationFillMode: "both" }}>
-            <p className="text-xs font-medium uppercase tracking-widest mb-2" style={{ color: "var(--kg-text-muted)" }}>今月の倹約達成率</p>
+          <Card className="p-6 animate-fade-up" style={{ animationDelay: "160ms", animationFillMode: "both" }}>
+            <p className="text-xs font-medium uppercase tracking-widest mb-2 text-muted-foreground">今月の倹約達成率</p>
             <p className="font-num text-3xl font-semibold" style={{ color: "var(--kg-accent)" }}>
               {data ? `${data.achievementRate}%` : "—"}
             </p>
-            <div className="mt-3 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
-          </div>
+          </Card>
 
-          {/* 累計残高 */}
-          <div className="kg-card p-6 animate-fade-up" style={{ animationDelay: "240ms", animationFillMode: "both" }}>
-            <p className="text-xs font-medium uppercase tracking-widest mb-2" style={{ color: "var(--kg-text-muted)" }}>累計ダム残高</p>
+          <Card className="p-6 animate-fade-up" style={{ animationDelay: "240ms", animationFillMode: "both" }}>
+            <p className="text-xs font-medium uppercase tracking-widest mb-2 text-muted-foreground">累計ダム残高</p>
             <p className="font-num text-3xl font-semibold"
               style={{ color: data ? (data.cumulativeBalance >= 0 ? "var(--kg-success)" : "var(--kg-danger)") : "var(--kg-text)" }}>
               {data ? formatVND(data.cumulativeBalance) : "—"}
             </p>
-            <div className="mt-3 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
-          </div>
+          </Card>
         </div>
       </div>
 
-      {/* 月別積み立て履歴 */}
       {data && data.months.length > 0 && (
-        <div className="kg-card-static animate-fade-up" style={{ animationDelay: "320ms" }}>
+        <Card className="animate-fade-up" style={{ animationDelay: "320ms" }}>
           <div className="px-7 py-5 border-b" style={{ borderColor: "var(--kg-border-subtle)" }}>
-            <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>月別倹約履歴</p>
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">月別倹約履歴</p>
           </div>
-          <div className="grid px-7 py-3 text-xs font-medium uppercase tracking-wider border-b"
+          <div className="grid px-7 py-3 text-xs font-medium uppercase tracking-wider border-b text-muted-foreground"
             style={{
               gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr",
-              color: "var(--kg-text-muted)", borderColor: "var(--kg-border-subtle)", backgroundColor: "var(--kg-surface-2)",
+              borderColor: "var(--kg-border-subtle)", backgroundColor: "var(--kg-surface-2)",
             }}>
             <span>月</span>
             <span className="text-right">予算</span>
@@ -386,7 +368,7 @@ export default function DamPage() {
                 <span className="text-sm font-medium" style={{ color: isCurrent ? "var(--kg-accent)" : "var(--kg-text)" }}>
                   {m.label}{isCurrent && <span className="ml-1 text-xs opacity-60">（今月）</span>}
                 </span>
-                <span className="text-sm font-num text-right" style={{ color: "var(--kg-text-muted)" }}>{formatVND(m.target)}</span>
+                <span className="text-sm font-num text-right text-muted-foreground">{formatVND(m.target)}</span>
                 <span className="text-sm font-num text-right" style={{ color: "var(--kg-text)" }}>{formatVND(m.projected)}</span>
                 <span className="text-sm font-num font-semibold text-right flex items-center justify-end gap-1"
                   style={{ color: monthSaved ? "var(--kg-success)" : "var(--kg-danger)" }}>
@@ -400,10 +382,9 @@ export default function DamPage() {
               </div>
             );
           })}
-        </div>
+        </Card>
       )}
 
-      {/* Q&A Popup */}
       {showQA && data && <QAPopup data={data} onClose={() => setShowQA(false)} />}
     </div>
   );

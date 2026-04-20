@@ -6,6 +6,7 @@ import { TrendingDown, TrendingUp, Sparkles, X, RefreshCw, ChevronRight } from "
 import { toast } from "sonner";
 import { formatVND, formatDate } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
+import { Button, Card, Badge, PageHeader, Skeleton } from "@takaki/go-design-system";
 
 const DONUT_COLORS = ["#2D6A4F", "#52B788", "#95D5B2", "#FFB74D", "#C084FC", "#38BDF8", "#F87171"];
 
@@ -100,21 +101,25 @@ function CategoryPopup({ category, color, onClose }: { category: string; color: 
           </div>
           <div className="flex items-center gap-4">
             <p className="font-num text-xl font-semibold" style={{ color: "var(--kg-accent)" }}>{formatVND(total)}</p>
-            <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: "var(--kg-text-muted)" }}><X size={18} /></button>
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+              <X size={18} />
+            </Button>
           </div>
         </div>
         <div className="overflow-y-auto flex-1">
           {txs === null ? (
-            <div className="px-6 py-8 space-y-3">{[1,2,3].map((i) => <div key={i} className="skeleton h-10 rounded-xl" />)}</div>
+            <div className="px-6 py-8 space-y-3">
+              {[1,2,3].map((i) => <Skeleton key={i} className="h-10 rounded-xl" />)}
+            </div>
           ) : txs.length === 0 ? (
-            <p className="text-sm text-center py-10" style={{ color: "var(--kg-text-muted)" }}>この期間の取引はありません</p>
+            <p className="text-sm text-center py-10 text-muted-foreground">この期間の取引はありません</p>
           ) : (
             <div>
               {txs.map((tx) => (
                 <div key={tx.id} className="flex items-center justify-between px-6 py-3.5 border-b last:border-0" style={{ borderColor: "var(--kg-border-subtle)" }}>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate" style={{ color: "var(--kg-text)" }}>{tx.store}</p>
-                    <p className="text-xs mt-0.5" style={{ color: "var(--kg-text-muted)" }}>{formatDate(tx.date)}</p>
+                    <p className="text-xs mt-0.5 text-muted-foreground">{formatDate(tx.date)}</p>
                   </div>
                   <p className="font-num text-sm font-semibold ml-4 shrink-0" style={{ color: "var(--kg-text)" }}>{formatVND(tx.amount)}</p>
                 </div>
@@ -142,7 +147,6 @@ function WeekComparePopup({
   prevCategoryBreakdown: Record<string, number>;
   onClose: () => void;
 }) {
-  // merge all categories from both periods
   const allCategories = Array.from(
     new Set([...categoryBreakdown.map((c) => c.name), ...Object.keys(prevCategoryBreakdown)])
   );
@@ -166,37 +170,38 @@ function WeekComparePopup({
         <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: "var(--kg-border-subtle)" }}>
           <div>
             <p className="text-base font-semibold" style={{ color: "var(--kg-text)" }}>直近7日間 vs 前の7日間</p>
-            <p className="text-xs mt-0.5" style={{ color: "var(--kg-text-muted)" }}>カテゴリ別の変化</p>
+            <p className="text-xs mt-0.5 text-muted-foreground">カテゴリ別の変化</p>
           </div>
           <div className="flex items-center gap-4">
-            <span className="font-num text-xl font-semibold" style={{ color: improved ? "var(--kg-success)" : "var(--kg-danger)" }}>
+            <span className="font-num text-xl font-semibold"
+              style={{ color: improved ? "var(--kg-success)" : "var(--kg-danger)" }}>
               {weekDiff > 0 ? "+" : ""}{weekDiff}%
             </span>
-            <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: "var(--kg-text-muted)" }}><X size={18} /></button>
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+              <X size={18} />
+            </Button>
           </div>
         </div>
 
-        {/* totals row */}
         <div className="flex border-b" style={{ borderColor: "var(--kg-border-subtle)" }}>
           <div className="flex-1 px-6 py-3 text-center border-r" style={{ borderColor: "var(--kg-border-subtle)" }}>
-            <p className="text-xs mb-1" style={{ color: "var(--kg-text-muted)" }}>直近7日間</p>
+            <p className="text-xs mb-1 text-muted-foreground">直近7日間</p>
             <p className="font-num text-base font-semibold" style={{ color: "var(--kg-text)" }}>{formatVND(thisWeekTotal)}</p>
           </div>
           <div className="flex-1 px-6 py-3 text-center">
-            <p className="text-xs mb-1" style={{ color: "var(--kg-text-muted)" }}>前の7日間</p>
-            <p className="font-num text-base font-semibold" style={{ color: "var(--kg-text-muted)" }}>{formatVND(lastWeekTotal)}</p>
+            <p className="text-xs mb-1 text-muted-foreground">前の7日間</p>
+            <p className="font-num text-base font-semibold text-muted-foreground">{formatVND(lastWeekTotal)}</p>
           </div>
         </div>
 
         <div className="overflow-y-auto flex-1">
           <div className="px-2 py-2">
             {rows.map(({ cat, current, prev, diff }) => (
-              <div key={cat} className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                style={{ marginBottom: 2 }}>
+              <div key={cat} className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ marginBottom: 2 }}>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate" style={{ color: "var(--kg-text)" }}>{cat}</p>
                   {prev > 0 && (
-                    <p className="text-xs mt-0.5 font-num" style={{ color: "var(--kg-text-muted)" }}>前 {formatVND(prev)}</p>
+                    <p className="text-xs mt-0.5 font-num text-muted-foreground">前 {formatVND(prev)}</p>
                   )}
                 </div>
                 <p className="font-num text-sm font-semibold shrink-0" style={{ color: "var(--kg-text)" }}>
@@ -263,7 +268,6 @@ export default function Dashboard() {
     let processed = 0;
 
     try {
-      // 残りがなくなるまで自動で連続取得
       while (true) {
         const res = await fetch("/api/gmail/sync");
         let json: { synced?: number; remaining?: number; error?: string } = {};
@@ -277,13 +281,11 @@ export default function Dashboard() {
         totalSynced += json.synced ?? 0;
         processed += 200;
 
-        // 初回で全体像を把握
         if (estimatedTotal === 0) estimatedTotal = processed + remaining;
         const done = Math.min(processed, estimatedTotal);
         setSyncProgress({ done, total: estimatedTotal });
 
         if (remaining === 0) break;
-        // まだ残りがある → ループ継続
       }
 
       setSyncState("upToDate");
@@ -298,7 +300,6 @@ export default function Dashboard() {
     }
   };
 
-  // 月末予測 vs 目標
   const projected = data?.projectedMonthTotal ?? null;
   const target = data?.targetMonthly ?? 0;
   const projVsTarget = projected != null && target > 0
@@ -307,41 +308,44 @@ export default function Dashboard() {
       : { text: `目標 ${formatVND(target)} 内で推移中`, ok: true }
     : null;
 
-  // 直近7日間 vs 前の7日間
   const weekImproved = data ? data.weekDiff <= 0 : undefined;
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-10">
-        <h1 className="text-3xl font-semibold" style={{ color: "var(--kg-text)" }}>ダッシュボード</h1>
-        <button onClick={handleSync} disabled={syncing}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
-          style={{
-            backgroundColor: syncState === "upToDate" ? "rgba(82,183,136,0.1)" : "var(--kg-surface-2)",
-            color: syncState === "upToDate" ? "var(--kg-success)" : "var(--kg-accent)",
-            border: syncState === "upToDate" ? "1px solid rgba(82,183,136,0.35)" : "1px solid var(--kg-border-medium)",
-            minWidth: 120,
-          }}>
-          <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
-          {syncing && syncProgress
-            ? `${syncProgress.done}/${syncProgress.total}件`
-            : syncing
-            ? "同期中..."
-            : syncState === "upToDate"
-            ? "最新の状態"
-            : "同期"}
-        </button>
-      </div>
+      <PageHeader
+        title="ダッシュボード"
+        actions={
+          <Button
+            variant={syncState === "upToDate" ? "outline" : "outline"}
+            size="sm"
+            onClick={handleSync}
+            disabled={syncing}
+            style={syncState === "upToDate" ? {
+              color: "var(--kg-success)",
+              borderColor: "rgba(82,183,136,0.35)",
+              backgroundColor: "rgba(82,183,136,0.1)",
+            } : undefined}
+          >
+            <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
+            {syncing && syncProgress
+              ? `${syncProgress.done}/${syncProgress.total}件`
+              : syncing
+              ? "同期中..."
+              : syncState === "upToDate"
+              ? "最新の状態"
+              : "同期"}
+          </Button>
+        }
+      />
 
-      <div className="grid grid-cols-3 gap-5 mb-8">
-        {/* 今月の出費 + 月末予測 */}
-        <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "0ms", animationFillMode: "both" }}>
-          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>今月の出費</p>
+      <div className="mt-8 grid grid-cols-3 gap-5 mb-8">
+        <Card className="p-7 animate-fade-up" style={{ animationDelay: "0ms", animationFillMode: "both" }}>
+          <p className="text-xs font-medium uppercase tracking-widest mb-3 text-muted-foreground">今月の出費</p>
           <p className="font-num text-4xl font-semibold leading-none" style={{ color: "var(--kg-text)" }}>
             {data ? formatVND(monthTotal) : "—"}
           </p>
           {projected && (
-            <p className="mt-2 text-sm font-medium" style={{ color: "var(--kg-text-muted)" }}>
+            <p className="mt-2 text-sm font-medium text-muted-foreground">
               月末予測 <span className="font-num" style={{ color: projVsTarget ? (projVsTarget.ok ? "var(--kg-success)" : "var(--kg-danger)") : "var(--kg-text)" }}>
                 {formatVND(projected)}
               </span>
@@ -354,12 +358,10 @@ export default function Dashboard() {
               {projVsTarget.text}
             </p>
           )}
-          <div className="mt-4 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
-        </div>
+        </Card>
 
-        {/* 直近7日間の出費 */}
-        <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "80ms", animationFillMode: "both" }}>
-          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>直近7日間の出費</p>
+        <Card className="p-7 animate-fade-up" style={{ animationDelay: "80ms", animationFillMode: "both" }}>
+          <p className="text-xs font-medium uppercase tracking-widest mb-3 text-muted-foreground">直近7日間の出費</p>
           <p className="font-num text-4xl font-semibold leading-none" style={{ color: "var(--kg-text)" }}>
             {data ? formatVND(data.thisWeekTotal) : "—"}
           </p>
@@ -374,12 +376,10 @@ export default function Dashboard() {
               <ChevronRight size={13} className="opacity-60" />
             </button>
           )}
-          <div className="mt-4 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
-        </div>
+        </Card>
 
-        {/* ダム残高 */}
-        <div className="kg-card p-7 animate-fade-up" style={{ animationDelay: "160ms", animationFillMode: "both" }}>
-          <p className="text-xs font-medium uppercase tracking-widest mb-3" style={{ color: "var(--kg-text-muted)" }}>ダム残高</p>
+        <Card className="p-7 animate-fade-up" style={{ animationDelay: "160ms", animationFillMode: "both" }}>
+          <p className="text-xs font-medium uppercase tracking-widest mb-3 text-muted-foreground">ダム残高</p>
           <p className="font-num text-4xl font-semibold leading-none"
             style={{ color: data ? (data.damBalance >= 0 ? "var(--kg-success)" : "var(--kg-danger)") : "var(--kg-text)" }}>
             {data ? formatVND(data.damBalance) : "—"}
@@ -391,14 +391,12 @@ export default function Dashboard() {
               {data.damBalance >= 0 ? "今月は黒字" : "今月は赤字"}
             </p>
           )}
-          <div className="mt-4 h-0.5 rounded-full" style={{ background: "linear-gradient(90deg, var(--kg-accent), transparent)" }} />
-        </div>
+        </Card>
       </div>
 
       <div className="grid grid-cols-2 gap-5 mb-8">
-        {/* Donut */}
-        <div className="kg-card-static p-7 animate-fade-up" style={{ animationDelay: "200ms" }}>
-          <p className="text-xs font-medium uppercase tracking-widest mb-4" style={{ color: "var(--kg-text-muted)" }}>直近7日間の内訳</p>
+        <Card className="p-7 animate-fade-up" style={{ animationDelay: "200ms" }}>
+          <p className="text-xs font-medium uppercase tracking-widest mb-4 text-muted-foreground">直近7日間の内訳</p>
           {data?.categoryBreakdown?.length ? (
             <div className="flex flex-col items-center gap-4">
               <div style={{ width: "100%", height: 220 }}>
@@ -432,7 +430,7 @@ export default function Dashboard() {
                       onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "transparent")}
                       onClick={() => setPopupCategory({ name: item.name, colorIndex: i })}>
                       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
-                      <span className="text-xs truncate flex-1" style={{ color: "var(--kg-text-muted)" }}>{item.name}</span>
+                      <span className="text-xs truncate flex-1 text-muted-foreground">{item.name}</span>
                       <span className="text-xs font-num font-medium" style={{ color: "var(--kg-text)" }}>{formatVND(item.value)}</span>
                       {diff !== null && (
                         <span className="text-xs font-num font-medium w-10 text-right shrink-0"
@@ -446,30 +444,28 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <p className="text-center py-16 text-sm" style={{ color: "var(--kg-text-muted)" }}>直近7日間の取引データがありません</p>
+            <p className="text-center py-16 text-sm text-muted-foreground">直近7日間の取引データがありません</p>
           )}
-        </div>
+        </Card>
 
-        {/* 支出チェック (AI) */}
-        <div className="kg-card-static p-7 animate-fade-up" style={{ animationDelay: "240ms" }}>
+        <Card className="p-7 animate-fade-up" style={{ animationDelay: "240ms" }}>
           <div className="flex items-center gap-2 mb-5">
-            <span className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>支出チェック</span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-              style={{ backgroundColor: "rgba(82,183,136,0.12)", color: "var(--kg-accent)" }}>
+            <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">支出チェック</span>
+            <Badge className="gap-1 bg-primary/10 text-primary border-0 px-2 py-0.5">
               <Sparkles size={10} /> AI
-            </span>
+            </Badge>
           </div>
 
           {feedbackLoading ? (
             <div className="space-y-3">
-              <div className="skeleton h-14 w-full rounded-xl" />
-              <div className="skeleton h-14 w-full rounded-xl" />
-              <div className="skeleton h-14 w-full rounded-xl" />
+              <Skeleton className="h-14 w-full rounded-xl" />
+              <Skeleton className="h-14 w-full rounded-xl" />
+              <Skeleton className="h-14 w-full rounded-xl" />
             </div>
           ) : feedback ? (
             <div className="space-y-3">
               <div className="rounded-xl p-4" style={{ backgroundColor: "var(--kg-surface-2)" }}>
-                <p className="text-xs font-medium mb-1.5" style={{ color: "var(--kg-text-muted)" }}>今週の状況</p>
+                <p className="text-xs font-medium mb-1.5 text-muted-foreground">今週の状況</p>
                 <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{feedback.summary}</p>
               </div>
               <div className="rounded-xl p-4" style={{ backgroundColor: "var(--kg-surface-2)" }}>
@@ -477,20 +473,19 @@ export default function Dashboard() {
                 <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{feedback.point}</p>
               </div>
               <div className="rounded-xl p-4" style={{ backgroundColor: "var(--kg-surface-2)" }}>
-                <p className="text-xs font-medium mb-1.5" style={{ color: "var(--kg-text-muted)" }}>一言アドバイス</p>
+                <p className="text-xs font-medium mb-1.5 text-muted-foreground">一言アドバイス</p>
                 <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{feedback.tip}</p>
               </div>
             </div>
           ) : (
-            <p className="text-sm" style={{ color: "var(--kg-text-muted)" }}>取引データを同期するとチェックが表示されます</p>
+            <p className="text-sm text-muted-foreground">取引データを同期するとチェックが表示されます</p>
           )}
-        </div>
+        </Card>
       </div>
 
-      {/* Recent Transactions */}
-      <div className="kg-card-static animate-fade-up" style={{ animationDelay: "300ms" }}>
+      <Card className="animate-fade-up" style={{ animationDelay: "300ms" }}>
         <div className="px-7 py-5 border-b" style={{ borderColor: "var(--kg-border-subtle)" }}>
-          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-text-muted)" }}>直近の取引</p>
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">直近の取引</p>
         </div>
         {data?.recentTransactions?.length ? (
           <div>
@@ -506,15 +501,15 @@ export default function Dashboard() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-num font-semibold" style={{ color: "var(--kg-text)" }}>{formatVND(tx.amount)}</p>
-                  <p className="text-xs mt-0.5" style={{ color: "var(--kg-text-muted)" }}>{formatDate(tx.date)}</p>
+                  <p className="text-xs mt-0.5 text-muted-foreground">{formatDate(tx.date)}</p>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-center py-16" style={{ color: "var(--kg-text-muted)" }}>取引データがありません。同期ボタンを押してください。</p>
+          <p className="text-sm text-center py-16 text-muted-foreground">取引データがありません。同期ボタンを押してください。</p>
         )}
-      </div>
+      </Card>
 
       {popupCategory && (
         <CategoryPopup

@@ -184,11 +184,11 @@ export default function ColumnPage() {
         </p>
         <div
           className="flex items-start gap-3 pt-4 border-t"
-          style={{ borderColor: "rgba(82,183,136,0.15)" }}
+          style={{ borderColor: "var(--kg-border)" }}
         >
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-            style={{ backgroundColor: "rgba(82,183,136,0.12)" }}
+            style={{ backgroundColor: "var(--kg-surface-2)" }}
           >
             <Star size={13} style={{ color: "var(--kg-accent)" }} />
           </div>
@@ -268,7 +268,7 @@ export default function ColumnPage() {
               >
                 <div
                   className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: "rgba(82,183,136,0.1)" }}
+                  style={{ backgroundColor: "var(--kg-surface-2)" }}
                 >
                   <Icon size={15} style={{ color: "var(--kg-accent)" }} />
                 </div>

@@ -225,7 +225,7 @@ export default function ColumnPage() {
                 style={{ borderLeft: `3px solid ${p.accent}` }}
               >
                 <div
-                  className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center mt-0.5"
+                  className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center mt-0.5"
                   style={{ backgroundColor: `${p.accent}18` }}
                 >
                   <Icon size={17} style={{ color: p.accent }} />
@@ -263,7 +263,7 @@ export default function ColumnPage() {
             return (
               <div
                 key={i}
-                className="flex items-start gap-3 p-4 rounded-xl"
+                className="flex items-start gap-3 p-4 rounded-lg"
                 style={{ backgroundColor: "var(--kg-surface-2)" }}
               >
                 <div

@@ -363,14 +363,14 @@ export default function ReportPage() {
 
         {feedbackLoading ? (
           <div className="space-y-3">
-            <Skeleton className="h-16 w-full rounded-xl" />
-            <Skeleton className="h-20 w-full rounded-xl" />
-            <Skeleton className="h-24 w-full rounded-xl" />
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <Skeleton className="h-20 w-full rounded-lg" />
+            <Skeleton className="h-24 w-full rounded-lg" />
           </div>
         ) : feedback ? (
           <div className="space-y-3">
             <div
-              className="rounded-xl p-4"
+              className="rounded-lg p-4"
               style={{ backgroundColor: "var(--kg-surface-2)" }}
             >
               <p className="text-sm font-medium mb-2 text-muted-foreground">
@@ -386,7 +386,7 @@ export default function ReportPage() {
 
             {feedback.savingsCategory && (
               <div
-                className="rounded-xl p-4"
+                className="rounded-lg p-4"
                 style={{
                   backgroundColor: "var(--color-warning-subtle)",
                   border: "1px solid var(--color-warning-muted)",
@@ -415,7 +415,7 @@ export default function ReportPage() {
 
             {feedback.savingsSuggestion && (
               <div
-                className="rounded-xl p-4"
+                className="rounded-lg p-4"
                 style={{ backgroundColor: "var(--kg-surface-2)" }}
               >
                 <p className="text-sm font-medium mb-3 text-muted-foreground">
@@ -429,7 +429,7 @@ export default function ReportPage() {
                     .map((line, i) => (
                       <div key={i} className="flex items-start gap-2.5">
                         <span
-                          className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                          className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
                           style={{
                             backgroundColor: "var(--color-success-subtle)",
                             color: "var(--kg-accent)",

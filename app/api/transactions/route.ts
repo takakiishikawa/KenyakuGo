@@ -20,7 +20,15 @@ function getWeekRange(date: Date) {
 
 function getMonthRange(date: Date) {
   const start = new Date(date.getFullYear(), date.getMonth(), 1);
-  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+  const end = new Date(
+    date.getFullYear(),
+    date.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999,
+  );
   return { start, end };
 }
 
@@ -34,7 +42,10 @@ export async function GET(req: NextRequest) {
   const category = searchParams.get("category");
   const now = new Date();
 
-  type TxRow = Pick<Transaction, "id" | "store" | "amount" | "category" | "date">;
+  type TxRow = Pick<
+    Transaction,
+    "id" | "store" | "amount" | "category" | "date"
+  >;
 
   const buildQuery = (start?: Date, end?: Date) => {
     let q = db
@@ -64,13 +75,16 @@ export async function GET(req: NextRequest) {
     }
 
     const results = await Promise.allSettled(
-      weekBuckets.map(({ start, end }) => buildQuery(start, end))
+      weekBuckets.map(({ start, end }) => buildQuery(start, end)),
     );
 
     const data: TxRow[] = results
       .filter(
-        (r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof buildQuery>>> =>
-          r.status === "fulfilled"
+        (
+          r,
+        ): r is PromiseFulfilledResult<
+          Awaited<ReturnType<typeof buildQuery>>
+        > => r.status === "fulfilled",
       )
       .flatMap((r) => (r.value.data ?? []) as TxRow[])
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

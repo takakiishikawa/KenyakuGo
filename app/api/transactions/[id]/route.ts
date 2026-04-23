@@ -3,7 +3,7 @@ import { getAuthDb } from "@/lib/supabase/auth-db";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const result = await getAuthDb();
   if (result instanceof NextResponse) return result;
@@ -11,10 +11,14 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await req.json();
-  const category = typeof body.category === "string" ? body.category.trim() : null;
+  const category =
+    typeof body.category === "string" ? body.category.trim() : null;
 
   if (!category) {
-    return NextResponse.json({ error: "category is required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "category is required" },
+      { status: 400 },
+    );
   }
 
   const { data, error } = await db

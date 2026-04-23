@@ -6,7 +6,10 @@ export async function DELETE() {
   if (result instanceof NextResponse) return result;
   const { db } = result;
 
-  const { error } = await db.from("transactions").delete().not("id", "is", null);
+  const { error } = await db
+    .from("transactions")
+    .delete()
+    .not("id", "is", null);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

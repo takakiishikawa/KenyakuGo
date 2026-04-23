@@ -9,12 +9,13 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const store = typeof body.store === "string" ? body.store.trim() : null;
   const query = typeof body.query === "string" ? body.query.trim() : null;
-  const category = typeof body.category === "string" ? body.category.trim() : null;
+  const category =
+    typeof body.category === "string" ? body.category.trim() : null;
 
   if ((!store && !query) || !category) {
     return NextResponse.json(
       { error: "store or query, and category are required" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -38,7 +39,8 @@ export async function POST(req: NextRequest) {
     ? await updateQuery.eq("store", store)
     : await updateQuery.ilike("store", `%${query}%`);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error)
+    return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ updated: data?.length ?? 0 });
 }

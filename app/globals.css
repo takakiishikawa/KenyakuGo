@@ -8,20 +8,20 @@
 :root {
   --font-noto: "Noto Sans JP", sans-serif;
 
-  --kg-text:           var(--color-text-primary);
-  --kg-text-muted:     var(--color-text-subtle);
+  --kg-text: var(--color-text-primary);
+  --kg-text-muted: var(--color-text-subtle);
   --kg-text-secondary: var(--color-text-secondary);
-  --kg-accent:         var(--color-primary);
-  --kg-accent-soft:    color-mix(in srgb, var(--color-primary) 55%, white);
-  --kg-success:        var(--color-success);
-  --kg-danger:         var(--color-danger);
-  --kg-warning:        var(--color-warning);
-  --kg-surface:        var(--color-surface);
-  --kg-surface-2:      var(--color-surface-subtle);
-  --kg-bg:             var(--color-background);
-  --kg-border:         var(--color-border-default);
-  --kg-border-subtle:  var(--color-border-subtle);
-  --kg-border-medium:  var(--color-border-strong);
+  --kg-accent: var(--color-primary);
+  --kg-accent-soft: color-mix(in srgb, var(--color-primary) 55%, white);
+  --kg-success: var(--color-success);
+  --kg-danger: var(--color-danger);
+  --kg-warning: var(--color-warning);
+  --kg-surface: var(--color-surface);
+  --kg-surface-2: var(--color-surface-subtle);
+  --kg-bg: var(--color-background);
+  --kg-border: var(--color-border-default);
+  --kg-border-subtle: var(--color-border-subtle);
+  --kg-border-medium: var(--color-border-strong);
 }
 
 /* ── ユーティリティクラス ── */
@@ -52,7 +52,8 @@
 }
 .kg-input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent);
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 .kg-input::placeholder {
   color: var(--color-text-subtle);
@@ -71,28 +72,56 @@
 
 /* ── Animations ── */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 @keyframes wave {
-  0%, 100% { transform: translateX(0); }
-  50%       { transform: translateX(-24px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-24px);
+  }
 }
 @keyframes shimmer {
-  0%   { opacity: 1; }
-  50%  { opacity: 0.4; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 @layer base {
-  * { @apply border-border outline-ring/50; }
+  * {
+    @apply border-border outline-ring/50;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-noto, "Noto Sans JP", sans-serif);
     font-size: 14px;
   }
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: var(--color-background); }
-  ::-webkit-scrollbar-thumb { background: var(--color-surface-subtle); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--color-text-subtle); }
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-background);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-subtle);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-subtle);
+  }
 }

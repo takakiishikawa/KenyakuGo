@@ -15,7 +15,10 @@ export async function GET() {
     } = await supabase.auth.getSession();
 
     if (!session) {
-      return NextResponse.json({ error: "No session — please log in" }, { status: 401 });
+      return NextResponse.json(
+        { error: "No session — please log in" },
+        { status: 401 },
+      );
     }
     let accessToken = session.provider_token;
 
@@ -28,13 +31,14 @@ export async function GET() {
         .eq("id", "singleton")
         .maybeSingle();
 
-      const refreshToken = (settings as Pick<Settings, "google_refresh_token"> | null)
-        ?.google_refresh_token;
+      const refreshToken = (
+        settings as Pick<Settings, "google_refresh_token"> | null
+      )?.google_refresh_token;
 
       if (!refreshToken) {
         return NextResponse.json(
           { error: "No provider_token — please log in again" },
-          { status: 401 }
+          { status: 401 },
         );
       }
 
@@ -52,7 +56,7 @@ export async function GET() {
       if (!tokenRes.ok) {
         return NextResponse.json(
           { error: "Failed to refresh Google token — please log in again" },
-          { status: 401 }
+          { status: 401 },
         );
       }
 
@@ -67,8 +71,10 @@ export async function GET() {
     } catch (e) {
       console.error("[sync] Gmail fetch error:", e);
       return NextResponse.json(
-        { error: `Gmail API error: ${e instanceof Error ? e.message : String(e)}` },
-        { status: 502 }
+        {
+          error: `Gmail API error: ${e instanceof Error ? e.message : String(e)}`,
+        },
+        { status: 502 },
       );
     }
 
@@ -151,7 +157,10 @@ export async function GET() {
     }
 
     if (insertError) {
-      return NextResponse.json({ error: `DB error: ${insertError}`, synced }, { status: 500 });
+      return NextResponse.json(
+        { error: `DB error: ${insertError}`, synced },
+        { status: 500 },
+      );
     }
 
     // 未分類を AI 自動カテゴリ分類（同じ店名は過去の分類を再利用）
@@ -169,8 +178,10 @@ export async function GET() {
   } catch (e) {
     console.error("[sync] Unexpected error:", e);
     return NextResponse.json(
-      { error: `Unexpected error: ${e instanceof Error ? e.message : String(e)}` },
-      { status: 500 }
+      {
+        error: `Unexpected error: ${e instanceof Error ? e.message : String(e)}`,
+      },
+      { status: 500 },
     );
   }
 }

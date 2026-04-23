@@ -42,6 +42,6 @@ export function createDb(accessToken?: string) {
       global: accessToken
         ? { headers: { Authorization: `Bearer ${accessToken}` } }
         : undefined,
-    }
+    },
   );
 }

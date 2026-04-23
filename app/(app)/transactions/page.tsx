@@ -5,10 +5,19 @@ import { toast } from "sonner";
 import { formatVND, formatDateWithYear } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
 import {
-  Button, Card, Input,
-  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
-  Tabs, TabsList, TabsTrigger,
-  PageHeader, Tag,
+  Button,
+  Card,
+  Input,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  PageHeader,
+  Tag,
 } from "@takaki/go-design-system";
 
 interface Transaction {
@@ -33,7 +42,11 @@ function CategoryBadge({ category }: { category: string }) {
   return (
     <Tag
       color={isUncategorized ? "danger" : undefined}
-      style={isUncategorized ? undefined : { backgroundColor: bg, color: text, borderColor: "transparent" }}
+      style={
+        isUncategorized
+          ? undefined
+          : { backgroundColor: bg, color: text, borderColor: "transparent" }
+      }
     >
       {isUncategorized ? "未分類" : category}
     </Tag>
@@ -48,10 +61,16 @@ export default function TransactionsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editCategory, setEditCategory] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [uncategorizedStores, setUncategorizedStores] = useState<UncategorizedStore[]>([]);
-  const [uncategorizedCount, setUncategorizedCount] = useState<number | null>(null);
+  const [uncategorizedStores, setUncategorizedStores] = useState<
+    UncategorizedStore[]
+  >([]);
+  const [uncategorizedCount, setUncategorizedCount] = useState<number | null>(
+    null,
+  );
   const [reviewLoading, setReviewLoading] = useState(false);
-  const [reviewSelections, setReviewSelections] = useState<Record<string, string>>({});
+  const [reviewSelections, setReviewSelections] = useState<
+    Record<string, string>
+  >({});
   const [applyingStore, setApplyingStore] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [addingCategory, setAddingCategory] = useState(false);
@@ -62,8 +81,11 @@ export default function TransactionsPage() {
   const [bulkApplying, setBulkApplying] = useState(false);
 
   const fetchCategories = useCallback(() => {
-    fetch("/api/categories").then((r) => r.json()).then((data) =>
-      setCategories((data as { name: string }[]).map((c) => c.name)));
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data) =>
+        setCategories((data as { name: string }[]).map((c) => c.name)),
+      );
   }, []);
 
   const fetchUncategorizedCount = useCallback(async () => {
@@ -72,8 +94,12 @@ export default function TransactionsPage() {
     setUncategorizedCount(count ?? 0);
   }, []);
 
-  useEffect(() => { fetchCategories(); }, [fetchCategories]);
-  useEffect(() => { fetchUncategorizedCount(); }, [fetchUncategorizedCount]);
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+  useEffect(() => {
+    fetchUncategorizedCount();
+  }, [fetchUncategorizedCount]);
 
   const fetchTransactions = useCallback(async () => {
     const params = new URLSearchParams({ period });
@@ -82,15 +108,21 @@ export default function TransactionsPage() {
     setTransactions(await res.json());
   }, [period, categoryFilter]);
 
-  useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
 
   const fetchUncategorizedStores = useCallback(async () => {
     setReviewLoading(true);
-    const data: UncategorizedStore[] = await fetch("/api/transactions/uncategorized-stores").then((r) => r.json());
+    const data: UncategorizedStore[] = await fetch(
+      "/api/transactions/uncategorized-stores",
+    ).then((r) => r.json());
     setUncategorizedStores(data);
     setUncategorizedCount(data.length);
     const defaults: Record<string, string> = {};
-    for (const s of data) { if (s.suggested) defaults[s.store] = s.suggested; }
+    for (const s of data) {
+      if (s.suggested) defaults[s.store] = s.suggested;
+    }
     setReviewSelections(defaults);
     setReviewLoading(false);
   }, []);
@@ -126,7 +158,9 @@ export default function TransactionsPage() {
       fetchCategories();
       fetchUncategorizedCount();
     } catch (e) {
-      toast.error(`分類に失敗しました: ${e instanceof Error ? e.message : "不明なエラー"}`);
+      toast.error(
+        `分類に失敗しました: ${e instanceof Error ? e.message : "不明なエラー"}`,
+      );
     } finally {
       setCategorizing(false);
     }
@@ -141,12 +175,20 @@ export default function TransactionsPage() {
       body: JSON.stringify({ name: newCategoryName.trim() }),
     });
     if (res.status === 409) toast.error("そのカテゴリはすでに存在します");
-    else if (res.ok) { toast.success(`「${newCategoryName.trim()}」を追加しました`); setNewCategoryName(""); setShowAddCategory(false); fetchCategories(); }
+    else if (res.ok) {
+      toast.success(`「${newCategoryName.trim()}」を追加しました`);
+      setNewCategoryName("");
+      setShowAddCategory(false);
+      fetchCategories();
+    }
     setAddingCategory(false);
   };
 
   const handleSaveCategory = async (tx: Transaction) => {
-    if (!editCategory || editCategory === tx.category) { setEditingId(null); return; }
+    if (!editCategory || editCategory === tx.category) {
+      setEditingId(null);
+      return;
+    }
     setSavingId(tx.id);
     await fetch(`/api/transactions/${tx.id}`, {
       method: "PATCH",
@@ -166,23 +208,32 @@ export default function TransactionsPage() {
       const res = await fetch("/api/transactions/reclassify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: searchQuery.trim(), category: bulkCategory }),
+        body: JSON.stringify({
+          query: searchQuery.trim(),
+          category: bulkCategory,
+        }),
       });
       const { updated, error } = await res.json();
       if (error) throw new Error(error);
-      toast.success(`「${searchQuery}」を含む${updated}件を「${bulkCategory}」に変更しました`);
+      toast.success(
+        `「${searchQuery}」を含む${updated}件を「${bulkCategory}」に変更しました`,
+      );
       fetchTransactions();
       fetchCategories();
       fetchUncategorizedCount();
     } catch (e) {
-      toast.error(`変更失敗: ${e instanceof Error ? e.message : "不明なエラー"}`);
+      toast.error(
+        `変更失敗: ${e instanceof Error ? e.message : "不明なエラー"}`,
+      );
     } finally {
       setBulkApplying(false);
     }
   };
 
   const filteredTransactions = searchQuery.trim()
-    ? transactions.filter((tx) => tx.store.toLowerCase().includes(searchQuery.toLowerCase()))
+    ? transactions.filter((tx) =>
+        tx.store.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
     : transactions;
 
   const allCategorized = uncategorizedCount === 0;
@@ -194,8 +245,14 @@ export default function TransactionsPage() {
         actions={
           <div className="flex gap-2">
             {allCategorized ? (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md font-medium"
-                style={{ color: "var(--kg-success)", backgroundColor: "rgba(82,183,136,0.08)", border: "1px solid rgba(82,183,136,0.2)" }}>
+              <div
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md font-medium"
+                style={{
+                  color: "var(--kg-success)",
+                  backgroundColor: "rgba(82,183,136,0.08)",
+                  border: "1px solid rgba(82,183,136,0.2)",
+                }}
+              >
                 <span>✓</span>
                 <span>全て分類済み</span>
               </div>
@@ -205,13 +262,19 @@ export default function TransactionsPage() {
                 size="sm"
                 onClick={fetchUncategorizedStores}
                 disabled={reviewLoading}
-                style={uncategorizedCount && uncategorizedCount > 0 ? {
-                  borderColor: "rgba(255,183,77,0.35)",
-                  color: "var(--kg-warning)",
-                  backgroundColor: "rgba(255,183,77,0.08)",
-                } : undefined}
+                style={
+                  uncategorizedCount && uncategorizedCount > 0
+                    ? {
+                        borderColor: "rgba(255,183,77,0.35)",
+                        color: "var(--kg-warning)",
+                        backgroundColor: "rgba(255,183,77,0.08)",
+                      }
+                    : undefined
+                }
               >
-                {reviewLoading ? "読込中..." : `要確認リスト${uncategorizedCount ? `（${uncategorizedCount}）` : ""}`}
+                {reviewLoading
+                  ? "読込中..."
+                  : `要確認リスト${uncategorizedCount ? `（${uncategorizedCount}）` : ""}`}
               </Button>
             )}
             <Button
@@ -228,39 +291,75 @@ export default function TransactionsPage() {
 
       {/* 要確認ストア */}
       {uncategorizedStores.length > 0 && (
-        <Card className="mt-6 mb-6" style={{ border: "1px solid rgba(255,183,77,0.2)", background: "rgba(255,183,77,0.04)" }}>
-          <div className="px-6 py-4 border-b" style={{ borderColor: "rgba(255,183,77,0.15)" }}>
-            <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-warning)" }}>
+        <Card
+          className="mt-6 mb-6"
+          style={{
+            border: "1px solid rgba(255,183,77,0.2)",
+            background: "rgba(255,183,77,0.04)",
+          }}
+        >
+          <div
+            className="px-6 py-4 border-b"
+            style={{ borderColor: "rgba(255,183,77,0.15)" }}
+          >
+            <p
+              className="text-xs font-medium uppercase tracking-widest"
+              style={{ color: "var(--kg-warning)" }}
+            >
               ⚠ 要確認ストア（{uncategorizedStores.length}件）
             </p>
           </div>
           {uncategorizedStores.map((s) => (
-            <div key={s.store} className="flex items-center gap-3 px-6 py-3 border-b last:border-0" style={{ borderColor: "rgba(255,183,77,0.1)" }}>
+            <div
+              key={s.store}
+              className="flex items-center gap-3 px-6 py-3 border-b last:border-0"
+              style={{ borderColor: "rgba(255,183,77,0.1)" }}
+            >
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate" style={{ color: "var(--kg-text)" }}>{s.store}</p>
-                <p className="text-sm text-muted-foreground">{s.count}件 · {formatVND(s.totalAmount)}</p>
+                <p
+                  className="text-sm font-medium truncate"
+                  style={{ color: "var(--kg-text)" }}
+                >
+                  {s.store}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {s.count}件 · {formatVND(s.totalAmount)}
+                </p>
               </div>
               {s.hint && (
-                <span className="text-sm px-2 py-1 rounded-full whitespace-nowrap"
-                  style={{ backgroundColor: "rgba(255,183,77,0.12)", color: "var(--kg-warning)" }}>
+                <span
+                  className="text-sm px-2 py-1 rounded-full whitespace-nowrap"
+                  style={{
+                    backgroundColor: "rgba(255,183,77,0.12)",
+                    color: "var(--kg-warning)",
+                  }}
+                >
                   {s.hint}
                 </span>
               )}
               <Select
                 value={reviewSelections[s.store] || undefined}
-                onValueChange={(val) => setReviewSelections((prev) => ({ ...prev, [s.store]: val }))}
+                onValueChange={(val) =>
+                  setReviewSelections((prev) => ({ ...prev, [s.store]: val }))
+                }
               >
                 <SelectTrigger className="w-36">
                   <SelectValue placeholder="カテゴリ選択" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Button
                 size="sm"
                 onClick={() => handleApplyStore(s.store)}
-                disabled={!reviewSelections[s.store] || applyingStore === s.store}
+                disabled={
+                  !reviewSelections[s.store] || applyingStore === s.store
+                }
               >
                 {applyingStore === s.store ? "適用中..." : "全件適用"}
               </Button>
@@ -284,7 +383,11 @@ export default function TransactionsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">すべてのカテゴリ</SelectItem>
-            {categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+            {categories.map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {cat}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -292,8 +395,17 @@ export default function TransactionsPage() {
       {/* 検索 + カテゴリ追加 */}
       <div className="flex gap-3 mb-4">
         <div className="relative flex-1" style={{ maxWidth: 320 }}>
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
           </svg>
           <Input
             type="text"
@@ -309,7 +421,13 @@ export default function TransactionsPage() {
               type="text"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleAddCategory(); if (e.key === "Escape") { setShowAddCategory(false); setNewCategoryName(""); } }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddCategory();
+                if (e.key === "Escape") {
+                  setShowAddCategory(false);
+                  setNewCategoryName("");
+                }
+              }}
               placeholder="カテゴリ名..."
               autoFocus
               className="w-44"
@@ -324,7 +442,10 @@ export default function TransactionsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => { setShowAddCategory(false); setNewCategoryName(""); }}
+              onClick={() => {
+                setShowAddCategory(false);
+                setNewCategoryName("");
+              }}
             >
               ✕
             </Button>
@@ -342,10 +463,17 @@ export default function TransactionsPage() {
 
       {/* 一括カテゴリ変更バナー */}
       {searchQuery.trim() && filteredTransactions.length > 0 && (
-        <div className="flex items-center gap-3 px-5 py-3 mb-4 rounded-md"
-          style={{ backgroundColor: "rgba(82,183,136,0.06)", border: "1px solid rgba(82,183,136,0.2)" }}>
+        <div
+          className="flex items-center gap-3 px-5 py-3 mb-4 rounded-md"
+          style={{
+            backgroundColor: "rgba(82,183,136,0.06)",
+            border: "1px solid rgba(82,183,136,0.2)",
+          }}
+        >
           <p className="text-sm flex-1 text-muted-foreground">
-            <span className="font-medium text-foreground">「{searchQuery}」</span>
+            <span className="font-medium text-foreground">
+              「{searchQuery}」
+            </span>
             を含む{filteredTransactions.length}件を一括変更:
           </p>
           <Select
@@ -356,7 +484,11 @@ export default function TransactionsPage() {
               <SelectValue placeholder="カテゴリ選択" />
             </SelectTrigger>
             <SelectContent>
-              {categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+              {categories.map((cat) => (
+                <SelectItem key={cat} value={cat}>
+                  {cat}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button
@@ -370,9 +502,13 @@ export default function TransactionsPage() {
       )}
 
       <Card>
-        <div className="px-7 py-5 border-b" style={{ borderColor: "var(--kg-border-subtle)" }}>
+        <div
+          className="px-7 py-5 border-b"
+          style={{ borderColor: "var(--kg-border-subtle)" }}
+        >
           <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            {filteredTransactions.length}件の取引{searchQuery.trim() ? ` — 「${searchQuery}」で絞り込み中` : ""}
+            {filteredTransactions.length}件の取引
+            {searchQuery.trim() ? ` — 「${searchQuery}」で絞り込み中` : ""}
           </p>
         </div>
         {filteredTransactions.length > 0 ? (
@@ -386,16 +522,26 @@ export default function TransactionsPage() {
                   className="flex items-center gap-4 px-7 py-4 border-b last:border-0 transition-colors"
                   style={{
                     borderColor: "var(--kg-border-subtle)",
-                    borderLeft: isUncategorized ? "3px solid rgba(255,183,77,0.5)" : "3px solid transparent",
-                    backgroundColor: isUncategorized ? "rgba(255,183,77,0.03)" : "transparent",
+                    borderLeft: isUncategorized
+                      ? "3px solid rgba(255,183,77,0.5)"
+                      : "3px solid transparent",
+                    backgroundColor: isUncategorized
+                      ? "rgba(255,183,77,0.03)"
+                      : "transparent",
                   }}
                   onMouseEnter={(e) => {
                     if (!isEditing)
-                      (e.currentTarget as HTMLElement).style.backgroundColor = isUncategorized ? "rgba(255,183,77,0.06)" : "var(--kg-surface-2)";
+                      (e.currentTarget as HTMLElement).style.backgroundColor =
+                        isUncategorized
+                          ? "rgba(255,183,77,0.06)"
+                          : "var(--kg-surface-2)";
                   }}
                   onMouseLeave={(e) => {
                     if (!isEditing)
-                      (e.currentTarget as HTMLElement).style.backgroundColor = isUncategorized ? "rgba(255,183,77,0.03)" : "transparent";
+                      (e.currentTarget as HTMLElement).style.backgroundColor =
+                        isUncategorized
+                          ? "rgba(255,183,77,0.03)"
+                          : "transparent";
                   }}
                 >
                   {isEditing ? (
@@ -408,7 +554,11 @@ export default function TransactionsPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {categories.map((cat) => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                          {categories.map((cat) => (
+                            <SelectItem key={cat} value={cat}>
+                              {cat}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <Button
@@ -418,17 +568,41 @@ export default function TransactionsPage() {
                       >
                         {savingId === tx.id ? "…" : "保存"}
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>✕</Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingId(null)}
+                      >
+                        ✕
+                      </Button>
                     </div>
                   ) : (
-                    <button onClick={() => { setEditingId(tx.id); setEditCategory(tx.category); }} className="cursor-pointer">
+                    <button
+                      onClick={() => {
+                        setEditingId(tx.id);
+                        setEditCategory(tx.category);
+                      }}
+                      className="cursor-pointer"
+                    >
                       <CategoryBadge category={tx.category} />
                     </button>
                   )}
-                  <span className="text-sm font-medium flex-1 truncate" style={{ color: "var(--kg-text)" }}>{tx.store}</span>
+                  <span
+                    className="text-sm font-medium flex-1 truncate"
+                    style={{ color: "var(--kg-text)" }}
+                  >
+                    {tx.store}
+                  </span>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-num font-semibold" style={{ color: "var(--kg-text)" }}>{formatVND(tx.amount)}</p>
-                    <p className="text-xs mt-0.5 text-muted-foreground">{formatDateWithYear(tx.date)}</p>
+                    <p
+                      className="text-sm font-num font-semibold"
+                      style={{ color: "var(--kg-text)" }}
+                    >
+                      {formatVND(tx.amount)}
+                    </p>
+                    <p className="text-xs mt-0.5 text-muted-foreground">
+                      {formatDateWithYear(tx.date)}
+                    </p>
                   </div>
                 </div>
               );
@@ -436,7 +610,9 @@ export default function TransactionsPage() {
           </div>
         ) : (
           <p className="text-center py-16 text-sm text-muted-foreground">
-            {searchQuery.trim() ? `「${searchQuery}」に一致する取引はありません` : "取引データがありません"}
+            {searchQuery.trim()
+              ? `「${searchQuery}」に一致する取引はありません`
+              : "取引データがありません"}
           </p>
         )}
       </Card>

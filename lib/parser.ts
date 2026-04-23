@@ -32,7 +32,7 @@ function parseCardTransaction(text: string): ParsedTransaction {
 
   // Date: "Trans. Date, Time DD-MM-YYYY HH:mm:ss"
   const dateMatch = text.match(
-    /Trans\. Date, Time\s+(\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2})/
+    /Trans\. Date, Time\s+(\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2})/,
   );
   let date = new Date();
   if (dateMatch) {
@@ -48,7 +48,7 @@ function parseCardTransaction(text: string): ParsedTransaction {
 function parseTransferReceipt(text: string): ParsedTransaction {
   // Beneficiary name: "Beneficiary Name NGUYEN DANG THAO MI Tên ngân hàng"
   const beneficiaryMatch = text.match(
-    /Beneficiary Name\s+(.*?)\s+(?:Tên ngân hàng|Beneficiary Bank)/
+    /Beneficiary Name\s+(.*?)\s+(?:Tên ngân hàng|Beneficiary Bank)/,
   );
   const store = beneficiaryMatch ? beneficiaryMatch[1].trim() : "Transfer";
 
@@ -61,7 +61,7 @@ function parseTransferReceipt(text: string): ParsedTransaction {
   // Date: "Trans. Date, Time HH:MM DayName DD/MM/YYYY"
   // e.g. "Trans. Date, Time 12:14 Friday 03/04/2026"
   const dateMatch = text.match(
-    /Trans\. Date, Time\s+(\d{2}:\d{2})\s+\S+\s+(\d{2}\/\d{2}\/\d{4})/
+    /Trans\. Date, Time\s+(\d{2}:\d{2})\s+\S+\s+(\d{2}\/\d{2}\/\d{4})/,
   );
   let date = new Date();
   if (dateMatch) {

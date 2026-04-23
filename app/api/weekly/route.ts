@@ -50,7 +50,15 @@ export async function GET(req: NextRequest) {
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const start = new Date(d.getFullYear(), d.getMonth(), 1);
-      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+      const end = new Date(
+        d.getFullYear(),
+        d.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999,
+      );
       const yr = String(d.getFullYear()).slice(-2);
       const m = d.getMonth() + 1;
       bucketDefs.push({ label: `${yr}年${m}月`, start, end });
@@ -67,7 +75,11 @@ export async function GET(req: NextRequest) {
   }
 
   const [settingsRes, ...results] = await Promise.all([
-    db.from("settings").select("target_monthly, fixed_costs").eq("id", "singleton").maybeSingle(),
+    db
+      .from("settings")
+      .select("target_monthly, fixed_costs")
+      .eq("id", "singleton")
+      .maybeSingle(),
     ...bucketDefs.map(({ start, end }) =>
       db
         .from("transactions")
@@ -75,16 +87,22 @@ export async function GET(req: NextRequest) {
         .gt("amount", 0)
         .gte("date", start.toISOString())
         .lte("date", end.toISOString())
-        .limit(2000)
+        .limit(2000),
     ),
   ]);
 
-  const settings = settingsRes.data as Pick<Settings, "target_monthly" | "fixed_costs"> | null;
+  const settings = settingsRes.data as Pick<
+    Settings,
+    "target_monthly" | "fixed_costs"
+  > | null;
   const targetMonthly = settings?.target_monthly ?? 0;
   const fixedCosts = settings?.fixed_costs ?? 0;
 
   const periods: PeriodItem[] = bucketDefs.map(({ label }, i) => {
-    const txs = (results[i].data ?? []) as Pick<Transaction, "category" | "amount" | "date">[];
+    const txs = (results[i].data ?? []) as Pick<
+      Transaction,
+      "category" | "amount" | "date"
+    >[];
     const byCategory: Record<string, number> = {};
     let total = 0;
     for (const t of txs) {
@@ -109,7 +127,9 @@ export async function GET(req: NextRequest) {
   const prevPeriod = periods[periods.length - 2];
   const diff = (currentPeriod?.total ?? 0) - (prevPeriod?.total ?? 0);
   const topCategory =
-    Object.entries(currentPeriod?.byCategory ?? {}).sort(([, a], [, b]) => b - a)[0]?.[0] ?? "—";
+    Object.entries(currentPeriod?.byCategory ?? {}).sort(
+      ([, a], [, b]) => b - a,
+    )[0]?.[0] ?? "—";
 
   const currentTotal = currentPeriod?.total ?? 0;
   const prevTotal = prevPeriod?.total ?? 0;
@@ -117,9 +137,15 @@ export async function GET(req: NextRequest) {
 
   if (period === "month" && currentTotal > 0) {
     const dayOfMonth = now.getDate();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const daysInMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+    ).getDate();
     const variableSpend = Math.max(0, currentTotal - fixedCosts);
-    projectedTotal = Math.round(fixedCosts + (variableSpend / dayOfMonth) * daysInMonth);
+    projectedTotal = Math.round(
+      fixedCosts + (variableSpend / dayOfMonth) * daysInMonth,
+    );
   } else if (period === "week" && currentTotal > 0) {
     const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
     projectedTotal = Math.round((currentTotal / dayOfWeek) * 7);
@@ -127,11 +153,13 @@ export async function GET(req: NextRequest) {
     const startOfYear = new Date(now.getFullYear(), 0, 1);
     const dayOfYear =
       Math.floor((now.getTime() - startOfYear.getTime()) / 86400000) + 1;
-    const daysInYear = new Date(now.getFullYear(), 1, 29).getMonth() === 1 ? 366 : 365;
+    const daysInYear =
+      new Date(now.getFullYear(), 1, 29).getMonth() === 1 ? 366 : 365;
     projectedTotal = Math.round((currentTotal / dayOfYear) * daysInYear);
   }
 
-  const projectedDiff = projectedTotal != null ? projectedTotal - prevTotal : null;
+  const projectedDiff =
+    projectedTotal != null ? projectedTotal - prevTotal : null;
 
   return NextResponse.json({
     periods,

@@ -8,7 +8,10 @@ export const maxDuration = 60;
 export async function GET(req: Request) {
   // Vercel Cron は Authorization: Bearer <CRON_SECRET> を付与する
   const authHeader = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (
+    process.env.CRON_SECRET &&
+    authHeader !== `Bearer ${process.env.CRON_SECRET}`
+  ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -21,11 +24,15 @@ export async function GET(req: Request) {
     .eq("id", "singleton")
     .maybeSingle();
 
-  const refreshToken = (settings as Pick<Settings, "google_refresh_token"> | null)
-    ?.google_refresh_token;
+  const refreshToken = (
+    settings as Pick<Settings, "google_refresh_token"> | null
+  )?.google_refresh_token;
 
   if (!refreshToken) {
-    return NextResponse.json({ error: "No refresh token stored" }, { status: 400 });
+    return NextResponse.json(
+      { error: "No refresh token stored" },
+      { status: 400 },
+    );
   }
 
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -40,7 +47,10 @@ export async function GET(req: Request) {
   });
 
   if (!tokenRes.ok) {
-    return NextResponse.json({ error: "Failed to refresh Google token" }, { status: 502 });
+    return NextResponse.json(
+      { error: "Failed to refresh Google token" },
+      { status: 502 },
+    );
   }
 
   const { access_token: accessToken } = await tokenRes.json();
@@ -50,12 +60,19 @@ export async function GET(req: Request) {
   try {
     allIds = await listVietcombankMessageIds(accessToken);
   } catch (e) {
-    return NextResponse.json({ error: `Gmail API error: ${String(e)}` }, { status: 502 });
+    return NextResponse.json(
+      { error: `Gmail API error: ${String(e)}` },
+      { status: 502 },
+    );
   }
 
   // DB に既存の gmail_id を取得
-  const { data: existingRows } = await db.from("transactions").select("gmail_id");
-  const existingIds = new Set((existingRows ?? []).map((r) => r.gmail_id as string));
+  const { data: existingRows } = await db
+    .from("transactions")
+    .select("gmail_id");
+  const existingIds = new Set(
+    (existingRows ?? []).map((r) => r.gmail_id as string),
+  );
 
   const newIds = allIds.filter((id) => !existingIds.has(id)).slice(0, 100);
 
@@ -81,7 +98,10 @@ export async function GET(req: Request) {
       category: "その他",
     } satisfies Omit<Transaction, "created_at">);
 
-    if (err) { console.error("[cron/sync] Insert error:", err); break; }
+    if (err) {
+      console.error("[cron/sync] Insert error:", err);
+      break;
+    }
     synced++;
   }
 
@@ -90,7 +110,9 @@ export async function GET(req: Request) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
     try {
       await fetch(`${siteUrl}/api/ai/categorize-all`, { method: "POST" });
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
 
   console.log(`[cron/sync] synced=${synced}`);

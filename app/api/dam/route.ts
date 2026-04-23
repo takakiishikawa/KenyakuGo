@@ -21,7 +21,15 @@ export async function GET() {
 
   const now = new Date();
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  const thisMonthEnd = new Date(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999,
+  );
 
   const [txRes, thisMonthCatRes, settingsRes] = await Promise.all([
     db
@@ -37,12 +45,22 @@ export async function GET() {
       .gte("date", thisMonthStart.toISOString())
       .lte("date", thisMonthEnd.toISOString())
       .limit(1000),
-    db.from("settings").select("target_monthly, fixed_costs").eq("id", "singleton").maybeSingle(),
+    db
+      .from("settings")
+      .select("target_monthly, fixed_costs")
+      .eq("id", "singleton")
+      .maybeSingle(),
   ]);
 
   const txs = (txRes.data ?? []) as Pick<Transaction, "amount" | "date">[];
-  const thisMonthCatTxs = (thisMonthCatRes.data ?? []) as Pick<Transaction, "amount" | "category">[];
-  const settings = settingsRes.data as Pick<Settings, "target_monthly" | "fixed_costs"> | null;
+  const thisMonthCatTxs = (thisMonthCatRes.data ?? []) as Pick<
+    Transaction,
+    "amount" | "category"
+  >[];
+  const settings = settingsRes.data as Pick<
+    Settings,
+    "target_monthly" | "fixed_costs"
+  > | null;
 
   const targetMonthly = settings?.target_monthly ?? 50_000_000;
   const fixedCosts = settings?.fixed_costs ?? 0;
@@ -52,7 +70,8 @@ export async function GET() {
   // カテゴリ別集計（AIコメント用）
   const categoryBreakdown: Record<string, number> = {};
   for (const tx of thisMonthCatTxs) {
-    categoryBreakdown[tx.category] = (categoryBreakdown[tx.category] ?? 0) + tx.amount;
+    categoryBreakdown[tx.category] =
+      (categoryBreakdown[tx.category] ?? 0) + tx.amount;
   }
 
   const currentMonthRecord = months[months.length - 1];
@@ -63,13 +82,19 @@ export async function GET() {
 
   const achievementRate =
     targetMonthly > 0
-      ? Math.max(0, Math.min(Math.round((currentBalance / targetMonthly) * 100), 100))
+      ? Math.max(
+          0,
+          Math.min(Math.round((currentBalance / targetMonthly) * 100), 100),
+        )
       : 0;
 
   const totalPossible = targetMonthly * months.length;
   const damLevel =
     totalPossible > 0
-      ? Math.max(0, Math.min(Math.round((cumulativeBalance / totalPossible) * 100), 100))
+      ? Math.max(
+          0,
+          Math.min(Math.round((cumulativeBalance / totalPossible) * 100), 100),
+        )
       : 0;
 
   const monthRecords: MonthRecord[] = months.map((m) => ({

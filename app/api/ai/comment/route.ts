@@ -26,7 +26,9 @@ export async function POST(req: NextRequest) {
         if (parsed.analysis !== undefined) {
           return NextResponse.json({ feedback: parsed });
         }
-      } catch { /* fall through to plain text */ }
+      } catch {
+        /* fall through to plain text */
+      }
       return NextResponse.json({ comment: cached.comment });
     }
   }
@@ -79,9 +81,16 @@ export async function POST(req: NextRequest) {
 }`;
   } else if (type === "column") {
     isStructured = true;
-    const d = data as { categories: string; thisMonthTotal: number; targetMonthly: number };
+    const d = data as {
+      categories: string;
+      thisMonthTotal: number;
+      targetMonthly: number;
+    };
     const remaining = d.targetMonthly - d.thisMonthTotal;
-    const pct = d.targetMonthly > 0 ? Math.round((d.thisMonthTotal / d.targetMonthly) * 100) : 0;
+    const pct =
+      d.targetMonthly > 0
+        ? Math.round((d.thisMonthTotal / d.targetMonthly) * 100)
+        : 0;
     prompt = `あなたは倹約哲学に精通した財務コーチです。ホーチミン在住の日本人の今月の支出を分析し、倹約の観点から深い洞察を提供してください。
 
 【今月の支出データ】
@@ -118,7 +127,10 @@ export async function POST(req: NextRequest) {
       answers: Array<{ question: string; answer: string }>;
     };
     const monthlyProjected = d.targetMonthly; // 毎月予算通りなら
-    const futureMonthly = Math.max(0, d.targetMonthly - (d.projectedBalance ?? 0));
+    const futureMonthly = Math.max(
+      0,
+      d.targetMonthly - (d.projectedBalance ?? 0),
+    );
     const qaPairs = d.answers
       .filter((a) => a.answer.trim())
       .map((a) => `Q: ${a.question}\nA: ${a.answer}`)
@@ -210,10 +222,15 @@ ${qaPairs || "（回答なし）"}
     let feedback: Record<string, unknown> = {};
     try {
       // コードブロック記法を除去してからパース
-      const cleaned = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+      const cleaned = text
+        .replace(/```json\s*/gi, "")
+        .replace(/```\s*/g, "")
+        .trim();
       const match = cleaned.match(/\{[\s\S]*\}/);
       if (match) feedback = JSON.parse(match[0]);
-    } catch { /* パース失敗時は空 */ }
+    } catch {
+      /* パース失敗時は空 */
+    }
 
     // キャッシュ保存（JSON文字列として保存）
     if (periodKey && Object.keys(feedback).length > 0) {
@@ -228,7 +245,9 @@ ${qaPairs || "（回答なし）"}
 
   // キャッシュ保存（プレーンテキスト）
   if (periodKey && text) {
-    await db.from("ai_comments").upsert({ period_key: periodKey, comment: text });
+    await db
+      .from("ai_comments")
+      .upsert({ period_key: periodKey, comment: text });
   }
 
   return NextResponse.json({ comment: text });

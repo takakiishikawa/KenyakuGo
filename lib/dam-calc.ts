@@ -13,12 +13,12 @@ interface DamCalcOptions {
 }
 
 interface MonthBalance {
-  key: string;       // "YYYY-MM"
+  key: string; // "YYYY-MM"
   year: number;
-  month: number;     // 0-indexed
+  month: number; // 0-indexed
   spent: number;
   projected: number;
-  balance: number;   // targetMonthly - projected
+  balance: number; // targetMonthly - projected
   cumulative: number;
 }
 
@@ -30,7 +30,11 @@ export function calcDamMonths(opts: DamCalcOptions): MonthBalance[] {
   const { txs, targetMonthly, fixedCosts, now = new Date() } = opts;
 
   const dayOfMonth = now.getDate();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysInMonth = new Date(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    0,
+  ).getDate();
 
   // 月ごとの支出を集計
   const spendMap: Record<string, number> = {};
@@ -54,7 +58,9 @@ export function calcDamMonths(opts: DamCalcOptions): MonthBalance[] {
     let projected: number;
     if (isCurrent && spent > 0) {
       const variableSpend = Math.max(0, spent - fixedCosts);
-      projected = Math.round(fixedCosts + (variableSpend / dayOfMonth) * daysInMonth);
+      projected = Math.round(
+        fixedCosts + (variableSpend / dayOfMonth) * daysInMonth,
+      );
     } else {
       projected = spent;
     }

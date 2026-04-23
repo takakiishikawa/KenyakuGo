@@ -22,7 +22,9 @@ function extractBody(parts: gmail_v1.Schema$MessagePart[]): string | null {
 }
 
 // 全メッセージIDのみを取得（本文は取らない）
-export async function listVietcombankMessageIds(accessToken: string): Promise<string[]> {
+export async function listVietcombankMessageIds(
+  accessToken: string,
+): Promise<string[]> {
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });
   const gmail = google.gmail({ version: "v1", auth });
@@ -52,7 +54,7 @@ export async function listVietcombankMessageIds(accessToken: string): Promise<st
 // 指定IDのメール本文を取得
 export async function fetchEmailBody(
   accessToken: string,
-  messageId: string
+  messageId: string,
 ): Promise<string | null> {
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });
@@ -61,7 +63,10 @@ export async function fetchEmailBody(
   return fetchBodyFromGmail(gmail, messageId);
 }
 
-async function fetchBodyFromGmail(gmail: GmailClient, messageId: string): Promise<string | null> {
+async function fetchBodyFromGmail(
+  gmail: GmailClient,
+  messageId: string,
+): Promise<string | null> {
   const msgResponse = await gmail.users.messages.get({
     userId: "me",
     id: messageId,
@@ -84,7 +89,7 @@ async function fetchBodyFromGmail(gmail: GmailClient, messageId: string): Promis
 
 // 後方互換（既存コードが使っている場合のため残す）
 export async function fetchVietcombankEmails(
-  accessToken: string
+  accessToken: string,
 ): Promise<Array<{ id: string; body: string }>> {
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });

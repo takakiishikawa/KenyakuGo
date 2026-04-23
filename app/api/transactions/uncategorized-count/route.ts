@@ -15,6 +15,8 @@ export async function GET() {
 
   if (error) return NextResponse.json({ count: 0 });
 
-  const stores = new Set((data ?? []).map((r) => r.store?.trim()).filter(Boolean));
+  const stores = new Set(
+    (data ?? []).map((r) => r.store?.trim()).filter(Boolean),
+  );
   return NextResponse.json({ count: stores.size });
 }

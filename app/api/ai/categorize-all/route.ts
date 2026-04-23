@@ -25,7 +25,10 @@ export async function POST() {
   const txs = uncategorized ?? [];
   if (txs.length === 0) return NextResponse.json({ updated: 0, total: 0 });
 
-  const { data: categoryRows } = await db.from("categories").select("name").order("created_at");
+  const { data: categoryRows } = await db
+    .from("categories")
+    .select("name")
+    .order("created_at");
   const existingCategories = (categoryRows ?? []).map((r) => r.name);
   const existingCatSet = new Set(existingCategories);
 
@@ -47,7 +50,8 @@ export async function POST() {
     const amount = tx.amount ?? 0;
     if (!store || storeMap[store]) continue;
     if (/chuyen|transfer|remit|remittance/i.test(store)) {
-      storeMap[store] = amount === 9000000 || amount === 8000000 ? "家賃" : "転送";
+      storeMap[store] =
+        amount === 9000000 || amount === 8000000 ? "家賃" : "転送";
     }
   }
 
@@ -55,7 +59,7 @@ export async function POST() {
     ...new Set(
       txs
         .map((t) => t.store?.trim())
-        .filter((s): s is string => !!s && !storeMap[s])
+        .filter((s): s is string => !!s && !storeMap[s]),
     ),
   ];
 
@@ -89,10 +93,13 @@ ${storeList}
           ],
         });
 
-        const text = message.content[0].type === "text" ? message.content[0].text : "[]";
+        const text =
+          message.content[0].type === "text" ? message.content[0].text : "[]";
         const match = text.match(/\[[\s\S]*\]/);
         if (match) {
-          const suggestions: { store: string; category: string }[] = JSON.parse(match[0]);
+          const suggestions: { store: string; category: string }[] = JSON.parse(
+            match[0],
+          );
           for (const s of suggestions) {
             if (s.store && s.category) map[s.store.trim()] = s.category.trim();
           }
@@ -101,7 +108,7 @@ ${storeList}
         // バッチ失敗時はスキップ
       }
       return map;
-    })
+    }),
   );
 
   for (const batchMap of batchResults) {
@@ -109,7 +116,7 @@ ${storeList}
   }
 
   const newCats = [...new Set(Object.values(storeMap))].filter(
-    (c) => c !== "その他" && !existingCatSet.has(c)
+    (c) => c !== "その他" && !existingCatSet.has(c),
   );
   for (const cat of newCats) {
     await db.from("categories").insert({ name: cat });
@@ -133,7 +140,9 @@ ${storeList}
       .eq("reviewed", false);
 
     if (!updateErr) {
-      updated += txs.filter((t) => stores.includes(t.store?.trim() ?? "")).length;
+      updated += txs.filter((t) =>
+        stores.includes(t.store?.trim() ?? ""),
+      ).length;
     }
   }
 

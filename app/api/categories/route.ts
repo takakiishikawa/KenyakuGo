@@ -26,7 +26,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const trimmed = typeof body.name === "string" ? body.name.trim() : "";
   if (!trimmed || trimmed.length > 50) {
-    return NextResponse.json({ error: "name must be 1–50 characters" }, { status: 400 });
+    return NextResponse.json(
+      { error: "name must be 1–50 characters" },
+      { status: 400 },
+    );
   }
 
   const { data, error } = await db

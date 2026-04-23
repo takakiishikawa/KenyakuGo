@@ -1,23 +1,86 @@
 "use client";
 
-import { Brain, Zap, Quote, Lightbulb, Clock, ShoppingCart, RefreshCw, Target, Users, Star } from "lucide-react";
+import {
+  Brain,
+  Zap,
+  Quote,
+  Lightbulb,
+  Clock,
+  ShoppingCart,
+  RefreshCw,
+  Target,
+  Users,
+  Star,
+} from "lucide-react";
 import { Badge, Card, PageHeader } from "@takaki/go-design-system";
 
 const QUOTES = [
-  { text: "収入を上げるより、支出を下げる方が確実で、即効性がある。", author: "倹約家の格言", bio: null },
-  { text: "欲しいものより、必要なものを買え。その差額が自由になる。", author: "倹約哲学", bio: null },
-  { text: "金持ちになる方法はひとつ。入ってくるより少ない額を使うこと。", author: "サミュエル・ジョンソン", bio: "18世紀イギリスの詩人・評論家・辞書編纂者。英語初の本格的辞書を独力で編纂し、実用的な人生哲学を数多く残した。" },
-  { text: "我慢ではなく、価値ある選択だ。それが倹約の本質。", author: "倹約哲学", bio: null },
-  { text: "小さな漏れが、大きなダムを空にする。", author: "倹約哲学", bio: null },
-  { text: "今日の100円が、10年後の1万円になる。", author: "複利の法則", bio: null },
-  { text: "安いから買うのではなく、必要だから買う。", author: "倹約家の格言", bio: null },
-  { text: "質素な生活習慣こそが、富の真の源泉である。", author: "トーマス・J・スタンリー", bio: "アメリカの経済学者・作家。20年以上かけて全米の富裕層を調査した著書「となりの億万長者」で、本当の金持ちは高級車や豪邸とは無縁の質素な生活をしていると実証した。" },
-  { text: "本当に大切なものはそんなにたくさんない。それに気づくのが第一歩。", author: "ミニマリスト哲学", bio: null },
-  { text: "ベース支出を下げれば、どんな収入でも生き残れる。", author: "FIREムーブメント", bio: null },
-  { text: "衝動買いは感情への投資であり、たいてい利回りがマイナスだ。", author: "行動経済学", bio: null },
+  {
+    text: "収入を上げるより、支出を下げる方が確実で、即効性がある。",
+    author: "倹約家の格言",
+    bio: null,
+  },
+  {
+    text: "欲しいものより、必要なものを買え。その差額が自由になる。",
+    author: "倹約哲学",
+    bio: null,
+  },
+  {
+    text: "金持ちになる方法はひとつ。入ってくるより少ない額を使うこと。",
+    author: "サミュエル・ジョンソン",
+    bio: "18世紀イギリスの詩人・評論家・辞書編纂者。英語初の本格的辞書を独力で編纂し、実用的な人生哲学を数多く残した。",
+  },
+  {
+    text: "我慢ではなく、価値ある選択だ。それが倹約の本質。",
+    author: "倹約哲学",
+    bio: null,
+  },
+  {
+    text: "小さな漏れが、大きなダムを空にする。",
+    author: "倹約哲学",
+    bio: null,
+  },
+  {
+    text: "今日の100円が、10年後の1万円になる。",
+    author: "複利の法則",
+    bio: null,
+  },
+  {
+    text: "安いから買うのではなく、必要だから買う。",
+    author: "倹約家の格言",
+    bio: null,
+  },
+  {
+    text: "質素な生活習慣こそが、富の真の源泉である。",
+    author: "トーマス・J・スタンリー",
+    bio: "アメリカの経済学者・作家。20年以上かけて全米の富裕層を調査した著書「となりの億万長者」で、本当の金持ちは高級車や豪邸とは無縁の質素な生活をしていると実証した。",
+  },
+  {
+    text: "本当に大切なものはそんなにたくさんない。それに気づくのが第一歩。",
+    author: "ミニマリスト哲学",
+    bio: null,
+  },
+  {
+    text: "ベース支出を下げれば、どんな収入でも生き残れる。",
+    author: "FIREムーブメント",
+    bio: null,
+  },
+  {
+    text: "衝動買いは感情への投資であり、たいてい利回りがマイナスだ。",
+    author: "行動経済学",
+    bio: null,
+  },
   { text: "値段ではなく、価値で買え。", author: "倹約哲学", bio: null },
-  { text: "節約とは貧しく生きることではなく、自由を設計することだ。", author: "倹約哲学", bio: null },
-  { text: "支出を半分にするのは、収入を倍にするより簡単だ。", author: "倹約家の格言", bio: null },
+  {
+    text: "節約とは貧しく生きることではなく、自由を設計することだ。",
+    author: "倹約哲学",
+    bio: null,
+  },
+  {
+    text: "支出を半分にするのは、収入を倍にするより簡単だ。",
+    author: "倹約家の格言",
+    bio: null,
+  },
 ];
 
 const PHILOSOPHY = [
@@ -48,16 +111,43 @@ const PHILOSOPHY = [
 ];
 
 const HABITS = [
-  { icon: Star, title: "週1回の支出確認", desc: "日曜夜10分、アプリを開いて今週の支出を見直す。意識するだけで無駄遣いが減る。" },
-  { icon: Clock, title: "24時間ルール", desc: "3,000円以上の衝動買いは24時間待つ。翌日もまだ欲しければ本物の需要だ。" },
-  { icon: ShoppingCart, title: "買い物リスト厳守", desc: "スーパーでは事前リストのみ購入。空腹時の買い物は避ける。" },
-  { icon: RefreshCw, title: "サブスク棚卸し", desc: "月1回、使っていないサブスクを解約する。年間数万円が戻ってくることも。" },
-  { icon: Lightbulb, title: "代替案を探す習慣", desc: "何か買う前に「タダか安く手に入る方法はないか？」と考える癖をつける。" },
-  { icon: Users, title: "目的を先に決める", desc: "「今月は○○のために貯める」と目標を先に設定する。目的のある節約は続く。" },
+  {
+    icon: Star,
+    title: "週1回の支出確認",
+    desc: "日曜夜10分、アプリを開いて今週の支出を見直す。意識するだけで無駄遣いが減る。",
+  },
+  {
+    icon: Clock,
+    title: "24時間ルール",
+    desc: "3,000円以上の衝動買いは24時間待つ。翌日もまだ欲しければ本物の需要だ。",
+  },
+  {
+    icon: ShoppingCart,
+    title: "買い物リスト厳守",
+    desc: "スーパーでは事前リストのみ購入。空腹時の買い物は避ける。",
+  },
+  {
+    icon: RefreshCw,
+    title: "サブスク棚卸し",
+    desc: "月1回、使っていないサブスクを解約する。年間数万円が戻ってくることも。",
+  },
+  {
+    icon: Lightbulb,
+    title: "代替案を探す習慣",
+    desc: "何か買う前に「タダか安く手に入る方法はないか？」と考える癖をつける。",
+  },
+  {
+    icon: Users,
+    title: "目的を先に決める",
+    desc: "「今月は○○のために貯める」と目標を先に設定する。目的のある節約は続く。",
+  },
 ];
 
 export default function ColumnPage() {
-  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+  const dayOfYear = Math.floor(
+    (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) /
+      86400000,
+  );
   const quote = QUOTES[dayOfYear % QUOTES.length];
 
   return (
@@ -69,24 +159,50 @@ export default function ColumnPage() {
         }
       />
 
-      <Card className="p-8 mt-8 mb-6 animate-fade-up"
-        style={{ background: "linear-gradient(135deg, rgba(82,183,136,0.06) 0%, rgba(45,106,79,0.03) 100%)", border: "1px solid rgba(82,183,136,0.15)" }}>
+      <Card
+        className="p-8 mt-8 mb-6 animate-fade-up"
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(82,183,136,0.06) 0%, rgba(45,106,79,0.03) 100%)",
+          border: "1px solid rgba(82,183,136,0.15)",
+        }}
+      >
         <div className="flex items-center gap-2 mb-5">
           <Quote size={15} style={{ color: "var(--kg-accent)" }} />
-          <p className="text-xs font-medium uppercase tracking-widest" style={{ color: "var(--kg-accent)" }}>今日の格言</p>
+          <p
+            className="text-xs font-medium uppercase tracking-widest"
+            style={{ color: "var(--kg-accent)" }}
+          >
+            今日の格言
+          </p>
         </div>
-        <p className="text-xl font-semibold leading-8 mb-4" style={{ color: "var(--kg-text)" }}>
+        <p
+          className="text-xl font-semibold leading-8 mb-4"
+          style={{ color: "var(--kg-text)" }}
+        >
           &ldquo;{quote.text}&rdquo;
         </p>
-        <div className="flex items-start gap-3 pt-4 border-t" style={{ borderColor: "rgba(82,183,136,0.15)" }}>
-          <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-            style={{ backgroundColor: "rgba(82,183,136,0.12)" }}>
+        <div
+          className="flex items-start gap-3 pt-4 border-t"
+          style={{ borderColor: "rgba(82,183,136,0.15)" }}
+        >
+          <div
+            className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+            style={{ backgroundColor: "rgba(82,183,136,0.12)" }}
+          >
             <Star size={13} style={{ color: "var(--kg-accent)" }} />
           </div>
           <div>
-            <p className="text-sm font-medium" style={{ color: "var(--kg-text)" }}>{quote.author}</p>
+            <p
+              className="text-sm font-medium"
+              style={{ color: "var(--kg-text)" }}
+            >
+              {quote.author}
+            </p>
             {quote.bio && (
-              <p className="text-sm leading-6 mt-1 text-muted-foreground">{quote.bio}</p>
+              <p className="text-sm leading-6 mt-1 text-muted-foreground">
+                {quote.bio}
+              </p>
             )}
           </div>
         </div>
@@ -95,21 +211,38 @@ export default function ColumnPage() {
       <div className="mb-6 animate-fade-up" style={{ animationDelay: "60ms" }}>
         <div className="flex items-center gap-2 mb-4">
           <Brain size={15} className="text-muted-foreground" />
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">倹約の哲学</p>
+          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            倹約の哲学
+          </p>
         </div>
         <div className="space-y-3">
           {PHILOSOPHY.map((p, i) => {
             const Icon = p.icon;
             return (
-              <Card key={i} className="p-6 flex gap-4"
-                style={{ borderLeft: `3px solid ${p.accent}` }}>
-                <div className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center mt-0.5"
-                  style={{ backgroundColor: `${p.accent}18` }}>
+              <Card
+                key={i}
+                className="p-6 flex gap-4"
+                style={{ borderLeft: `3px solid ${p.accent}` }}
+              >
+                <div
+                  className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center mt-0.5"
+                  style={{ backgroundColor: `${p.accent}18` }}
+                >
                   <Icon size={17} style={{ color: p.accent }} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold mb-2" style={{ color: "var(--kg-text)" }}>{p.title}</p>
-                  <p className="text-sm leading-7" style={{ color: "var(--kg-text-secondary)" }}>{p.body}</p>
+                  <p
+                    className="text-sm font-semibold mb-2"
+                    style={{ color: "var(--kg-text)" }}
+                  >
+                    {p.title}
+                  </p>
+                  <p
+                    className="text-sm leading-7"
+                    style={{ color: "var(--kg-text-secondary)" }}
+                  >
+                    {p.body}
+                  </p>
                 </div>
               </Card>
             );
@@ -128,15 +261,30 @@ export default function ColumnPage() {
           {HABITS.map((h, i) => {
             const Icon = h.icon;
             return (
-              <div key={i} className="flex items-start gap-3 p-4 rounded-xl"
-                style={{ backgroundColor: "var(--kg-surface-2)" }}>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: "rgba(82,183,136,0.1)" }}>
+              <div
+                key={i}
+                className="flex items-start gap-3 p-4 rounded-xl"
+                style={{ backgroundColor: "var(--kg-surface-2)" }}
+              >
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: "rgba(82,183,136,0.1)" }}
+                >
                   <Icon size={15} style={{ color: "var(--kg-accent)" }} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold mb-1" style={{ color: "var(--kg-text)" }}>{h.title}</p>
-                  <p className="text-sm leading-6" style={{ color: "var(--kg-text-secondary)" }}>{h.desc}</p>
+                  <p
+                    className="text-sm font-semibold mb-1"
+                    style={{ color: "var(--kg-text)" }}
+                  >
+                    {h.title}
+                  </p>
+                  <p
+                    className="text-sm leading-6"
+                    style={{ color: "var(--kg-text-secondary)" }}
+                  >
+                    {h.desc}
+                  </p>
                 </div>
               </div>
             );

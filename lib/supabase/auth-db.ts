@@ -13,7 +13,9 @@ import { createDb } from "./db";
  */
 export async function getAuthDb() {
   const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (!session) {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   }

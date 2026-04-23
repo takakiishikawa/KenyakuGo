@@ -6,9 +6,5 @@ export default function AppGroupLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <AppLayout sidebar={<KenyakuGoSidebar />}>
-      {children}
-    </AppLayout>
-  );
+  return <AppLayout sidebar={<KenyakuGoSidebar />}>{children}</AppLayout>;
 }

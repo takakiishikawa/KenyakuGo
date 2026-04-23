@@ -26,11 +26,16 @@ export async function PATCH(req: NextRequest) {
   const { db } = result;
 
   const body = await req.json();
-  const targetMonthly = typeof body.targetMonthly === "number" ? body.targetMonthly : undefined;
-  const fixedCosts = typeof body.fixedCosts === "number" ? body.fixedCosts : undefined;
+  const targetMonthly =
+    typeof body.targetMonthly === "number" ? body.targetMonthly : undefined;
+  const fixedCosts =
+    typeof body.fixedCosts === "number" ? body.fixedCosts : undefined;
 
   if (targetMonthly === undefined || fixedCosts === undefined) {
-    return NextResponse.json({ error: "targetMonthly and fixedCosts are required numbers" }, { status: 400 });
+    return NextResponse.json(
+      { error: "targetMonthly and fixedCosts are required numbers" },
+      { status: 400 },
+    );
   }
 
   const { data, error } = await db

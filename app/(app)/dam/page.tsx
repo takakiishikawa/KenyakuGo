@@ -204,7 +204,7 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
       }}
     >
       <div
-        className="w-full sm:max-w-xl rounded-t-2xl sm:rounded-2xl overflow-hidden animate-fade-up"
+        className="w-full sm:max-w-xl rounded-t-2xl sm:rounded-lg overflow-hidden animate-fade-up"
         style={{
           backgroundColor: "var(--kg-surface)",
           border: "1px solid var(--kg-border-medium)",
@@ -282,7 +282,7 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
 
           {genError && !loading && (
             <div
-              className="rounded-xl p-4 text-sm"
+              className="rounded-lg p-4 text-sm"
               style={{
                 backgroundColor: "var(--color-danger-bg)",
                 border: "1px solid var(--color-danger-border)",
@@ -298,7 +298,7 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
               {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="rounded-xl p-5 space-y-3"
+                  className="rounded-lg p-5 space-y-3"
                   style={{ backgroundColor: "var(--kg-surface-2)" }}
                 >
                   <Skeleton className="h-8 w-8 rounded-full" />
@@ -314,7 +314,7 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
             <div>
               {result.theme && (
                 <div
-                  className="mb-4 px-4 py-2.5 rounded-xl"
+                  className="mb-4 px-4 py-2.5 rounded-lg"
                   style={{
                     backgroundColor: "var(--color-success-bg)",
                     border: "1px solid var(--color-success-border)",
@@ -332,7 +332,7 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
                 {(result.recommendations ?? []).map((rec, i) => (
                   <div
                     key={i}
-                    className="rounded-xl p-5 flex flex-col gap-2"
+                    className="rounded-lg p-5 flex flex-col gap-2"
                     style={{
                       backgroundColor: "var(--kg-surface-2)",
                       border: "1px solid var(--kg-border-subtle)",

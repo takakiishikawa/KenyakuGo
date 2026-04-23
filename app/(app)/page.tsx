@@ -167,7 +167,7 @@ function CategoryPopup({
           {txs === null ? (
             <div className="px-6 py-8 space-y-3">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-10 rounded-xl" />
+                <Skeleton key={i} className="h-10 rounded-lg" />
               ))}
             </div>
           ) : txs.length === 0 ? (
@@ -253,7 +253,7 @@ function WeekComparePopup({
             </p>
           </div>
           <span
-            className="font-num text-2xl font-bold"
+            className="font-num text-2xl font-semibold"
             style={{
               color: improved ? "var(--kg-success)" : "var(--kg-danger)",
             }}
@@ -716,14 +716,14 @@ export default function Dashboard() {
 
           {feedbackLoading ? (
             <div className="space-y-3">
-              <Skeleton className="h-14 w-full rounded-xl" />
-              <Skeleton className="h-14 w-full rounded-xl" />
-              <Skeleton className="h-14 w-full rounded-xl" />
+              <Skeleton className="h-14 w-full rounded-lg" />
+              <Skeleton className="h-14 w-full rounded-lg" />
+              <Skeleton className="h-14 w-full rounded-lg" />
             </div>
           ) : feedback ? (
             <div className="space-y-3">
               <div
-                className="rounded-xl p-4"
+                className="rounded-lg p-4"
                 style={{ backgroundColor: "var(--kg-surface-2)" }}
               >
                 <p className="text-sm font-medium mb-1.5 text-muted-foreground">
@@ -737,7 +737,7 @@ export default function Dashboard() {
                 </p>
               </div>
               <div
-                className="rounded-xl p-4"
+                className="rounded-lg p-4"
                 style={{ backgroundColor: "var(--kg-surface-2)" }}
               >
                 <p
@@ -754,7 +754,7 @@ export default function Dashboard() {
                 </p>
               </div>
               <div
-                className="rounded-xl p-4"
+                className="rounded-lg p-4"
                 style={{ backgroundColor: "var(--kg-surface-2)" }}
               >
                 <p className="text-sm font-medium mb-1.5 text-muted-foreground">

@@ -388,8 +388,8 @@ export default function ReportPage() {
               <div
                 className="rounded-xl p-4"
                 style={{
-                  backgroundColor: "rgba(255,183,77,0.07)",
-                  border: "1px solid rgba(255,183,77,0.15)",
+                  backgroundColor: "var(--color-warning-subtle)",
+                  border: "1px solid var(--color-warning-muted)",
                 }}
               >
                 <p
@@ -431,7 +431,7 @@ export default function ReportPage() {
                         <span
                           className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                           style={{
-                            backgroundColor: "rgba(82,183,136,0.15)",
+                            backgroundColor: "var(--color-success-subtle)",
                             color: "var(--kg-accent)",
                           }}
                         >

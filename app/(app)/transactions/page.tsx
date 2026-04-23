@@ -248,9 +248,9 @@ export default function TransactionsPage() {
               <div
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md font-medium"
                 style={{
-                  color: "var(--kg-success)",
-                  backgroundColor: "rgba(82,183,136,0.08)",
-                  border: "1px solid rgba(82,183,136,0.2)",
+                  color: "var(--color-success)",
+                  backgroundColor: "var(--color-success-bg)",
+                  border: "1px solid var(--color-success-border)",
                 }}
               >
                 <span>✓</span>
@@ -265,9 +265,9 @@ export default function TransactionsPage() {
                 style={
                   uncategorizedCount && uncategorizedCount > 0
                     ? {
-                        borderColor: "rgba(255,183,77,0.35)",
-                        color: "var(--kg-warning)",
-                        backgroundColor: "rgba(255,183,77,0.08)",
+                        borderColor: "var(--color-warning-border)",
+                        color: "var(--color-warning)",
+                        backgroundColor: "var(--color-warning-bg)",
                       }
                     : undefined
                 }
@@ -294,17 +294,17 @@ export default function TransactionsPage() {
         <Card
           className="mt-6 mb-6"
           style={{
-            border: "1px solid rgba(255,183,77,0.2)",
-            background: "rgba(255,183,77,0.04)",
+            border: "1px solid var(--color-warning-border)",
+            background: "var(--color-warning-bg)",
           }}
         >
           <div
             className="px-6 py-4 border-b"
-            style={{ borderColor: "rgba(255,183,77,0.15)" }}
+            style={{ borderColor: "var(--color-warning-border)" }}
           >
             <p
               className="text-xs font-medium uppercase tracking-widest"
-              style={{ color: "var(--kg-warning)" }}
+              style={{ color: "var(--color-warning)" }}
             >
               ⚠ 要確認ストア（{uncategorizedStores.length}件）
             </p>
@@ -313,7 +313,7 @@ export default function TransactionsPage() {
             <div
               key={s.store}
               className="flex items-center gap-3 px-6 py-3 border-b last:border-0"
-              style={{ borderColor: "rgba(255,183,77,0.1)" }}
+              style={{ borderColor: "var(--color-warning-border)" }}
             >
               <div className="flex-1 min-w-0">
                 <p
@@ -330,8 +330,8 @@ export default function TransactionsPage() {
                 <span
                   className="text-sm px-2 py-1 rounded-full whitespace-nowrap"
                   style={{
-                    backgroundColor: "rgba(255,183,77,0.12)",
-                    color: "var(--kg-warning)",
+                    backgroundColor: "var(--color-warning-bg)",
+                    color: "var(--color-warning)",
                   }}
                 >
                   {s.hint}
@@ -466,8 +466,8 @@ export default function TransactionsPage() {
         <div
           className="flex items-center gap-3 px-5 py-3 mb-4 rounded-md"
           style={{
-            backgroundColor: "rgba(82,183,136,0.06)",
-            border: "1px solid rgba(82,183,136,0.2)",
+            backgroundColor: "var(--color-success-bg)",
+            border: "1px solid var(--color-success-border)",
           }}
         >
           <p className="text-sm flex-1 text-muted-foreground">
@@ -523,24 +523,24 @@ export default function TransactionsPage() {
                   style={{
                     borderColor: "var(--kg-border-subtle)",
                     borderLeft: isUncategorized
-                      ? "3px solid rgba(255,183,77,0.5)"
+                      ? "3px solid var(--color-warning)"
                       : "3px solid transparent",
                     backgroundColor: isUncategorized
-                      ? "rgba(255,183,77,0.03)"
+                      ? "var(--color-warning-bg)"
                       : "transparent",
                   }}
                   onMouseEnter={(e) => {
                     if (!isEditing)
                       (e.currentTarget as HTMLElement).style.backgroundColor =
                         isUncategorized
-                          ? "rgba(255,183,77,0.06)"
+                          ? "var(--color-warning-hover)"
                           : "var(--kg-surface-2)";
                   }}
                   onMouseLeave={(e) => {
                     if (!isEditing)
                       (e.currentTarget as HTMLElement).style.backgroundColor =
                         isUncategorized
-                          ? "rgba(255,183,77,0.03)"
+                          ? "var(--color-warning-bg)"
                           : "transparent";
                   }}
                 >
@@ -577,15 +577,17 @@ export default function TransactionsPage() {
                       </Button>
                     </div>
                   ) : (
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => {
                         setEditingId(tx.id);
                         setEditCategory(tx.category);
                       }}
-                      className="cursor-pointer"
+                      className="cursor-pointer p-0 h-auto hover:bg-transparent"
                     >
                       <CategoryBadge category={tx.category} />
-                    </button>
+                    </Button>
                   )}
                   <span
                     className="text-sm font-medium flex-1 truncate"

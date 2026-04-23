@@ -196,7 +196,7 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       style={{
-        backgroundColor: "rgba(0,0,0,0.6)",
+        backgroundColor: "var(--color-overlay-dark)",
         backdropFilter: "blur(4px)",
       }}
       onClick={(e) => {
@@ -284,8 +284,8 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
             <div
               className="rounded-xl p-4 text-sm"
               style={{
-                backgroundColor: "rgba(239,68,68,0.08)",
-                border: "1px solid rgba(239,68,68,0.2)",
+                backgroundColor: "var(--color-danger-bg)",
+                border: "1px solid var(--color-danger-border)",
                 color: "var(--kg-danger)",
               }}
             >
@@ -316,8 +316,8 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
                 <div
                   className="mb-4 px-4 py-2.5 rounded-xl"
                   style={{
-                    backgroundColor: "rgba(82,183,136,0.08)",
-                    border: "1px solid rgba(82,183,136,0.2)",
+                    backgroundColor: "var(--color-success-bg)",
+                    border: "1px solid var(--color-success-border)",
                   }}
                 >
                   <p
@@ -343,7 +343,7 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
                       <span
                         className="font-num text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap"
                         style={{
-                          backgroundColor: "rgba(82,183,136,0.12)",
+                          backgroundColor: "var(--color-success-bg)",
                           color: "var(--kg-accent)",
                         }}
                       >
@@ -366,18 +366,18 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-all w-fit mt-1"
                         style={{
-                          backgroundColor: "rgba(82,183,136,0.12)",
+                          backgroundColor: "var(--color-success-bg)",
                           color: "var(--kg-accent)",
                         }}
                         onMouseEnter={(e) => {
                           (
                             e.currentTarget as HTMLElement
-                          ).style.backgroundColor = "rgba(82,183,136,0.2)";
+                          ).style.backgroundColor = "var(--color-success-bg-hover)";
                         }}
                         onMouseLeave={(e) => {
                           (
                             e.currentTarget as HTMLElement
-                          ).style.backgroundColor = "rgba(82,183,136,0.12)";
+                          ).style.backgroundColor = "var(--color-success-bg)";
                         }}
                       >
                         <span>↗</span> {rec.linkLabel}
@@ -579,7 +579,7 @@ export default function DamPage() {
                   gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr",
                   borderColor: "var(--kg-border-subtle)",
                   backgroundColor: isCurrent
-                    ? "rgba(82,183,136,0.04)"
+                    ? "var(--color-success-bg)"
                     : "transparent",
                   borderLeft: isCurrent
                     ? "3px solid var(--kg-accent)"

@@ -157,8 +157,8 @@ export default function SettingsPage() {
           className="p-7 animate-fade-up"
           style={{
             animationDelay: "160ms",
-            border: "1px solid rgba(239,83,80,0.2)",
-            background: "rgba(239,83,80,0.04)",
+            border: "1px solid var(--color-danger-alpha-20)",
+            background: "var(--color-danger-alpha-04)",
           }}
         >
           <div className="flex items-center gap-2 mb-2">

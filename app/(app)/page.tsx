@@ -532,8 +532,9 @@ export default function Dashboard() {
             {data ? formatVND(data.thisWeekTotal) : "—"}
           </p>
           {data && data.lastWeekTotal > 0 && (
-            <button
-              className="mt-2 flex items-center gap-1 text-sm font-medium rounded-lg transition-opacity hover:opacity-70"
+            <Button
+              variant="ghost"
+              className="mt-2 flex items-center gap-1 text-sm font-medium rounded-lg transition-opacity hover:opacity-70 h-auto p-0"
               onClick={() => setShowWeekCompare(true)}
               style={{
                 color: weekImproved ? "var(--kg-success)" : "var(--kg-danger)",
@@ -548,7 +549,7 @@ export default function Dashboard() {
                 ? `前の7日間より倹約（${Math.abs(data.weekDiff)}%↓）`
                 : `前の7日間より増加（${data.weekDiff}%↑）`}
               <ChevronRight size={13} className="opacity-60" />
-            </button>
+            </Button>
           )}
         </Card>
 
@@ -650,20 +651,10 @@ export default function Dashboard() {
                       ? Math.round(((item.value - prev) / prev) * 100)
                       : null;
                   return (
-                    <button
+                    <Button
                       key={item.name}
-                      className="flex items-center gap-2 w-full text-left rounded-lg px-2 py-1.5 transition-colors"
-                      style={{ backgroundColor: "transparent" }}
-                      onMouseEnter={(e) =>
-                        ((
-                          e.currentTarget as HTMLElement
-                        ).style.backgroundColor = "var(--kg-surface-2)")
-                      }
-                      onMouseLeave={(e) =>
-                        ((
-                          e.currentTarget as HTMLElement
-                        ).style.backgroundColor = "transparent")
-                      }
+                      variant="ghost"
+                      className="flex items-center gap-2 w-full text-left rounded-lg px-2 py-1.5 transition-colors h-auto justify-start"
                       onClick={() =>
                         setPopupCategory({ name: item.name, colorIndex: i })
                       }
@@ -698,7 +689,7 @@ export default function Dashboard() {
                           {diff}%
                         </span>
                       )}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -844,20 +835,4 @@ export default function Dashboard() {
         <CategoryPopup
           category={popupCategory.name}
           color={DONUT_COLORS[popupCategory.colorIndex % DONUT_COLORS.length]}
-          onClose={() => setPopupCategory(null)}
-        />
-      )}
-
-      {showWeekCompare && data && (
-        <WeekComparePopup
-          thisWeekTotal={data.thisWeekTotal}
-          lastWeekTotal={data.lastWeekTotal}
-          weekDiff={data.weekDiff}
-          categoryBreakdown={data.categoryBreakdown}
-          prevCategoryBreakdown={data.prevCategoryBreakdown}
-          onClose={() => setShowWeekCompare(false)}
-        />
-      )}
-    </div>
-  );
-}
+          onClose={() => setPop

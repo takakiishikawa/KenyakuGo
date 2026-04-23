@@ -372,7 +372,8 @@ function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
                         onMouseEnter={(e) => {
                           (
                             e.currentTarget as HTMLElement
-                          ).style.backgroundColor = "var(--color-success-bg-hover)";
+                          ).style.backgroundColor =
+                            "var(--color-success-bg-hover)";
                         }}
                         onMouseLeave={(e) => {
                           (

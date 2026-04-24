@@ -29,12 +29,13 @@
     "react-dom": "^19.2.5",
     "react-dropzone": "^15.0.0",
     "react-hook-form": "^7.73.1",
-    "recharts": "^3.8.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.4",
     "typescript": "^6.0.3",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "@vercel/analytics": "^1.5.0",
+    "@hookform/resolvers": "^3.9.1"
   },
   "devDependencies": {
     "eslint": "^10.2.1",

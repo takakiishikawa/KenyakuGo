@@ -15,7 +15,7 @@ import {
   RefreshCw,
   ChevronRight,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@takaki/go-design-system";
 import { formatVND, formatDate } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
 import {

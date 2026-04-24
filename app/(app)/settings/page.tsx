@@ -18,7 +18,7 @@ import {
   Input,
   PageHeader,
 } from "@takaki/go-design-system";
-import { toast } from "sonner";
+import { toast } from "@takaki/go-design-system";
 import { AlertTriangle } from "lucide-react";
 
 export default function SettingsPage() {

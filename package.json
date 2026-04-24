@@ -9,12 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.90.0",
+    "@anthropic-ai/sdk": "^0.91.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@supabase/ssr": "^0.10.2",
-    "@supabase/supabase-js": "^2.104.0",
+    "@supabase/supabase-js": "^2.104.1",
     "@tailwindcss/postcss": "^4.2.4",
     "@takaki/go-design-system": "github:takakiishikawa/go-design-system",
     "@types/node": "^25.6.0",
@@ -23,7 +23,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "googleapis": "^171.4.0",
-    "lucide-react": "^1.8.0",
+    "lucide-react": "^1.9.0",
     "next": "^16.2.4",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",

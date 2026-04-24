@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import { DesignTokens, Toaster } from "@takaki/go-design-system";
+import { Analytics } from "@vercel/analytics/react";
 
 const notoSansJP = Noto_Sans_JP({
   weight: ["300", "400", "500", "600", "700"],
@@ -37,6 +38,7 @@ export default function RootLayout({
       <body className="min-h-full">
         {children}
         <Toaster />
+        <Analytics />
       </body>
     </html>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { toast } from "sonner";
+import { toast } from "@takaki/go-design-system";
 import { formatVND, formatDateWithYear } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
 import {

@@ -1,5 +1,4 @@
 {
-  "buildCommand": "npm update @takaki/go-design-system && npm run build",
   "crons": [
     {
       "path": "/api/cron/sync",

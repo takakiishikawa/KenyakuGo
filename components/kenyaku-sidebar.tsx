@@ -21,9 +21,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
+  UserMenu,
 } from "@takaki/go-design-system";
 import {
   LayoutDashboard,
@@ -31,14 +29,14 @@ import {
   List,
   Droplets,
   BookOpen,
-  Settings,
-  LogOut,
   Sun,
   Moon,
   ChevronsUpDown,
   Check,
   JapaneseYen,
   Lightbulb,
+  Repeat2,
+  Settings,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
@@ -80,10 +78,9 @@ const navItems = [
   { href: "/", label: "ダッシュボード", icon: LayoutDashboard },
   { href: "/weekly", label: "レポート", icon: BarChart2 },
   { href: "/transactions", label: "取引一覧", icon: List },
+  { href: "/subscriptions", label: "サブスク", icon: Repeat2 },
   { href: "/dam", label: "貯蓄ダム", icon: Droplets },
   { href: "/column", label: "マインドセット", icon: BookOpen },
-  { href: "/concept", label: "コンセプト", icon: Lightbulb },
-  { href: "/settings", label: "設定", icon: Settings },
 ];
 
 const supabaseConfigured =
@@ -144,14 +141,8 @@ export function KenyakuGoSidebar() {
 
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
   const fullName = user?.user_metadata?.full_name as string | undefined;
-  const initials = fullName
-    ? fullName
-        .split(" ")
-        .map((n: string) => n[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
-    : "KG";
+  const displayName =
+    fullName || user?.email?.split("@")[0] || "";
 
   return (
     <Sidebar>
@@ -236,48 +227,44 @@ export function KenyakuGoSidebar() {
 
       {/* フッター */}
       <SidebarFooter>
-        <SidebarMenu>
-          {/* テーマ切り替え */}
-          <SidebarMenuItem>
-            <SidebarMenuButton onClick={toggleTheme} className="cursor-pointer">
-              {isDark ? (
-                <Moon className="h-4 w-4 shrink-0" />
-              ) : (
-                <Sun className="h-4 w-4 shrink-0" />
-              )}
-              {isDark ? "ダーク" : "ライト"}
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-
-          {/* ユーザー / ログイン */}
-          {user ? (
-            <>
-              <SidebarMenuItem>
-                <SidebarMenuButton className="cursor-default">
-                  <Avatar className="h-5 w-5 shrink-0">
-                    {avatarUrl && (
-                      <AvatarImage src={avatarUrl} alt={fullName ?? "User"} />
-                    )}
-                    <AvatarFallback className="text-xs">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="truncate flex-1 min-w-0 text-sm">
-                    {fullName ?? "User"}
-                  </span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={handleSignOut}
-                  className="cursor-pointer"
-                >
-                  <LogOut className="h-4 w-4 shrink-0" />
-                  ログアウト
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </>
-          ) : (
+        {user ? (
+          <UserMenu
+            displayName={displayName || "—"}
+            email={user.email ?? undefined}
+            avatarUrl={avatarUrl}
+            items={[
+              {
+                title: "コンセプト",
+                icon: Lightbulb,
+                onSelect: () => router.push("/concept"),
+                isActive: isActive("/concept"),
+              },
+              {
+                title: "設定",
+                icon: Settings,
+                onSelect: () => router.push("/settings"),
+                isActive: isActive("/settings"),
+              },
+              {
+                title: isDark ? "ダーク" : "ライト",
+                icon: isDark ? Moon : Sun,
+                onSelect: toggleTheme,
+              },
+            ]}
+            signOut={{ onSelect: handleSignOut }}
+          />
+        ) : (
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={toggleTheme} className="cursor-pointer">
+                {isDark ? (
+                  <Moon className="h-4 w-4 shrink-0" />
+                ) : (
+                  <Sun className="h-4 w-4 shrink-0" />
+                )}
+                {isDark ? "ダーク" : "ライト"}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={handleSignIn}
@@ -286,8 +273,8 @@ export function KenyakuGoSidebar() {
                 <span className="text-sm">Googleでログイン</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
-          )}
-        </SidebarMenu>
+          </SidebarMenu>
+        )}
       </SidebarFooter>
 
       <SidebarRail />

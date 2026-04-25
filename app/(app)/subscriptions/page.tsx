@@ -82,7 +82,7 @@ export default function SubscriptionsPage() {
       {subscriptions === null ? (
         <div className="mt-8 space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-16 rounded-xl" />
+            <Skeleton key={i} className="h-16 rounded-lg" />
           ))}
         </div>
       ) : subscriptions.length === 0 ? (

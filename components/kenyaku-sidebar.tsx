@@ -141,8 +141,7 @@ export function KenyakuGoSidebar() {
 
   const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
   const fullName = user?.user_metadata?.full_name as string | undefined;
-  const displayName =
-    fullName || user?.email?.split("@")[0] || "";
+  const displayName = fullName || user?.email?.split("@")[0] || "";
 
   return (
     <Sidebar>
@@ -256,7 +255,10 @@ export function KenyakuGoSidebar() {
         ) : (
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton onClick={toggleTheme} className="cursor-pointer">
+              <SidebarMenuButton
+                onClick={toggleTheme}
+                className="cursor-pointer"
+              >
                 {isDark ? (
                   <Moon className="h-4 w-4 shrink-0" />
                 ) : (

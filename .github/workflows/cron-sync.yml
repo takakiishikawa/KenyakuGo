@@ -1,0 +1,24 @@
+name: Cron — Sync
+
+# Gmail から Vietcombank 取引メールを取得して transactions に同期する。
+# GH Actions cron が本番URLの /api/cron/sync を叩く。
+# 旧: vercel.json の crons (GH Actions に一元化)
+#
+# 必要な GitHub Secrets:
+#   PROD_URL    例: https://kenyakugo.vercel.app
+#   CRON_SECRET route.ts で検証する Bearer トークン
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'  # JST 15:00 daily
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger sync endpoint
+        run: |
+          curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.PROD_URL }}/api/cron/sync"

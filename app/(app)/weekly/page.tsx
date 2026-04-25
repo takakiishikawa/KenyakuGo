@@ -1,34 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import dynamic from "next/dynamic";
-const LineChart = dynamic(
-  () => import("recharts").then((m) => ({ default: m.LineChart })),
-  {
-    ssr: false,
-    loading: () => <div className="animate-pulse h-40 bg-muted rounded" />,
-  },
-);
-const Line = dynamic(
-  () => import("recharts").then((m) => ({ default: m.Line })),
-  { ssr: false },
-);
-const XAxis = dynamic(
-  () => import("recharts").then((m) => ({ default: m.XAxis })),
-  { ssr: false },
-);
-const YAxis = dynamic(
-  () => import("recharts").then((m) => ({ default: m.YAxis })),
-  { ssr: false },
-);
-const CartesianGrid = dynamic(
-  () => import("recharts").then((m) => ({ default: m.CartesianGrid })),
-  { ssr: false },
-);
-const Legend = dynamic(
-  () => import("recharts").then((m) => ({ default: m.Legend })),
-  { ssr: false },
-);
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Legend,
+} from "recharts";
 import { Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { formatVND } from "@/lib/format";
 import {

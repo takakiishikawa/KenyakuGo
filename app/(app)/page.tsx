@@ -1,22 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import dynamic from "next/dynamic";
-const PieChart = dynamic(
-  () => import("recharts").then((m) => ({ default: m.PieChart })),
-  {
-    ssr: false,
-    loading: () => <div className="animate-pulse h-40 bg-muted rounded" />,
-  },
-);
-const Pie = dynamic(
-  () => import("recharts").then((m) => ({ default: m.Pie })),
-  { ssr: false },
-);
-const Cell = dynamic(
-  () => import("recharts").then((m) => ({ default: m.Cell })),
-  { ssr: false },
-);
+import { PieChart, Pie, Cell } from "recharts";
 import {
   TrendingDown,
   TrendingUp,

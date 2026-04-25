@@ -158,7 +158,7 @@ export function KenyakuGoSidebar() {
                   <JapaneseYen className="h-4 w-4 shrink-0 text-primary" />
                   <div className="flex flex-col gap-0.5 leading-none min-w-0">
                     <span className="text-xs text-muted-foreground">App</span>
-                    <span className="text-[15px] font-medium tracking-tight truncate">
+                    <span className="text-sm font-medium tracking-tight truncate">
                       KenyakuGo
                     </span>
                   </div>

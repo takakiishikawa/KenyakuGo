@@ -841,4 +841,20 @@ export default function Dashboard() {
         <CategoryPopup
           category={popupCategory.name}
           color={DONUT_COLORS[popupCategory.colorIndex % DONUT_COLORS.length]}
-          onClose={() => setPop
+          onClose={() => setPopupCategory(null)}
+        />
+      )}
+
+      {showWeekCompare && data && (
+        <WeekComparePopup
+          thisWeekTotal={data.thisWeekTotal}
+          lastWeekTotal={data.lastWeekTotal}
+          weekDiff={data.weekDiff}
+          categoryBreakdown={data.categoryBreakdown}
+          prevCategoryBreakdown={data.prevCategoryBreakdown}
+          onClose={() => setShowWeekCompare(false)}
+        />
+      )}
+    </div>
+  );
+}

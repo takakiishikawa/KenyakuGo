@@ -6,7 +6,11 @@ import { Card, PageHeader, Skeleton } from "@takaki/go-design-system";
 import type { SubscriptionItem } from "@/app/api/subscriptions/route";
 
 function formatMonth(date: string): string {
-  return new Date(date).toLocaleDateString("ja-JP", { year: "numeric", month: "short", day: "numeric" });
+  return new Date(date).toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function StatusBadge({ isActive }: { isActive: boolean }) {
@@ -15,8 +19,14 @@ function StatusBadge({ isActive }: { isActive: boolean }) {
       className="text-xs font-medium px-2.5 py-1 rounded-full shrink-0"
       style={
         isActive
-          ? { backgroundColor: "rgba(82,183,136,0.12)", color: "var(--kg-success)" }
-          : { backgroundColor: "var(--kg-surface-2)", color: "var(--muted-foreground)" }
+          ? {
+              backgroundColor: "rgba(82,183,136,0.12)",
+              color: "var(--kg-success)",
+            }
+          : {
+              backgroundColor: "var(--kg-surface-2)",
+              color: "var(--muted-foreground)",
+            }
       }
     >
       {isActive ? "実行中" : "終了済み"}
@@ -31,13 +41,18 @@ function SubscriptionRow({ sub }: { sub: SubscriptionItem }) {
       style={{ borderColor: "var(--kg-border-subtle)" }}
     >
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">{sub.store}</p>
+        <p className="text-sm font-medium text-foreground truncate">
+          {sub.store}
+        </p>
         <p className="text-xs mt-0.5 text-muted-foreground">
-          {sub.monthsActive}ヶ月継続 · 最終課金: {formatMonth(sub.lastChargedAt)}
+          {sub.monthsActive}ヶ月継続 · 最終課金:{" "}
+          {formatMonth(sub.lastChargedAt)}
         </p>
       </div>
       <div className="text-right shrink-0">
-        <p className="font-num text-sm font-semibold text-foreground">{formatVND(sub.amount)}</p>
+        <p className="font-num text-sm font-semibold text-foreground">
+          {formatVND(sub.amount)}
+        </p>
         <p className="text-xs mt-0.5 text-muted-foreground">/月</p>
       </div>
       <StatusBadge isActive={sub.isActive} />
@@ -46,7 +61,9 @@ function SubscriptionRow({ sub }: { sub: SubscriptionItem }) {
 }
 
 export default function SubscriptionsPage() {
-  const [subscriptions, setSubscriptions] = useState<SubscriptionItem[] | null>(null);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionItem[] | null>(
+    null,
+  );
 
   useEffect(() => {
     fetch("/api/subscriptions")
@@ -85,7 +102,10 @@ export default function SubscriptionsPage() {
                 <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
                   実行中 — {active.length}件
                 </p>
-                <p className="text-sm font-num font-semibold" style={{ color: "var(--color-primary)" }}>
+                <p
+                  className="text-sm font-num font-semibold"
+                  style={{ color: "var(--color-primary)" }}
+                >
                   月額合計 {formatVND(monthlyTotal)}
                 </p>
               </div>

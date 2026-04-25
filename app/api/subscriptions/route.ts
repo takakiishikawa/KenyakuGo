@@ -56,7 +56,7 @@ export async function GET() {
         chargeCount: amounts.length,
         isActive: daysSinceLast <= ACTIVE_THRESHOLD_DAYS,
       };
-    }
+    },
   );
 
   subscriptions.sort((a, b) => {

@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -21,7 +22,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  UserMenu,
 } from "@takaki/go-design-system";
 import {
   LayoutDashboard,
@@ -39,6 +39,12 @@ import {
   Settings,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
+
+const UserMenu = dynamic(
+  () =>
+    import("@takaki/go-design-system").then((m) => ({ default: m.UserMenu })),
+  { ssr: false }
+);
 
 const GO_APPS = [
   {

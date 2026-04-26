@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
 import { Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
+import dynamic from "next/dynamic";
 import { DesignTokens, Toaster } from "@takaki/go-design-system";
-import { Analytics } from "@vercel/analytics/react";
+
+const Analytics = dynamic(
+  () =>
+    import("@vercel/analytics/react").then((m) => ({ default: m.Analytics })),
+  { ssr: false }
+);
 
 const notoSansJP = Noto_Sans_JP({
   weight: ["400", "500", "700"],

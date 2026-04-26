@@ -7,7 +7,7 @@ import { DesignTokens, Toaster } from "@takaki/go-design-system";
 const Analytics = dynamic(
   () =>
     import("@vercel/analytics/react").then((m) => ({ default: m.Analytics })),
-  { ssr: false }
+  { ssr: false },
 );
 
 const notoSansJP = Noto_Sans_JP({

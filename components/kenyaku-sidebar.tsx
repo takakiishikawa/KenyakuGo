@@ -43,7 +43,7 @@ import type { User } from "@supabase/supabase-js";
 const UserMenu = dynamic(
   () =>
     import("@takaki/go-design-system").then((m) => ({ default: m.UserMenu })),
-  { ssr: false }
+  { ssr: false },
 );
 
 const GO_APPS = [

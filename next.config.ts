@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
       "lucide-react",
       "@takaki/go-design-system",
       "@vercel/analytics",
+      "@supabase/ssr",
     ],
   },
 };

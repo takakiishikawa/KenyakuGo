@@ -5,8 +5,8 @@ name: Cron — Sync
 # 旧: vercel.json の crons (GH Actions に一元化)
 #
 # 必要な GitHub Secrets:
-#   PROD_URL    例: https://kenyakugo.vercel.app
-#   CRON_SECRET route.ts で検証する Bearer トークン
+#   CRON_SECRET route.ts で検証する Bearer トークン (Vercel 側で未設定なら省略可)
+# 本番 URL は公開情報なので直書き。
 
 on:
   workflow_dispatch:
@@ -21,4 +21,4 @@ jobs:
         run: |
           curl --fail-with-body -sS \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.PROD_URL }}/api/cron/sync"
+            "https://kenyakugo.vercel.app/api/cron/sync"

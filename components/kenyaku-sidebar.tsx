@@ -4,7 +4,6 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import {
   Sidebar,
   SidebarContent,
@@ -101,14 +100,18 @@ export function KenyakuGoSidebar() {
 
   useEffect(() => {
     if (!supabaseConfigured) return;
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user ?? null);
+    let sub: { unsubscribe: () => void } | undefined;
+    import("@/lib/supabase/client").then(({ createClient }) => {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data: { user } }) => setUser(user));
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_, session) => {
+        setUser(session?.user ?? null);
+      });
+      sub = subscription;
     });
-    return () => subscription.unsubscribe();
+    return () => sub?.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -135,6 +138,7 @@ export function KenyakuGoSidebar() {
 
   const handleSignOut = async () => {
     if (!supabaseConfigured) return;
+    const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
     await supabase.auth.signOut();
     router.refresh();
@@ -151,7 +155,6 @@ export function KenyakuGoSidebar() {
 
   return (
     <Sidebar>
-      {/* ヘッダー：ロゴ + アプリ切り替え */}
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -210,7 +213,6 @@ export function KenyakuGoSidebar() {
         </SidebarMenu>
       </SidebarHeader>
 
-      {/* メインナビ */}
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
@@ -230,7 +232,6 @@ export function KenyakuGoSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* フッター */}
       <SidebarFooter>
         {user ? (
           <UserMenu

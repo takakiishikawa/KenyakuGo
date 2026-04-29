@@ -17,7 +17,7 @@ const Toaster = dynamic(
 );
 
 const notoSansJP = Noto_Sans_JP({
-  weight: ["400", "500", "700"],
+  weight: ["400", "700"],
   subsets: ["latin"],
   variable: "--font-noto",
   display: "swap",

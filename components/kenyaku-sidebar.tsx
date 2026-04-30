@@ -15,12 +15,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from "@takaki/go-design-system";
 import {
   LayoutDashboard,
@@ -30,9 +24,6 @@ import {
   BookOpen,
   Sun,
   Moon,
-  ChevronsUpDown,
-  Check,
-  JapaneseYen,
   Lightbulb,
   Repeat2,
   Settings,
@@ -40,51 +31,21 @@ import {
 import type { User } from "@supabase/supabase-js";
 
 const UserMenu = dynamic(
-  () =>
-    import("@takaki/go-design-system").then((m) => ({ default: m.UserMenu })),
+  () => import("@takaki/go-design-system").then((m) => ({ default: m.UserMenu })),
   { ssr: false },
 );
 
-const GO_APPS = [
-  {
-    name: "NativeGo",
-    url: "https://english-learning-app-black.vercel.app/",
-    color: "#0052CC",
-  },
-  {
-    name: "CareGo",
-    url: "https://care-go-mu.vercel.app/dashboard",
-    color: "#30A46C",
-  },
-  {
-    name: "KenyakuGo",
-    url: "https://kenyaku-go.vercel.app/",
-    color: "#1A7A4A",
-  },
-  { name: "TaskGo", url: "https://taskgo-dun.vercel.app/", color: "#5E6AD2" },
-  {
-    name: "CookGo",
-    url: "https://cook-go-lovat.vercel.app/dashboard",
-    color: "#1AD1A5",
-  },
-  {
-    name: "PhysicalGo",
-    url: "https://physical-go.vercel.app/dashboard",
-    color: "#FF6B6B",
-  },
-  {
-    name: "Design System",
-    url: "https://go-design-system.vercel.app",
-    color: "#6B7280",
-  },
-] as const;
+const AppSwitcher = dynamic(
+  () => import("./kenyaku-app-switcher").then((m) => ({ default: m.AppSwitcher })),
+  { ssr: false, loading: () => <div className="h-10 w-full" /> },
+);
 
 const navItems = [
   { href: "/", label: "ダッシュボード", icon: LayoutDashboard },
   { href: "/weekly", label: "レポート", icon: BarChart2 },
   { href: "/transactions", label: "取引一覧", icon: List },
   { href: "/subscriptions", label: "サブスク", icon: Repeat2 },
-  { href: "/dam", label: "貯蓄ダム", icon: Droplets },
+  { href: "/dam", label: "貴蓄ダム", icon: Droplets },
   { href: "/column", label: "マインドセット", icon: BookOpen },
 ];
 
@@ -132,9 +93,7 @@ export function KenyakuGoSidebar() {
     document.documentElement.classList.toggle("dark", next === "dark");
   }
 
-  const handleSignIn = () => {
-    router.push("/login");
-  };
+  const handleSignIn = () => router.push("/login");
 
   const handleSignOut = async () => {
     if (!supabaseConfigured) return;
@@ -158,57 +117,7 @@ export function KenyakuGoSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                >
-                  <JapaneseYen className="h-4 w-4 shrink-0 text-primary" />
-                  <div className="flex flex-col gap-0.5 leading-none min-w-0">
-                    <span className="text-xs text-muted-foreground">App</span>
-                    <span className="text-sm font-medium tracking-tight truncate">
-                      KenyakuGo
-                    </span>
-                  </div>
-                  <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-52"
-                align="start"
-                side="bottom"
-                sideOffset={4}
-              >
-                <DropdownMenuLabel className="text-xs text-muted-foreground">
-                  Goシリーズ
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {GO_APPS.map((app) => (
-                  <DropdownMenuItem
-                    key={app.name}
-                    onSelect={() => {
-                      window.location.href = app.url;
-                    }}
-                    className="gap-2"
-                  >
-                    <span
-                      className="shrink-0 rounded-full"
-                      style={{
-                        width: 8,
-                        height: 8,
-                        backgroundColor: app.color,
-                      }}
-                      aria-hidden
-                    />
-                    <span className="flex-1">{app.name}</span>
-                    {app.name === "KenyakuGo" && (
-                      <Check className="h-4 w-4 shrink-0 opacity-70" />
-                    )}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <AppSwitcher />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -262,10 +171,7 @@ export function KenyakuGoSidebar() {
         ) : (
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={toggleTheme}
-                className="cursor-pointer"
-              >
+              <SidebarMenuButton onClick={toggleTheme} className="cursor-pointer">
                 {isDark ? (
                   <Moon className="h-4 w-4 shrink-0" />
                 ) : (
@@ -275,10 +181,7 @@ export function KenyakuGoSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={handleSignIn}
-                className="cursor-pointer"
-              >
+              <SidebarMenuButton onClick={handleSignIn} className="cursor-pointer">
                 <span className="text-sm">Googleでログイン</span>
               </SidebarMenuButton>
             </SidebarMenuItem>

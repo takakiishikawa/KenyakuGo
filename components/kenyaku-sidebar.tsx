@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
-  AppSwitcher,
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -15,7 +15,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  UserMenu,
 } from "@takaki/go-design-system";
 import {
   LayoutDashboard,
@@ -30,6 +29,14 @@ import {
   Settings,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
+
+const AppSwitcher = dynamic(() =>
+  import("@takaki/go-design-system").then((m) => ({ default: m.AppSwitcher }))
+);
+
+const UserMenu = dynamic(() =>
+  import("@takaki/go-design-system").then((m) => ({ default: m.UserMenu }))
+);
 
 const GO_APPS = [
   { name: "MetaGo", url: "https://metago.vercel.app/", color: "#1E3A8A" },

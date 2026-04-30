@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { toast } from "@takaki/go-design-system";
 import { formatVND, formatDateWithYear } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
@@ -230,11 +230,15 @@ export default function TransactionsPage() {
     }
   };
 
-  const filteredTransactions = searchQuery.trim()
-    ? transactions.filter((tx) =>
-        tx.store.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
-    : transactions;
+  const filteredTransactions = useMemo(
+    () =>
+      searchQuery.trim()
+        ? transactions.filter((tx) =>
+            tx.store.toLowerCase().includes(searchQuery.toLowerCase()),
+          )
+        : transactions,
+    [transactions, searchQuery],
+  );
 
   const allCategorized = uncategorizedCount === 0;
 

@@ -31,11 +31,11 @@ import {
 import type { User } from "@supabase/supabase-js";
 
 const AppSwitcher = dynamic(() =>
-  import("@takaki/go-design-system").then((m) => ({ default: m.AppSwitcher }))
+  import("@takaki/go-design-system").then((m) => ({ default: m.AppSwitcher })),
 );
 
 const UserMenu = dynamic(() =>
-  import("@takaki/go-design-system").then((m) => ({ default: m.UserMenu }))
+  import("@takaki/go-design-system").then((m) => ({ default: m.UserMenu })),
 );
 
 const GO_APPS = [

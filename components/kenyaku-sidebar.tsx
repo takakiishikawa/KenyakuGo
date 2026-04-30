@@ -33,13 +33,37 @@ import type { User } from "@supabase/supabase-js";
 
 const GO_APPS = [
   { name: "MetaGo", url: "https://metago.vercel.app/", color: "#1E3A8A" },
-  { name: "NativeGo", url: "https://english-learning-app-black.vercel.app/", color: "#0052CC" },
-  { name: "CareGo", url: "https://care-go-mu.vercel.app/dashboard", color: "#00875A" },
-  { name: "KenyakuGo", url: "https://kenyaku-go.vercel.app/", color: "#FF5630" },
-  { name: "CookGo", url: "https://cook-go-lovat.vercel.app/dashboard", color: "#FF991F" },
-  { name: "PhysicalGo", url: "https://physical-go.vercel.app/dashboard", color: "#6554C0" },
+  {
+    name: "NativeGo",
+    url: "https://english-learning-app-black.vercel.app/",
+    color: "#0052CC",
+  },
+  {
+    name: "CareGo",
+    url: "https://care-go-mu.vercel.app/dashboard",
+    color: "#00875A",
+  },
+  {
+    name: "KenyakuGo",
+    url: "https://kenyaku-go.vercel.app/",
+    color: "#FF5630",
+  },
+  {
+    name: "CookGo",
+    url: "https://cook-go-lovat.vercel.app/dashboard",
+    color: "#FF991F",
+  },
+  {
+    name: "PhysicalGo",
+    url: "https://physical-go.vercel.app/dashboard",
+    color: "#6554C0",
+  },
   { name: "TaskGo", url: "https://taskgo-dun.vercel.app/", color: "#00B8D9" },
-  { name: "DesignSystem", url: "https://github.com/takakiishikawa/go-design-system", color: "#7C3AED" },
+  {
+    name: "DesignSystem",
+    url: "https://github.com/takakiishikawa/go-design-system",
+    color: "#7C3AED",
+  },
 ];
 
 const navItems = [

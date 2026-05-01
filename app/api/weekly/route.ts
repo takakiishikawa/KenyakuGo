@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthDb } from "@/lib/supabase/auth-db";
-import { type Transaction, type Settings } from "@/lib/supabase/db";
+import { type Transaction } from "@/lib/supabase/db";
+import { fetchAllBudgets, getCurrentMonthKey } from "@/lib/budget";
 
 function getWeekStart(date: Date): Date {
   const d = new Date(date);
@@ -74,12 +75,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const [settingsRes, ...results] = await Promise.all([
-    db
-      .from("settings")
-      .select("target_monthly, fixed_costs")
-      .eq("id", "singleton")
-      .maybeSingle(),
+  const [budgets, ...results] = await Promise.all([
+    fetchAllBudgets(db),
     ...bucketDefs.map(({ start, end }) =>
       db
         .from("transactions")
@@ -91,12 +88,9 @@ export async function GET(req: NextRequest) {
     ),
   ]);
 
-  const settings = settingsRes.data as Pick<
-    Settings,
-    "target_monthly" | "fixed_costs"
-  > | null;
-  const targetMonthly = settings?.target_monthly ?? 0;
-  const fixedCosts = settings?.fixed_costs ?? 0;
+  const currentBudget = budgets.find((b) => b.month === getCurrentMonthKey(now));
+  const targetMonthly = currentBudget?.target_monthly ?? 0;
+  const fixedCosts = currentBudget?.fixed_costs ?? 0;
 
   const periods: PeriodItem[] = bucketDefs.map(({ label }, i) => {
     const txs = (results[i].data ?? []) as Pick<

@@ -23,6 +23,7 @@ import { AlertTriangle } from "lucide-react";
 
 export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [month, setMonth] = useState<string>("");
   const [targetMonthly, setTargetMonthly] = useState("");
   const [fixedCosts, setFixedCosts] = useState("");
   const [saving, setSaving] = useState(false);
@@ -38,10 +39,13 @@ export default function SettingsPage() {
     fetch("/api/settings")
       .then((r) => r.json())
       .then((data) => {
+        setMonth(data.month);
         setTargetMonthly(String(data.targetMonthly));
         setFixedCosts(String(data.fixedCosts));
       });
   }, []);
+
+  const monthLabel = month ? `${month.slice(0, 4)}年${parseInt(month.slice(5, 7), 10)}月` : "";
 
   const handleSave = async () => {
     setSaving(true);
@@ -68,9 +72,16 @@ export default function SettingsPage() {
 
       <div className="mt-8 space-y-5 max-w-xl">
         <Card className="p-7 animate-fade-up">
-          <p className="text-xs font-medium uppercase tracking-widest mb-6 text-muted-foreground">
-            予算設定
-          </p>
+          <div className="flex items-baseline justify-between mb-6">
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              今月の予算
+            </p>
+            {monthLabel && (
+              <p className="text-xs font-num text-muted-foreground">
+                {monthLabel}
+              </p>
+            )}
+          </div>
           <div className="space-y-5">
             <div>
               <label className="block text-sm font-medium mb-2 text-foreground">
@@ -113,6 +124,9 @@ export default function SettingsPage() {
             <Button onClick={handleSave} disabled={saving}>
               {saving ? "保存中..." : "保存する"}
             </Button>
+            <p className="text-xs text-muted-foreground">
+              ※ 変更は今月（{monthLabel}）にのみ反映されます。過去月の予算は変更できません。月別履歴は「ダム」ページで確認できます。
+            </p>
           </div>
         </Card>
 

@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { getAuthDb } from "@/lib/supabase/auth-db";
-import { type Transaction, type Settings } from "@/lib/supabase/db";
+import { type Transaction } from "@/lib/supabase/db";
 import { calcDamMonths } from "@/lib/dam-calc";
 import { DAM_START, FIXED_CATEGORIES } from "@/lib/constants";
+import {
+  buildBudgetMap,
+  fetchAllBudgets,
+  getCurrentMonthKey,
+} from "@/lib/budget";
 
 export async function GET() {
   const result = await getAuthDb();
@@ -36,45 +41,35 @@ export async function GET() {
     999,
   );
 
-  const [
-    last7Res,
-    prev7Res,
-    thisMonthRes,
-    recentRes,
-    settingsRes,
-    allMonthsRes,
-  ] = await Promise.all([
-    db
-      .from("transactions")
-      .select("amount, category")
-      .gte("date", last7Start.toISOString())
-      .lte("date", last7End.toISOString()),
-    db
-      .from("transactions")
-      .select("amount, category")
-      .gte("date", prev7Start.toISOString())
-      .lte("date", prev7End.toISOString()),
-    db
-      .from("transactions")
-      .select("amount")
-      .gte("date", monthStart.toISOString())
-      .lte("date", monthEnd.toISOString()),
-    db
-      .from("transactions")
-      .select("id, store, amount, category, date")
-      .order("date", { ascending: false })
-      .limit(5),
-    db
-      .from("settings")
-      .select("target_monthly, fixed_costs")
-      .eq("id", "singleton")
-      .maybeSingle(),
-    db
-      .from("transactions")
-      .select("amount, date")
-      .gt("amount", 0)
-      .gte("date", DAM_START.toISOString()),
-  ]);
+  const [last7Res, prev7Res, thisMonthRes, recentRes, budgets, allMonthsRes] =
+    await Promise.all([
+      db
+        .from("transactions")
+        .select("amount, category")
+        .gte("date", last7Start.toISOString())
+        .lte("date", last7End.toISOString()),
+      db
+        .from("transactions")
+        .select("amount, category")
+        .gte("date", prev7Start.toISOString())
+        .lte("date", prev7End.toISOString()),
+      db
+        .from("transactions")
+        .select("amount")
+        .gte("date", monthStart.toISOString())
+        .lte("date", monthEnd.toISOString()),
+      db
+        .from("transactions")
+        .select("id, store, amount, category, date")
+        .order("date", { ascending: false })
+        .limit(5),
+      fetchAllBudgets(db),
+      db
+        .from("transactions")
+        .select("amount, date")
+        .gt("amount", 0)
+        .gte("date", DAM_START.toISOString()),
+    ]);
 
   const errors = [
     last7Res.error,
@@ -102,10 +97,8 @@ export async function GET() {
     Transaction,
     "id" | "store" | "amount" | "category" | "date"
   >[];
-  const settings = settingsRes.data as Pick<
-    Settings,
-    "target_monthly" | "fixed_costs"
-  > | null;
+  const budgetMap = buildBudgetMap(budgets);
+  const currentBudget = budgetMap.get(getCurrentMonthKey(now));
 
   const isVariable = (tx: Pick<Transaction, "category">) =>
     !(FIXED_CATEGORIES as readonly string[]).includes(tx.category);
@@ -123,8 +116,8 @@ export async function GET() {
       ? Math.round(((last7Total - prev7Total) / prev7Total) * 100)
       : 0;
 
-  const targetMonthly = settings?.target_monthly ?? 0;
-  const fixedCosts = settings?.fixed_costs ?? 0;
+  const targetMonthly = currentBudget?.target_monthly ?? 0;
+  const fixedCosts = currentBudget?.fixed_costs ?? 0;
 
   const dayOfMonth = now.getDate();
   const daysInMonth = new Date(
@@ -145,8 +138,7 @@ export async function GET() {
   >[];
   const damMonths = calcDamMonths({
     txs: allMonthTxs,
-    targetMonthly,
-    fixedCosts,
+    budgetMap,
     now,
   });
   const cumulativeBalance = damMonths[damMonths.length - 1]?.cumulative ?? 0;

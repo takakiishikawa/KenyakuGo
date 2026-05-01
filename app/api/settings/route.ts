@@ -1,22 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthDb } from "@/lib/supabase/auth-db";
-import { type Settings } from "@/lib/supabase/db";
+import { getCurrentMonthKey } from "@/lib/budget";
 
+// 当月の予算を扱う。過去月の編集は本エンドポイントでは行わない。
 export async function GET() {
   const result = await getAuthDb();
   if (result instanceof NextResponse) return result;
   const { db } = result;
 
-  const { data } = await db
-    .from("settings")
+  const month = getCurrentMonthKey();
+  const { data, error } = await db
+    .from("monthly_budgets")
     .select("target_monthly, fixed_costs")
-    .eq("id", "singleton")
+    .eq("month", month)
     .maybeSingle();
 
-  const s = data as Pick<Settings, "target_monthly" | "fixed_costs"> | null;
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
   return NextResponse.json({
-    targetMonthly: s?.target_monthly ?? 0,
-    fixedCosts: s?.fixed_costs ?? 0,
+    month,
+    targetMonthly: data?.target_monthly ?? 0,
+    fixedCosts: data?.fixed_costs ?? 0,
   });
 }
 
@@ -38,10 +44,12 @@ export async function PATCH(req: NextRequest) {
     );
   }
 
+  const month = getCurrentMonthKey();
+
   const { data, error } = await db
-    .from("settings")
+    .from("monthly_budgets")
     .upsert({
-      id: "singleton",
+      month,
       target_monthly: targetMonthly,
       fixed_costs: fixedCosts,
       updated_at: new Date().toISOString(),
@@ -53,9 +61,9 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const s = data as Pick<Settings, "target_monthly" | "fixed_costs"> | null;
   return NextResponse.json({
-    targetMonthly: s?.target_monthly ?? 0,
-    fixedCosts: s?.fixed_costs ?? 0,
+    month,
+    targetMonthly: data?.target_monthly ?? 0,
+    fixedCosts: data?.fixed_costs ?? 0,
   });
 }

@@ -1,4 +1,6 @@
 import { DAM_START } from "./constants";
+import type { MonthlyBudget } from "./budget";
+import { monthKey } from "./budget";
 
 interface TxForDam {
   amount: number;
@@ -7,8 +9,8 @@ interface TxForDam {
 
 interface DamCalcOptions {
   txs: TxForDam[];
-  targetMonthly: number;
-  fixedCosts: number;
+  budgetMap: Map<string, MonthlyBudget>;
+  defaultBudget?: { target_monthly: number; fixed_costs: number };
   now?: Date;
 }
 
@@ -16,18 +18,25 @@ interface MonthBalance {
   key: string; // "YYYY-MM"
   year: number;
   month: number; // 0-indexed
+  target: number;
+  fixedCosts: number;
   spent: number;
   projected: number;
-  balance: number; // targetMonthly - projected
+  balance: number;
   cumulative: number;
 }
 
 /**
  * DAM_START から現在月までの月次残高を計算する。
- * dam/route.ts と dashboard/route.ts で同じロジックを使う。
+ * 月ごとに budget が異なる場合に対応（monthly_budgets テーブル前提）。
  */
 export function calcDamMonths(opts: DamCalcOptions): MonthBalance[] {
-  const { txs, targetMonthly, fixedCosts, now = new Date() } = opts;
+  const {
+    txs,
+    budgetMap,
+    defaultBudget = { target_monthly: 0, fixed_costs: 0 },
+    now = new Date(),
+  } = opts;
 
   const dayOfMonth = now.getDate();
   const daysInMonth = new Date(
@@ -40,7 +49,7 @@ export function calcDamMonths(opts: DamCalcOptions): MonthBalance[] {
   const spendMap: Record<string, number> = {};
   for (const tx of txs) {
     const d = new Date(tx.date);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const key = monthKey(d.getFullYear(), d.getMonth());
     spendMap[key] = (spendMap[key] ?? 0) + tx.amount;
   }
 
@@ -51,7 +60,14 @@ export function calcDamMonths(opts: DamCalcOptions): MonthBalance[] {
   while (cursor <= now) {
     const year = cursor.getFullYear();
     const month = cursor.getMonth();
-    const key = `${year}-${String(month + 1).padStart(2, "0")}`;
+    const key = monthKey(year, month);
+    const budget = budgetMap.get(key) ?? {
+      target_monthly: defaultBudget.target_monthly,
+      fixed_costs: defaultBudget.fixed_costs,
+    };
+    const target = budget.target_monthly;
+    const fixedCosts = budget.fixed_costs;
+
     const spent = spendMap[key] ?? 0;
     const isCurrent = year === now.getFullYear() && month === now.getMonth();
 
@@ -65,9 +81,19 @@ export function calcDamMonths(opts: DamCalcOptions): MonthBalance[] {
       projected = spent;
     }
 
-    const balance = targetMonthly - projected;
+    const balance = target - projected;
     cumulative += balance;
-    months.push({ key, year, month, spent, projected, balance, cumulative });
+    months.push({
+      key,
+      year,
+      month,
+      target,
+      fixedCosts,
+      spent,
+      projected,
+      balance,
+      cumulative,
+    });
     cursor = new Date(year, month + 1, 1);
   }
 

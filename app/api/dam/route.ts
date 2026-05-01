@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { getAuthDb } from "@/lib/supabase/auth-db";
-import { type Transaction, type Settings } from "@/lib/supabase/db";
+import { type Transaction } from "@/lib/supabase/db";
 import { calcDamMonths, DAM_START_LABEL } from "@/lib/dam-calc";
 import { DAM_START } from "@/lib/constants";
+import {
+  buildBudgetMap,
+  fetchAllBudgets,
+  getCurrentMonthKey,
+} from "@/lib/budget";
 
 export interface MonthRecord {
   key: string;
@@ -31,7 +36,7 @@ export async function GET() {
     999,
   );
 
-  const [txRes, thisMonthCatRes, settingsRes] = await Promise.all([
+  const [txRes, thisMonthCatRes, budgets] = await Promise.all([
     db
       .from("transactions")
       .select("amount, date")
@@ -45,11 +50,7 @@ export async function GET() {
       .gte("date", thisMonthStart.toISOString())
       .lte("date", thisMonthEnd.toISOString())
       .limit(1000),
-    db
-      .from("settings")
-      .select("target_monthly, fixed_costs")
-      .eq("id", "singleton")
-      .maybeSingle(),
+    fetchAllBudgets(db),
   ]);
 
   const txs = (txRes.data ?? []) as Pick<Transaction, "amount" | "date">[];
@@ -57,17 +58,15 @@ export async function GET() {
     Transaction,
     "amount" | "category"
   >[];
-  const settings = settingsRes.data as Pick<
-    Settings,
-    "target_monthly" | "fixed_costs"
-  > | null;
 
-  const targetMonthly = settings?.target_monthly ?? 50_000_000;
-  const fixedCosts = settings?.fixed_costs ?? 0;
+  const budgetMap = buildBudgetMap(budgets);
+  const currentBudget = budgetMap.get(getCurrentMonthKey(now));
+  const targetMonthly = currentBudget?.target_monthly ?? 0;
+  const fixedCosts = currentBudget?.fixed_costs ?? 0;
 
-  const months = calcDamMonths({ txs, targetMonthly, fixedCosts, now });
+  const months = calcDamMonths({ txs, budgetMap, now });
 
-  // カテゴリ別集計（AIコメント用）
+  // カテゴリ別集計
   const categoryBreakdown: Record<string, number> = {};
   for (const tx of thisMonthCatTxs) {
     categoryBreakdown[tx.category] =
@@ -88,7 +87,7 @@ export async function GET() {
         )
       : 0;
 
-  const totalPossible = targetMonthly * months.length;
+  const totalPossible = months.reduce((s, m) => s + m.target, 0);
   const damLevel =
     totalPossible > 0
       ? Math.max(
@@ -100,7 +99,7 @@ export async function GET() {
   const monthRecords: MonthRecord[] = months.map((m) => ({
     key: m.key,
     label: `${m.year}年${m.month + 1}月`,
-    target: targetMonthly,
+    target: m.target,
     spent: m.spent,
     projected: m.projected,
     balance: m.balance,

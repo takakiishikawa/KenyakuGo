@@ -26,6 +26,12 @@ import {
   Lightbulb,
   Repeat2,
   Settings,
+  Languages,
+  Leaf,
+  Zap,
+  ChefHat,
+  Workflow,
+  Palette,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
@@ -38,27 +44,41 @@ const UserMenu = dynamic(() =>
 );
 
 const GO_APPS = [
-  { name: "MetaGo", url: "https://metago.vercel.app/", color: "#1E3A8A" },
+  {
+    name: "MetaGo",
+    url: "https://metago.vercel.app/",
+    color: "#1E3A8A",
+    icon: Workflow,
+  },
   {
     name: "NativeGo",
     url: "https://english-learning-app-black.vercel.app/",
     color: "#0052CC",
+    icon: Languages,
   },
   {
     name: "KenyakuGo",
     url: "https://kenyaku-go.vercel.app/",
     color: "#FF5630",
+    icon: Leaf,
   },
   {
     name: "CookGo",
     url: "https://cook-go-lovat.vercel.app/dashboard",
     color: "#FF991F",
+    icon: ChefHat,
   },
-  { name: "TaskGo", url: "https://taskgo-dun.vercel.app/", color: "#00B8D9" },
+  {
+    name: "TaskGo",
+    url: "https://taskgo-dun.vercel.app/",
+    color: "#00B8D9",
+    icon: Zap,
+  },
   {
     name: "DesignSystem",
     url: "https://github.com/takakiishikawa/go-design-system",
     color: "#7C3AED",
+    icon: Palette,
   },
 ];
 

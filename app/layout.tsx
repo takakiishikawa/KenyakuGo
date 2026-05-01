@@ -1,20 +1,8 @@
 import type { Metadata } from "next";
 import { Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
-import dynamic from "next/dynamic";
 import { DesignTokens } from "@takaki/go-design-system";
-
-const Analytics = dynamic(
-  () =>
-    import("@vercel/analytics/react").then((m) => ({ default: m.Analytics })),
-  { ssr: false },
-);
-
-const Toaster = dynamic(
-  () =>
-    import("@takaki/go-design-system").then((m) => ({ default: m.Toaster })),
-  { ssr: false },
-);
+import { ClientProviders } from "./client-providers";
 
 const notoSansJP = Noto_Sans_JP({
   weight: ["400", "700"],
@@ -49,8 +37,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full">
         {children}
-        <Toaster />
-        <Analytics />
+        <ClientProviders />
       </body>
     </html>
   );

@@ -1,13 +1,5 @@
-import dynamic from "next/dynamic";
 import { AppLayout } from "@takaki/go-design-system";
-
-const KenyakuGoSidebar = dynamic(
-  () =>
-    import("@/components/kenyaku-sidebar").then((m) => ({
-      default: m.KenyakuGoSidebar,
-    })),
-  { ssr: false },
-);
+import { KenyakuGoSidebar } from "./client-sidebar";
 
 export default function AppGroupLayout({
   children,

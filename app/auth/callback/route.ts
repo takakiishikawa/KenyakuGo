@@ -33,11 +33,21 @@ export async function GET(request: NextRequest) {
       if (refreshToken) {
         const { createDb } = await import("@/lib/supabase/db");
         const db = createDb(data.session?.access_token);
-        await db.from("settings").upsert({
+        const { error: upsertError } = await db.from("settings").upsert({
           id: "singleton",
           google_refresh_token: refreshToken,
           updated_at: new Date().toISOString(),
         });
+        if (upsertError) {
+          console.error(
+            "[auth/callback] settings upsert failed:",
+            upsertError,
+          );
+        }
+      } else {
+        console.warn(
+          "[auth/callback] no provider_refresh_token in session — re-consent required",
+        );
       }
       return NextResponse.redirect(`${origin}${next}`);
     }

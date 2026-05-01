@@ -49,36 +49,6 @@ export async function POST(req: NextRequest) {
   "point": "注目すべき支出や良い点（1文、ポジティブな視点で、日本語）",
   "tip": "倹約のための具体的な一言アドバイス（1文、日本語）"
 }`;
-  } else if (type === "weekly") {
-    isStructured = true;
-    prompt = `ホーチミン在住日本人の週次支出分析（カテゴリ別VND）
-今週: ${JSON.stringify(data.thisWeek)}
-先週: ${JSON.stringify(data.lastWeek)}
-
-以下のJSON形式のみで回答してください（マークダウン・コードブロック不要、JSONのみ）。
-固定費（家賃・ローン・公共料金・通信費）は倹約推奨から除外。
-
-{
-  "analysis": "今週の支出についての簡潔な総評（2文以内、日本語）",
-  "savingsCategory": "最も削減を推奨する裁量的支出カテゴリ名（削減不要ならnull）",
-  "savingsReason": "そのカテゴリを推奨する理由（1文、日本語）",
-  "savingsSuggestion": "具体的な倹約方法（3つまで、改行区切り、「・」始まり）"
-}`;
-  } else if (type === "monthly") {
-    isStructured = true;
-    prompt = `ホーチミン在住日本人の月次支出分析（カテゴリ別VND）
-今月: ${JSON.stringify(data.thisWeek)}
-先月: ${JSON.stringify(data.lastWeek)}
-
-以下のJSON形式のみで回答してください（マークダウン・コードブロック不要、JSONのみ）。
-固定費（家賃・ローン・公共料金・通信費）は倹約推奨から除外。
-
-{
-  "analysis": "今月の支出についての簡潔な総評（2文以内、日本語）",
-  "savingsCategory": "最も削減を推奨する裁量的支出カテゴリ名（削減不要ならnull）",
-  "savingsReason": "そのカテゴリを推奨する理由（1文、日本語）",
-  "savingsSuggestion": "具体的な倹約方法（3つまで、改行区切り、「・」始まり）"
-}`;
   } else if (type === "dam-qa") {
     isStructured = true;
     const d = data as {

@@ -564,7 +564,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <Card
           className="p-7 animate-fade-up"
           style={{ animationDelay: "200ms" }}
@@ -672,62 +672,53 @@ export default function Dashboard() {
           )}
         </Card>
 
-      </div>
-
-      <Card className="animate-fade-up" style={{ animationDelay: "300ms" }}>
-        <div
-          className="px-7 py-5 border-b"
-          style={{ borderColor: "var(--kg-border-subtle)" }}
-        >
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            直近の取引
-          </p>
-        </div>
-        {data?.recentTransactions?.length ? (
-          <div>
-            {data.recentTransactions.map((tx) => (
-              <div
-                key={tx.id}
-                className="flex items-center justify-between px-7 py-4 border-b last:border-0 transition-colors"
-                style={{ borderColor: "var(--kg-border-subtle)" }}
-                onMouseEnter={(e) =>
-                  ((e.currentTarget as HTMLElement).style.backgroundColor =
-                    "var(--kg-surface-2)")
-                }
-                onMouseLeave={(e) =>
-                  ((e.currentTarget as HTMLElement).style.backgroundColor =
-                    "transparent")
-                }
-              >
-                <div className="flex items-center gap-3">
-                  <CategoryBadge category={tx.category} />
-                  <span
-                    className="text-sm font-medium"
-                    style={{ color: "var(--kg-text)" }}
-                  >
-                    {tx.store}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <p
-                    className="text-sm font-num font-semibold"
-                    style={{ color: "var(--kg-text)" }}
-                  >
-                    {formatVND(tx.amount)}
-                  </p>
-                  <p className="text-xs mt-0.5 text-muted-foreground">
-                    {formatDate(tx.date)}
-                  </p>
-                </div>
-              </div>
-            ))}
+        <Card className="animate-fade-up" style={{ animationDelay: "300ms" }}>
+          <div
+            className="px-7 py-5 border-b"
+            style={{ borderColor: "var(--kg-border-subtle)" }}
+          >
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              直近の取引
+            </p>
           </div>
-        ) : (
-          <p className="text-sm text-center py-16 text-muted-foreground">
-            取引データがありません。同期ボタンを押してください。
-          </p>
-        )}
-      </Card>
+          {data?.recentTransactions?.length ? (
+            <div>
+              {data.recentTransactions.map((tx) => (
+                <div
+                  key={tx.id}
+                  className="flex items-center justify-between px-7 py-4 border-b last:border-0 transition-colors hover:bg-muted/30"
+                  style={{ borderColor: "var(--kg-border-subtle)" }}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <CategoryBadge category={tx.category} />
+                    <span
+                      className="text-sm font-medium truncate"
+                      style={{ color: "var(--kg-text)" }}
+                    >
+                      {tx.store}
+                    </span>
+                  </div>
+                  <div className="text-right shrink-0 ml-3">
+                    <p
+                      className="text-sm font-num font-semibold"
+                      style={{ color: "var(--kg-text)" }}
+                    >
+                      {formatVND(tx.amount)}
+                    </p>
+                    <p className="text-xs mt-0.5 text-muted-foreground">
+                      {formatDate(tx.date)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-center py-16 text-muted-foreground">
+              取引データがありません。同期ボタンを押してください。
+            </p>
+          )}
+        </Card>
+      </div>
 
       {popupCategory && (
         <CategoryPopup

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { formatVND } from "@/lib/format";
 import {
@@ -14,6 +14,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
   type ChartConfig,
 } from "@takaki/go-design-system";
 
@@ -246,22 +248,18 @@ export default function ReportPage() {
             className="aspect-auto h-[320px] w-full"
           >
             <LineChart data={chartData}>
-              <CartesianGrid
-                stroke="var(--color-border-subtle)"
-                strokeDasharray="0"
-                vertical={false}
-              />
+              <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="label"
-                tick={{ fontSize: 13, fill: "var(--color-text-subtle)" }}
-                axisLine={{ stroke: "var(--color-border-default)" }}
                 tickLine={false}
+                axisLine={false}
+                tickMargin={8}
               />
               <YAxis
                 tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                tick={{ fontSize: 13, fill: "var(--color-text-subtle)" }}
-                axisLine={false}
                 tickLine={false}
+                axisLine={false}
+                tickMargin={8}
               />
               <ChartTooltip
                 content={
@@ -270,13 +268,7 @@ export default function ReportPage() {
                   />
                 }
               />
-              <Legend
-                wrapperStyle={{
-                  fontSize: 13,
-                  color: "var(--color-text-subtle)",
-                  paddingTop: 16,
-                }}
-              />
+              <ChartLegend content={<ChartLegendContent />} />
               <Line
                 type="monotone"
                 dataKey="合計"

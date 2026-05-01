@@ -253,8 +253,8 @@ export default function TransactionsPage() {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md font-medium"
                 style={{
                   color: "var(--color-success)",
-                  backgroundColor: "var(--color-success-bg)",
-                  border: "1px solid var(--color-success-border)",
+                  backgroundColor: "var(--color-success-subtle)",
+                  border: "1px solid var(--color-success)",
                 }}
               >
                 <span>✓</span>
@@ -269,9 +269,9 @@ export default function TransactionsPage() {
                 style={
                   uncategorizedCount && uncategorizedCount > 0
                     ? {
-                        borderColor: "var(--color-warning-border)",
+                        borderColor: "var(--color-warning)",
                         color: "var(--color-warning)",
-                        backgroundColor: "var(--color-warning-bg)",
+                        backgroundColor: "var(--color-warning-subtle)",
                       }
                     : undefined
                 }
@@ -298,13 +298,13 @@ export default function TransactionsPage() {
         <Card
           className="mt-6 mb-6"
           style={{
-            border: "1px solid var(--color-warning-border)",
-            background: "var(--color-warning-bg)",
+            border: "1px solid var(--color-warning)",
+            background: "var(--color-warning-subtle)",
           }}
         >
           <div
             className="px-6 py-4 border-b"
-            style={{ borderColor: "var(--color-warning-border)" }}
+            style={{ borderColor: "var(--color-warning)" }}
           >
             <p
               className="text-xs font-medium uppercase tracking-widest"
@@ -317,7 +317,7 @@ export default function TransactionsPage() {
             <div
               key={s.store}
               className="flex items-center gap-3 px-6 py-3 border-b last:border-0"
-              style={{ borderColor: "var(--color-warning-border)" }}
+              style={{ borderColor: "var(--color-warning)" }}
             >
               <div className="flex-1 min-w-0">
                 <p
@@ -334,7 +334,7 @@ export default function TransactionsPage() {
                 <span
                   className="text-sm px-2 py-1 rounded-full whitespace-nowrap"
                   style={{
-                    backgroundColor: "var(--color-warning-bg)",
+                    backgroundColor: "var(--color-warning-subtle)",
                     color: "var(--color-warning)",
                   }}
                 >
@@ -470,8 +470,8 @@ export default function TransactionsPage() {
         <div
           className="flex items-center gap-3 px-5 py-3 mb-4 rounded-md"
           style={{
-            backgroundColor: "var(--color-success-bg)",
-            border: "1px solid var(--color-success-border)",
+            backgroundColor: "var(--color-success-subtle)",
+            border: "1px solid var(--color-success)",
           }}
         >
           <p className="text-sm flex-1 text-muted-foreground">
@@ -530,21 +530,21 @@ export default function TransactionsPage() {
                       ? "3px solid var(--color-warning)"
                       : "3px solid transparent",
                     backgroundColor: isUncategorized
-                      ? "var(--color-warning-bg)"
+                      ? "var(--color-warning-subtle)"
                       : "transparent",
                   }}
                   onMouseEnter={(e) => {
                     if (!isEditing)
                       (e.currentTarget as HTMLElement).style.backgroundColor =
                         isUncategorized
-                          ? "var(--color-warning-hover)"
+                          ? "color-mix(in srgb, var(--color-warning) 18%, transparent)"
                           : "var(--kg-surface-2)";
                   }}
                   onMouseLeave={(e) => {
                     if (!isEditing)
                       (e.currentTarget as HTMLElement).style.backgroundColor =
                         isUncategorized
-                          ? "var(--color-warning-bg)"
+                          ? "var(--color-warning-subtle)"
                           : "transparent";
                   }}
                 >

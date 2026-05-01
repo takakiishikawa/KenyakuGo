@@ -147,7 +147,7 @@ export default function DamPage() {
                   gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr",
                   borderColor: "var(--kg-border-subtle)",
                   backgroundColor: isCurrent
-                    ? "var(--color-success-bg)"
+                    ? "var(--color-success-subtle)"
                     : "transparent",
                   borderLeft: isCurrent
                     ? "3px solid var(--kg-accent)"

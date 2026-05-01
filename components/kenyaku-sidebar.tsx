@@ -30,7 +30,6 @@ import {
   Wallet,
   Zap,
   ChefHat,
-  Workflow,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
@@ -43,12 +42,6 @@ const UserMenu = dynamic(() =>
 );
 
 const GO_APPS = [
-  {
-    name: "MetaGo",
-    url: "https://metago.vercel.app/",
-    color: "#1E3A8A",
-    icon: Workflow,
-  },
   {
     name: "NativeGo",
     url: "https://english-learning-app-black.vercel.app/",

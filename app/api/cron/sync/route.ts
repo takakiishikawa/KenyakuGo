@@ -6,6 +6,7 @@ import {
 } from "@/lib/supabase/db";
 import { listVietcombankMessageIds, fetchEmailBody } from "@/lib/gmail";
 import { parseVietcombankEmail } from "@/lib/parser";
+import { categorizeUncategorized } from "@/lib/ai/categorize";
 
 export const maxDuration = 60;
 
@@ -104,13 +105,27 @@ export async function GET(req: Request) {
     );
   }
 
-  // DB に既存の gmail_id を取得
-  const { data: existingRows } = await db
-    .from("transactions")
-    .select("gmail_id");
-  const existingIds = new Set(
-    (existingRows ?? []).map((r) => r.gmail_id as string),
-  );
+  // DB から既存 gmail_id と「店名→カテゴリ」マップを構築（手動同期と同じ）
+  // Supabase は1クエリ1000行上限なのでページネーション
+  const existingIds = new Set<string>();
+  const storeCategory = new Map<string, string>();
+  const PAGE = 1000;
+  let page = 0;
+  while (true) {
+    const { data: pageRows } = await db
+      .from("transactions")
+      .select("gmail_id, store, category")
+      .range(page * PAGE, (page + 1) * PAGE - 1);
+    if (!pageRows || pageRows.length === 0) break;
+    for (const row of pageRows) {
+      if (row.gmail_id) existingIds.add(row.gmail_id as string);
+      const store = (row.store as string)?.trim();
+      const cat = row.category as string;
+      if (store && cat && cat !== "その他") storeCategory.set(store, cat);
+    }
+    if (pageRows.length < PAGE) break;
+    page++;
+  }
 
   const newIds = allIds.filter((id) => !existingIds.has(id)).slice(0, 100);
 
@@ -127,13 +142,15 @@ export async function GET(req: Request) {
     const parsed = parseVietcombankEmail(body);
     if (!parsed.isValid) continue;
 
+    // 過去に同じ店舗をカテゴライズ済みならそのカテゴリを使用、なければ「その他」
+    const knownCategory = storeCategory.get(parsed.store.trim());
     const { error: err } = await db.from("transactions").insert({
       id: crypto.randomUUID(),
       gmail_id: id,
       store: parsed.store,
       amount: parsed.amount,
       date: parsed.date.toISOString(),
-      category: "その他",
+      category: knownCategory ?? "その他",
     } satisfies Omit<Transaction, "created_at">);
 
     if (err) {
@@ -143,16 +160,16 @@ export async function GET(req: Request) {
     synced++;
   }
 
-  // 新規取引があれば AI 自動カテゴリ分類
-  if (synced > 0) {
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-    try {
-      await fetch(`${siteUrl}/api/ai/categorize-all`, { method: "POST" });
-    } catch {
-      /* skip */
-    }
-  }
+  // 「その他」のまま残った取引を AI 自動カテゴリ分類（service_role で直接実行）。
+  // 過去の取りこぼしも吸収するため synced=0 でも実行する。
+  const aiResult = await categorizeUncategorized(db);
+  console.log(
+    `[cron/sync] synced=${synced} ai_updated=${aiResult.updated}/${aiResult.total}`,
+  );
 
-  console.log(`[cron/sync] synced=${synced}`);
-  return NextResponse.json({ synced });
+  return NextResponse.json({
+    synced,
+    aiUpdated: aiResult.updated,
+    aiTotal: aiResult.total,
+  });
 }

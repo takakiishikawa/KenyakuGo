@@ -27,7 +27,7 @@ import {
   Repeat2,
   Settings,
   Languages,
-  Leaf,
+  Wallet,
   Zap,
   ChefHat,
   Workflow,
@@ -60,7 +60,7 @@ const GO_APPS = [
     name: "KenyakuGo",
     url: "https://kenyaku-go.vercel.app/",
     color: "#FF5630",
-    icon: Leaf,
+    icon: Wallet,
   },
   {
     name: "CookGo",

@@ -2,10 +2,9 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
-import { Sparkles, TrendingDown, TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp } from "lucide-react";
 import { formatVND } from "@/lib/format";
 import {
-  Badge,
   Card,
   PageHeader,
   Skeleton,
@@ -36,23 +35,7 @@ interface ReportData {
   fixedCosts: number;
   showYearTab: boolean;
 }
-interface FeedbackData {
-  savingsCategory: string | null;
-  savingsSuggestion: string;
-}
 type Period = "week" | "month" | "year";
-
-function getPeriodKey(p: Period): string {
-  const now = new Date();
-  if (p === "week") {
-    const d = new Date(now);
-    const day = d.getDay();
-    d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-    return `v3-week-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  } else if (p === "month")
-    return `v3-month-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  return `v3-year-${now.getFullYear()}`;
-}
 
 const LABELS: Record<Period, { current: string; prev: string }> = {
   week: { current: "今週", prev: "先週" },
@@ -64,34 +47,13 @@ const LINE_COLORS = ["#52B788", "#FFB74D", "#C084FC", "#38BDF8", "#F87171"];
 export default function ReportPage() {
   const [period, setPeriod] = useState<Period>("week");
   const [data, setData] = useState<ReportData | null>(null);
-  const [feedback, setFeedback] = useState<FeedbackData | null>(null);
-  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   const fetchData = useCallback(async (p: Period) => {
     setData(null);
-    setFeedback(null);
     const res = await fetch(`/api/weekly?period=${p}`);
     if (!res.ok) return;
     const json: ReportData = await res.json();
     setData(json);
-    const periods = json.periods;
-    if (periods.length >= 2) {
-      setFeedbackLoading(true);
-      const current = periods[periods.length - 1];
-      const prev = periods[periods.length - 2];
-      const r = await fetch("/api/ai/comment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: p === "week" ? "weekly" : "monthly",
-          data: { thisWeek: current.byCategory, lastWeek: prev.byCategory },
-          periodKey: getPeriodKey(p),
-        }),
-      });
-      const result = await r.json();
-      if (result.feedback) setFeedback(result.feedback as FeedbackData);
-      setFeedbackLoading(false);
-    }
   }, []);
 
   useEffect(() => {
@@ -261,18 +223,14 @@ export default function ReportPage() {
           <p className="text-xs font-medium uppercase tracking-widest mb-3 text-muted-foreground">
             気になる支出
           </p>
-          {feedbackLoading ? (
+          {!data ? (
             <Skeleton className="h-8 w-3/4 rounded-lg" />
           ) : (
             <p
               className="font-num text-3xl font-semibold leading-none"
-              style={{
-                color: feedback?.savingsCategory
-                  ? "var(--kg-warning)"
-                  : "var(--kg-accent)",
-              }}
+              style={{ color: "var(--kg-accent)" }}
             >
-              {feedback?.savingsCategory ?? data?.topCategory ?? "—"}
+              {data.topCategory ?? "—"}
             </p>
           )}
         </Card>
@@ -347,57 +305,6 @@ export default function ReportPage() {
         )}
       </Card>
 
-      {(feedbackLoading || feedback?.savingsSuggestion) && (
-        <Card className="p-7">
-          <div className="flex items-center gap-2 mb-5">
-            <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              こうしてみては？
-            </span>
-            <Badge className="gap-1 bg-primary/10 text-primary border-0 px-2 py-0.5">
-              <Sparkles size={10} /> AI
-            </Badge>
-          </div>
-
-          {feedbackLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-12 w-full rounded-lg" />
-              <Skeleton className="h-12 w-full rounded-lg" />
-              <Skeleton className="h-12 w-full rounded-lg" />
-            </div>
-          ) : feedback?.savingsSuggestion ? (
-            <div
-              className="rounded-lg p-4"
-              style={{ backgroundColor: "var(--kg-surface-2)" }}
-            >
-              <div className="space-y-2.5">
-                {feedback.savingsSuggestion
-                  .split("\n")
-                  .map((line) => line.replace(/^[・•\-\s]+/, "").trim())
-                  .filter(Boolean)
-                  .map((line, i) => (
-                    <div key={i} className="flex items-start gap-2.5">
-                      <span
-                        className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
-                        style={{
-                          backgroundColor: "var(--color-success-subtle)",
-                          color: "var(--kg-accent)",
-                        }}
-                      >
-                        {i + 1}
-                      </span>
-                      <p
-                        className="text-sm leading-6 flex-1"
-                        style={{ color: "var(--kg-text-secondary)" }}
-                      >
-                        {line}
-                      </p>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          ) : null}
-        </Card>
-      )}
     </div>
   );
 }

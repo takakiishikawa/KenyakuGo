@@ -1,38 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import {
-  Sparkles,
-  TrendingDown,
-  TrendingUp,
-  Send,
-  RotateCcw,
-  X,
-  MessageSquarePlus,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { TrendingDown, TrendingUp } from "lucide-react";
 import { formatVND } from "@/lib/format";
 import type { MonthRecord } from "@/app/api/dam/route";
-import {
-  Badge,
-  Button,
-  Card,
-  PageHeader,
-  Skeleton,
-  Textarea,
-} from "@takaki/go-design-system";
-
-interface Recommendation {
-  emoji: string;
-  title: string;
-  description: string;
-  estimatedCost: string;
-  link: string;
-  linkLabel: string;
-}
-interface QAResult {
-  theme: string;
-  recommendations: Recommendation[];
-}
+import { Card, PageHeader } from "@takaki/go-design-system";
 
 interface DamData {
   targetMonthly: number;
@@ -48,378 +20,8 @@ interface DamData {
   damStartLabel: string;
 }
 
-const FREE_TEXT_KEY = "kg-dam-freetext";
-const QA_RESULT_KEY = "kg-dam-qa-result";
-const QA_SUBMITTED_AT_KEY = "kg-dam-qa-submitted-at";
-const PROMPT_INTERVAL_DAYS = 14;
-
-function DamVisual({ level }: { level: number }) {
-  const pct = Math.max(0, Math.min(level, 100));
-  const waterTop = 200 - (pct / 100) * 180;
-
-  return (
-    <svg width="220" height="220" viewBox="0 0 260 240">
-      <defs>
-        <clipPath id="damClip">
-          <rect x="14" y="14" width="232" height="212" rx="12" />
-        </clipPath>
-        <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#52B788" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#1B4332" stopOpacity="1" />
-        </linearGradient>
-      </defs>
-      <rect
-        x="14"
-        y="14"
-        width="232"
-        height="212"
-        rx="12"
-        fill="var(--kg-surface-2)"
-        stroke="var(--kg-border-medium)"
-        strokeWidth="1.5"
-      />
-      <g clipPath="url(#damClip)">
-        <rect
-          x="14"
-          y={14 + waterTop}
-          width="232"
-          height={212 - waterTop}
-          fill="url(#waterGrad)"
-        />
-        <path
-          style={{ animation: "wave 3.5s ease-in-out infinite" }}
-          d={`M -10 ${14 + waterTop + 5} Q 75 ${14 + waterTop - 7} 140 ${14 + waterTop + 5} Q 210 ${14 + waterTop + 17} 280 ${14 + waterTop + 5} L 280 240 L -10 240 Z`}
-          fill="rgba(82,183,136,0.32)"
-        />
-      </g>
-      <text
-        x="130"
-        y="108"
-        textAnchor="middle"
-        fontSize="38"
-        fontWeight="700"
-        fontFamily="var(--font-noto, sans-serif)"
-        fill={pct > 45 ? "#E8F5E9" : "var(--kg-accent)"}
-      >
-        {pct}%
-      </text>
-      <text
-        x="130"
-        y="135"
-        textAnchor="middle"
-        fontSize="11"
-        fontFamily="var(--font-noto, sans-serif)"
-        fill={pct > 45 ? "rgba(232,245,233,0.65)" : "var(--kg-text-muted)"}
-        letterSpacing="2"
-      >
-        WATER LEVEL
-      </text>
-      <style>{`@keyframes wave{0%,100%{transform:translateX(0)}50%{transform:translateX(-22px)}}`}</style>
-    </svg>
-  );
-}
-
-function QAPopup({ data, onClose }: { data: DamData; onClose: () => void }) {
-  const [freeText, setFreeText] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem(FREE_TEXT_KEY) ?? "";
-  });
-  const [result, setResult] = useState<QAResult | null>(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const saved = localStorage.getItem(QA_RESULT_KEY);
-      return saved ? (JSON.parse(saved) as QAResult) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [loading, setLoading] = useState(false);
-  const [genError, setGenError] = useState(false);
-
-  const saveResult = (r: QAResult) => {
-    setResult(r);
-    localStorage.setItem(QA_RESULT_KEY, JSON.stringify(r));
-    localStorage.setItem(QA_SUBMITTED_AT_KEY, new Date().toISOString());
-  };
-
-  const handleGenerate = useCallback(async () => {
-    if (!freeText.trim()) return;
-    localStorage.setItem(FREE_TEXT_KEY, freeText);
-    setLoading(true);
-    setGenError(false);
-    try {
-      const res = await fetch("/api/ai/comment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "dam-qa",
-          data: {
-            cumulativeBalance: data.cumulativeBalance,
-            projectedBalance: data.currentBalance,
-            targetMonthly: data.targetMonthly,
-            monthsCount: data.months.length,
-            answers: [
-              { question: "欲しいもの・やりたいこと", answer: freeText },
-            ],
-          },
-        }),
-      });
-      if (!res.ok) {
-        setGenError(true);
-        return;
-      }
-      const json = await res.json();
-      const fb = json.feedback as Partial<QAResult> | undefined;
-      if (Array.isArray(fb?.recommendations) && fb.recommendations.length > 0) {
-        saveResult(fb as QAResult);
-      } else {
-        setGenError(true);
-      }
-    } catch (e) {
-      console.error("[dam-qa] fetch error:", e);
-      setGenError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [freeText, data]);
-
-  const handleReset = () => {
-    setFreeText("");
-    setResult(null);
-    setGenError(false);
-    localStorage.removeItem(FREE_TEXT_KEY);
-    localStorage.removeItem(QA_RESULT_KEY);
-    localStorage.removeItem(QA_SUBMITTED_AT_KEY);
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-      style={{
-        backgroundColor: "var(--color-overlay-dark)",
-        backdropFilter: "blur(4px)",
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        className="w-full sm:max-w-xl rounded-t-2xl sm:rounded-lg overflow-hidden animate-fade-up"
-        style={{
-          backgroundColor: "var(--kg-surface)",
-          border: "1px solid var(--kg-border-medium)",
-          maxHeight: "90vh",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <div
-          className="flex items-center justify-between px-7 py-5 border-b shrink-0"
-          style={{ borderColor: "var(--kg-border-subtle)" }}
-        >
-          <div className="flex items-center gap-2">
-            <p
-              className="text-base font-semibold"
-              style={{ color: "var(--kg-text)" }}
-            >
-              このお金で何をする？
-            </p>
-            <Badge className="gap-1 bg-primary/10 text-primary border-0 px-2 py-0.5">
-              <Sparkles size={10} /> AI提案
-            </Badge>
-          </div>
-          <div className="flex items-center gap-2">
-            {(freeText || result) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleReset}
-                className="gap-1 text-muted-foreground h-8"
-              >
-                <RotateCcw size={11} /> リセット
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8"
-            >
-              <X size={18} />
-            </Button>
-          </div>
-        </div>
-
-        <div className="overflow-y-auto flex-1 px-7 py-6 space-y-5">
-          <div>
-            <p className="text-sm mb-3 text-muted-foreground">
-              欲しいもの・やりたいことを自由に書いてください
-            </p>
-            <Textarea
-              value={freeText}
-              onChange={(e) => setFreeText(e.target.value)}
-              placeholder="例：髭剃りが欲しいしスマホも新しくしたい。あとバリ島旅行も考えてる"
-              rows={4}
-              className="resize-none"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey))
-                  handleGenerate();
-              }}
-            />
-            <p className="text-sm mt-1.5 text-muted-foreground">
-              ⌘+Enter で送信
-            </p>
-          </div>
-
-          <Button
-            onClick={handleGenerate}
-            disabled={loading || !freeText.trim()}
-            className="gap-2"
-          >
-            <Send size={13} />
-            {loading ? "提案を生成中..." : "提案を見る"}
-          </Button>
-
-          {genError && !loading && (
-            <div
-              className="rounded-lg p-4 text-sm"
-              style={{
-                backgroundColor: "var(--color-danger-bg)",
-                border: "1px solid var(--color-danger-border)",
-                color: "var(--kg-danger)",
-              }}
-            >
-              提案の生成に失敗しました。もう一度「提案を見る」を押してみてください。
-            </div>
-          )}
-
-          {loading && (
-            <div className="grid grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-lg p-5 space-y-3"
-                  style={{ backgroundColor: "var(--kg-surface-2)" }}
-                >
-                  <Skeleton className="h-8 w-8 rounded-full" />
-                  <Skeleton className="h-4 w-3/4 rounded" />
-                  <Skeleton className="h-3 w-full rounded" />
-                  <Skeleton className="h-7 w-1/2 rounded-lg" />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {result && !loading && (
-            <div>
-              {result.theme && (
-                <div
-                  className="mb-4 px-4 py-2.5 rounded-lg"
-                  style={{
-                    backgroundColor: "var(--color-success-bg)",
-                    border: "1px solid var(--color-success-border)",
-                  }}
-                >
-                  <p
-                    className="text-sm font-semibold"
-                    style={{ color: "var(--kg-accent)" }}
-                  >
-                    🎯 {result.theme}
-                  </p>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4">
-                {(result.recommendations ?? []).map((rec, i) => (
-                  <div
-                    key={i}
-                    className="rounded-lg p-5 flex flex-col gap-2"
-                    style={{
-                      backgroundColor: "var(--kg-surface-2)",
-                      border: "1px solid var(--kg-border-subtle)",
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-2xl">{rec.emoji}</span>
-                      <span
-                        className="font-num text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap"
-                        style={{
-                          backgroundColor: "var(--color-success-bg)",
-                          color: "var(--kg-accent)",
-                        }}
-                      >
-                        {rec.estimatedCost}
-                      </span>
-                    </div>
-                    <p
-                      className="text-sm font-semibold"
-                      style={{ color: "var(--kg-text)" }}
-                    >
-                      {rec.title}
-                    </p>
-                    <p className="text-sm leading-6 flex-1 text-muted-foreground">
-                      {rec.description}
-                    </p>
-                    {rec.link && (
-                      <a
-                        href={rec.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-all w-fit mt-1"
-                        style={{
-                          backgroundColor: "var(--color-success-bg)",
-                          color: "var(--kg-accent)",
-                        }}
-                        onMouseEnter={(e) => {
-                          (
-                            e.currentTarget as HTMLElement
-                          ).style.backgroundColor =
-                            "var(--color-success-bg-hover)";
-                        }}
-                        onMouseLeave={(e) => {
-                          (
-                            e.currentTarget as HTMLElement
-                          ).style.backgroundColor = "var(--color-success-bg)";
-                        }}
-                      >
-                        <span>↗</span> {rec.linkLabel}
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function useQANotification() {
-  const [showBadge, setShowBadge] = useState(false);
-
-  useEffect(() => {
-    try {
-      const submittedAt = localStorage.getItem(QA_SUBMITTED_AT_KEY);
-      if (!submittedAt) {
-        setShowBadge(true);
-        return;
-      }
-      const daysSince =
-        (Date.now() - new Date(submittedAt).getTime()) / (1000 * 60 * 60 * 24);
-      setShowBadge(daysSince >= PROMPT_INTERVAL_DAYS);
-    } catch {
-      setShowBadge(false);
-    }
-  }, []);
-
-  return showBadge;
-}
-
 export default function DamPage() {
   const [data, setData] = useState<DamData | null>(null);
-  const [showQA, setShowQA] = useState(false);
-  const showBadge = useQANotification();
 
   useEffect(() => {
     fetch("/api/dam").then(async (r) => {
@@ -430,123 +32,35 @@ export default function DamPage() {
   }, []);
 
   const currentMonth = data?.months[data.months.length - 1];
-  const saved = (data?.currentBalance ?? 0) >= 0;
+
+  // 月別履歴の合計（最上行に表示）
+  const totals = data
+    ? data.months.reduce(
+        (acc, m) => ({
+          target: acc.target + m.target,
+          projected: acc.projected + m.projected,
+          balance: acc.balance + m.balance,
+        }),
+        { target: 0, projected: 0, balance: 0 },
+      )
+    : null;
+  const totalCumulative = currentMonth?.cumulative ?? 0;
 
   return (
     <div>
       <PageHeader
-        title="貯蓄ダム"
+        title="ダム"
         actions={
-          <div className="flex items-center gap-3">
-            {data && (
-              <p className="text-xs text-muted-foreground">
-                {data.damStartLabel}〜 · 予算 {formatVND(data.targetMonthly)}/月
-              </p>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowQA(true)}
-              className="relative gap-2"
-            >
-              <MessageSquarePlus size={15} />
-              このお金で何をする？
-              {showBadge && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-primary" />
-              )}
-            </Button>
-          </div>
+          data && (
+            <p className="text-xs text-muted-foreground">
+              {data.damStartLabel}〜 · 予算 {formatVND(data.targetMonthly)}/月
+            </p>
+          )
         }
       />
 
-      <div className="mt-8 grid grid-cols-2 gap-5 mb-6">
-        <Card className="p-6 animate-fade-up flex flex-col items-center justify-center">
-          <p className="text-xs font-medium uppercase tracking-widest mb-4 self-start text-muted-foreground">
-            累計ダム貯水状況
-          </p>
-          <DamVisual level={data?.damLevel ?? 0} />
-        </Card>
-
-        <div className="flex flex-col gap-4">
-          <Card
-            className="p-6 animate-fade-up"
-            style={{ animationDelay: "80ms", animationFillMode: "both" }}
-          >
-            <p className="text-xs font-medium uppercase tracking-widest mb-2 text-muted-foreground">
-              今月の倹約額（予測）
-            </p>
-            <p
-              className="font-num text-3xl font-semibold"
-              style={{
-                color: saved ? "var(--kg-success)" : "var(--kg-danger)",
-              }}
-            >
-              {data ? formatVND(data.currentBalance) : "—"}
-            </p>
-            {data && (
-              <div className="mt-2 space-y-0.5">
-                <p className="text-xs text-muted-foreground">
-                  支出実績:{" "}
-                  <span
-                    className="font-num"
-                    style={{ color: "var(--kg-text)" }}
-                  >
-                    {formatVND(data.thisMonthTotal)}
-                  </span>
-                  &nbsp;/&nbsp;月末予測:{" "}
-                  <span
-                    className="font-num"
-                    style={{
-                      color: saved ? "var(--kg-success)" : "var(--kg-danger)",
-                    }}
-                  >
-                    {formatVND(data.projectedMonthTotal)}
-                  </span>
-                </p>
-              </div>
-            )}
-          </Card>
-
-          <Card
-            className="p-6 animate-fade-up"
-            style={{ animationDelay: "160ms", animationFillMode: "both" }}
-          >
-            <p className="text-xs font-medium uppercase tracking-widest mb-2 text-muted-foreground">
-              今月の倹約達成率
-            </p>
-            <p
-              className="font-num text-3xl font-semibold"
-              style={{ color: "var(--kg-accent)" }}
-            >
-              {data ? `${data.achievementRate}%` : "—"}
-            </p>
-          </Card>
-
-          <Card
-            className="p-6 animate-fade-up"
-            style={{ animationDelay: "240ms", animationFillMode: "both" }}
-          >
-            <p className="text-xs font-medium uppercase tracking-widest mb-2 text-muted-foreground">
-              累計ダム残高
-            </p>
-            <p
-              className="font-num text-3xl font-semibold"
-              style={{
-                color: data
-                  ? data.cumulativeBalance >= 0
-                    ? "var(--kg-success)"
-                    : "var(--kg-danger)"
-                  : "var(--kg-text)",
-              }}
-            >
-              {data ? formatVND(data.cumulativeBalance) : "—"}
-            </p>
-          </Card>
-        </div>
-      </div>
-
-      {data && data.months.length > 0 && (
-        <Card className="animate-fade-up" style={{ animationDelay: "320ms" }}>
+      {data && data.months.length > 0 && totals && (
+        <Card className="mt-8 animate-fade-up">
           <div
             className="px-7 py-5 border-b"
             style={{ borderColor: "var(--kg-border-subtle)" }}
@@ -569,6 +83,59 @@ export default function DamPage() {
             <span className="text-right">倹約額</span>
             <span className="text-right">累計</span>
           </div>
+
+          {/* 合計行（最上行） */}
+          <div
+            className="grid items-center px-7 py-4 border-b font-semibold"
+            style={{
+              gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr",
+              borderColor: "var(--kg-border-medium)",
+              backgroundColor: "var(--kg-surface-2)",
+            }}
+          >
+            <span className="text-sm" style={{ color: "var(--kg-text)" }}>
+              合計
+            </span>
+            <span className="text-sm font-num text-right text-muted-foreground">
+              {formatVND(totals.target)}
+            </span>
+            <span
+              className="text-sm font-num text-right"
+              style={{ color: "var(--kg-text)" }}
+            >
+              {formatVND(totals.projected)}
+            </span>
+            <span
+              className="text-sm font-num text-right flex items-center justify-end gap-1"
+              style={{
+                color:
+                  totals.balance >= 0
+                    ? "var(--kg-success)"
+                    : "var(--kg-danger)",
+              }}
+            >
+              {totals.balance >= 0 ? (
+                <TrendingDown size={11} />
+              ) : (
+                <TrendingUp size={11} />
+              )}
+              {totals.balance > 0 ? "+" : ""}
+              {formatVND(totals.balance)}
+            </span>
+            <span
+              className="text-sm font-num text-right"
+              style={{
+                color:
+                  totalCumulative >= 0
+                    ? "var(--kg-success)"
+                    : "var(--kg-danger)",
+              }}
+            >
+              {totalCumulative > 0 ? "+" : ""}
+              {formatVND(totalCumulative)}
+            </span>
+          </div>
+
           {[...data.months].reverse().map((m) => {
             const isCurrent = currentMonth?.key === m.key;
             const monthSaved = m.balance >= 0;
@@ -639,10 +206,6 @@ export default function DamPage() {
             );
           })}
         </Card>
-      )}
-
-      {showQA && data && (
-        <QAPopup data={data} onClose={() => setShowQA(false)} />
       )}
     </div>
   );

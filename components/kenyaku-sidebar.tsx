@@ -41,9 +41,9 @@ const UserMenu = dynamic(() =>
 const navItems = [
   { href: "/", label: "ダッシュボード", icon: LayoutDashboard },
   { href: "/weekly", label: "レポート", icon: BarChart2 },
+  { href: "/dam", label: "ダム", icon: Droplets },
   { href: "/transactions", label: "取引一覧", icon: List },
   { href: "/subscriptions", label: "サブスク", icon: Repeat2 },
-  { href: "/dam", label: "貴蓄ダム", icon: Droplets },
 ];
 
 const supabaseConfigured =

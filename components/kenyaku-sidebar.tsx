@@ -31,7 +31,6 @@ import {
   Zap,
   ChefHat,
   Workflow,
-  Palette,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
@@ -73,12 +72,6 @@ const GO_APPS = [
     url: "https://taskgo-dun.vercel.app/",
     color: "#00B8D9",
     icon: Zap,
-  },
-  {
-    name: "DesignSystem",
-    url: "https://github.com/takakiishikawa/go-design-system",
-    color: "#7C3AED",
-    icon: Palette,
   },
 ];
 

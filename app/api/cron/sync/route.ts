@@ -1,21 +1,43 @@
 import { NextResponse } from "next/server";
-import { createDb, type Transaction, type Settings } from "@/lib/supabase/db";
+import {
+  createDbAdmin,
+  type Transaction,
+  type Settings,
+} from "@/lib/supabase/db";
 import { listVietcombankMessageIds, fetchEmailBody } from "@/lib/gmail";
 import { parseVietcombankEmail } from "@/lib/parser";
 
 export const maxDuration = 60;
 
 export async function GET(req: Request) {
-  // Vercel Cron は Authorization: Bearer <CRON_SECRET> を付与する
+  // 必須 env を fail-fast で検証（無人 cron で設定漏れに気付けるように）
+  const cronSecret = process.env.CRON_SECRET;
+  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!cronSecret || !googleClientId || !googleClientSecret || !serviceRoleKey) {
+    return NextResponse.json(
+      {
+        error: "Missing required env",
+        missing: {
+          CRON_SECRET: !cronSecret,
+          GOOGLE_CLIENT_ID: !googleClientId,
+          GOOGLE_CLIENT_SECRET: !googleClientSecret,
+          SUPABASE_SERVICE_ROLE_KEY: !serviceRoleKey,
+        },
+      },
+      { status: 500 },
+    );
+  }
+
+  // GH Actions cron は Authorization: Bearer <CRON_SECRET> を付与する
   const authHeader = req.headers.get("authorization");
-  if (
-    process.env.CRON_SECRET &&
-    authHeader !== `Bearer ${process.env.CRON_SECRET}`
-  ) {
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const db = createDb();
+  // 無人バッチなので RLS bypass の service_role で接続
+  const db = createDbAdmin();
 
   // DB に保存されたリフレッシュトークンで Gmail アクセストークンを取得
   const { data: settings } = await db
@@ -39,8 +61,8 @@ export async function GET(req: Request) {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      client_id: googleClientId,
+      client_secret: googleClientSecret,
       refresh_token: refreshToken,
       grant_type: "refresh_token",
     }),

@@ -45,3 +45,16 @@ export function createDb(accessToken?: string) {
     },
   );
 }
+
+// service_role 接続。cron 等の無人バッチで RLS を bypass するため。
+// SUPABASE_SERVICE_ROLE_KEY は秘匿（クライアント側に絶対漏らさない）。
+export function createDbAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      db: { schema: "kenyakugo" },
+      auth: { autoRefreshToken: false, persistSession: false },
+    },
+  );
+}

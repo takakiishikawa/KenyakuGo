@@ -6,6 +6,7 @@ import {
 } from "@/lib/supabase/db";
 import { listVietcombankMessageIds, fetchEmailBody } from "@/lib/gmail";
 import { parseVietcombankEmail } from "@/lib/parser";
+import { convertToVND } from "@/lib/exchange";
 import { categorizeUncategorized } from "@/lib/ai/categorize";
 
 export const maxDuration = 60;
@@ -142,13 +143,25 @@ export async function GET(req: Request) {
     const parsed = parseVietcombankEmail(body);
     if (!parsed.isValid) continue;
 
+    // 外貨は VND 換算して保存（為替 API 失敗時はスキップ＝次回再試行）
+    let vndAmount: number;
+    try {
+      vndAmount = await convertToVND(parsed.amount, parsed.currency);
+    } catch (e) {
+      console.error(
+        `[cron/sync] currency conversion failed for ${id} (${parsed.currency}):`,
+        e,
+      );
+      continue;
+    }
+
     // 過去に同じ店舗をカテゴライズ済みならそのカテゴリを使用、なければ「その他」
     const knownCategory = storeCategory.get(parsed.store.trim());
     const { error: err } = await db.from("transactions").insert({
       id: crypto.randomUUID(),
       gmail_id: id,
       store: parsed.store,
-      amount: parsed.amount,
+      amount: vndAmount,
       date: parsed.date.toISOString(),
       category: knownCategory ?? "その他",
     } satisfies Omit<Transaction, "created_at">);

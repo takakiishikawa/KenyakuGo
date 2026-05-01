@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { formatVND } from "@/lib/format";
 import {
@@ -13,9 +13,6 @@ import {
   TabsTrigger,
   ChartContainer,
   ChartTooltip,
-  ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
   type ChartConfig,
 } from "@takaki/go-design-system";
 
@@ -44,7 +41,54 @@ const LABELS: Record<Period, { current: string; prev: string }> = {
   month: { current: "今月", prev: "先月" },
   year: { current: "今年", prev: "昨年" },
 };
-const LINE_COLORS = ["#52B788", "#FFB74D", "#C084FC", "#38BDF8", "#F87171"];
+
+interface ChartRow {
+  label: string;
+  total: number;
+  byCategory: Record<string, number>;
+}
+
+function ChartTooltipContentTop5({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: { payload: ChartRow }[];
+}) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0].payload;
+  const top5 = Object.entries(row.byCategory)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5);
+  return (
+    <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-sm min-w-44">
+      <p className="font-medium text-foreground mb-1.5">{row.label}</p>
+      <div className="space-y-1">
+        {top5.length === 0 ? (
+          <p className="text-muted-foreground">データなし</p>
+        ) : (
+          top5.map(([cat, amt]) => (
+            <div
+              key={cat}
+              className="flex items-center justify-between gap-3"
+            >
+              <span className="text-muted-foreground truncate">{cat}</span>
+              <span className="font-num font-medium text-foreground shrink-0">
+                {formatVND(amt)}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+      <div className="mt-2 pt-2 border-t flex items-center justify-between gap-3">
+        <span className="text-muted-foreground">合計</span>
+        <span className="font-num font-semibold text-foreground">
+          {formatVND(row.total)}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function ReportPage() {
   const [period, setPeriod] = useState<Period>("week");
@@ -62,24 +106,19 @@ export default function ReportPage() {
     fetchData(period);
   }, [period, fetchData]);
 
-  const chartData =
+  const chartData: ChartRow[] =
     data?.periods.map((p) => ({
       label: p.label,
-      合計: p.total,
-      ...Object.fromEntries(
-        (data.topCategories ?? []).map((cat) => [cat, p.byCategory[cat] ?? 0]),
-      ),
+      total: p.total,
+      byCategory: p.byCategory ?? {},
     })) ?? [];
 
-  const chartConfig = useMemo<ChartConfig>(() => {
-    const cfg: ChartConfig = {
-      合計: { label: "合計", color: "var(--color-border-strong)" },
-    };
-    (data?.topCategories ?? []).forEach((cat, i) => {
-      cfg[cat] = { label: cat, color: LINE_COLORS[i % LINE_COLORS.length] };
-    });
-    return cfg;
-  }, [data?.topCategories]);
+  const chartConfig = useMemo<ChartConfig>(
+    () => ({
+      total: { label: "合計", color: "var(--color-primary)" },
+    }),
+    [],
+  );
 
   const labels = LABELS[period];
 
@@ -240,14 +279,28 @@ export default function ReportPage() {
 
       <Card className="p-7 mb-5">
         <p className="text-xs font-medium uppercase tracking-widest mb-6 text-muted-foreground">
-          使い道の推移（上位5カテゴリ）
+          使い道の推移
         </p>
         {chartData.length > 0 ? (
           <ChartContainer
             config={chartConfig}
             className="aspect-auto h-[320px] w-full"
           >
-            <LineChart data={chartData}>
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="reportTotalFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="5%"
+                    stopColor="var(--color-primary)"
+                    stopOpacity={0.4}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor="var(--color-primary)"
+                    stopOpacity={0.05}
+                  />
+                </linearGradient>
+              </defs>
               <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="label"
@@ -262,33 +315,17 @@ export default function ReportPage() {
                 tickMargin={8}
               />
               <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    formatter={(value) => formatVND(value as number)}
-                  />
-                }
+                cursor={false}
+                content={<ChartTooltipContentTop5 />}
               />
-              <ChartLegend content={<ChartLegendContent />} />
-              <Line
-                type="monotone"
-                dataKey="合計"
-                stroke="var(--color-border-strong)"
+              <Area
+                dataKey="total"
+                type="natural"
+                fill="url(#reportTotalFill)"
+                stroke="var(--color-primary)"
                 strokeWidth={2}
-                strokeDasharray="5 4"
-                dot={false}
               />
-              {(data?.topCategories ?? []).map((cat, i) => (
-                <Line
-                  key={cat}
-                  type="monotone"
-                  dataKey={cat}
-                  stroke={LINE_COLORS[i % LINE_COLORS.length]}
-                  strokeWidth={2}
-                  dot={{ r: 3, fill: LINE_COLORS[i % LINE_COLORS.length] }}
-                  activeDot={{ r: 5 }}
-                />
-              ))}
-            </LineChart>
+            </AreaChart>
           </ChartContainer>
         ) : (
           <div className="flex items-center justify-center h-64">

@@ -26,6 +26,8 @@ export async function POST(req: NextRequest) {
 
   const existing = (rows ?? []).map((r) => r.name);
 
+  const existingSet = new Set(existing);
+
   let category = "その他";
   try {
     const message = await client.messages.create({
@@ -34,12 +36,11 @@ export async function POST(req: NextRequest) {
       messages: [
         {
           role: "user",
-          content: `以下の店名に最も適切なカテゴリを1つ返してください。
+          content: `以下の店名に最も適切なカテゴリを既存カテゴリの中から1つだけ選んでください。
 店名: ${store}
 既存カテゴリ: ${existing.join(", ")}
 
-既存カテゴリのどれかが適切であればそれを使ってください。
-どれも合わない場合は新しいカテゴリ名を日本語で作ってください（簡潔に）。
+新規カテゴリは作成しないでください。どれにも当てはまらない場合は必ず「その他」を返してください。
 {"category": "カテゴリ名"} のJSONのみ返してください。`,
         },
       ],
@@ -51,16 +52,13 @@ export async function POST(req: NextRequest) {
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         if (parsed.category && typeof parsed.category === "string") {
-          category = parsed.category.trim();
+          const picked = parsed.category.trim();
+          category = existingSet.has(picked) ? picked : "その他";
         }
       }
     }
   } catch {
     // AI失敗時はデフォルト「その他」
-  }
-
-  if (!existing.includes(category)) {
-    await db.from("categories").insert({ name: category });
   }
 
   return NextResponse.json({ category });

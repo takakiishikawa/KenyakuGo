@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 先週: ${JSON.stringify(data.lastWeek)}
 
 以下のJSON形式のみで回答してください（マークダウン・コードブロック不要、JSONのみ）。
-固定費（家賃・ローン・公共料金・通信費）は倹約推奨から除外。
+固定費（家賃・通信）は倹約推奨から除外。
 
 {
   "savingsCategory": "最も削減を推奨する裁量的支出カテゴリ名（削減不要ならnull）",
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 先月: ${JSON.stringify(data.lastWeek)}
 
 以下のJSON形式のみで回答してください（マークダウン・コードブロック不要、JSONのみ）。
-固定費（家賃・ローン・公共料金・通信費）は倹約推奨から除外。
+固定費（家賃・通信）は倹約推奨から除外。
 
 {
   "savingsCategory": "最も削減を推奨する裁量的支出カテゴリ名（削減不要ならnull）",

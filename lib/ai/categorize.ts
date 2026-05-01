@@ -51,18 +51,24 @@ export async function categorizeUncategorized(
     }
   }
 
-  // ルールベース処理
+  // ルールベース処理（カテゴリが categories に存在する場合のみ適用）
   // - 9.000.000 / 8.000.000 VND の送金は家賃（店舗名は人名等でも判定）
   // - chuyen/transfer/remit 系キーワードは転送
   for (const tx of txs) {
     const store = tx.store?.trim() ?? "";
     const amount = tx.amount ?? 0;
     if (!store || storeMap[store]) continue;
-    if (amount === 9000000 || amount === 8000000) {
+    if (
+      (amount === 9000000 || amount === 8000000) &&
+      existingCatSet.has("家賃")
+    ) {
       storeMap[store] = "家賃";
       continue;
     }
-    if (/chuyen|transfer|remit|remittance/i.test(store)) {
+    if (
+      /chuyen|transfer|remit|remittance/i.test(store) &&
+      existingCatSet.has("転送")
+    ) {
       storeMap[store] = "転送";
     }
   }
@@ -92,13 +98,13 @@ export async function categorizeUncategorized(
             {
               role: "user",
               content: `ベトナム・ホーチミン在住の日本人のクレジットカード明細の店名リストです。
-各店名に最も適切なカテゴリを返してください。
+各店名に最も適切なカテゴリを既存カテゴリの中から1つだけ選んでください。
+新規カテゴリは作成しないでください。どれにも当てはまらない場合は必ず「その他」を返してください。
 
 既存カテゴリ: ${existingCategories.join(", ")}
 店名リスト:
 ${storeList}
 
-既存カテゴリが適切であればそれを使い、合わない場合は新しいカテゴリ名（日本語・簡潔）を提案してください。
 以下のJSON配列のみ返してください（マークダウン不要）:
 [{"store": "店名", "category": "カテゴリ名"}]`,
             },
@@ -113,7 +119,9 @@ ${storeList}
             match[0],
           );
           for (const s of suggestions) {
-            if (s.store && s.category) map[s.store.trim()] = s.category.trim();
+            if (!s.store || !s.category) continue;
+            const cat = s.category.trim();
+            map[s.store.trim()] = existingCatSet.has(cat) ? cat : "その他";
           }
         }
       } catch {
@@ -127,17 +135,9 @@ ${storeList}
     Object.assign(storeMap, batchMap);
   }
 
-  const newCats = [...new Set(Object.values(storeMap))].filter(
-    (c) => c !== "その他" && !existingCatSet.has(c),
-  );
-  for (const cat of newCats) {
-    await db.from("categories").insert({ name: cat });
-    existingCatSet.add(cat);
-  }
-
   const catToStores: Record<string, string[]> = {};
   for (const [store, cat] of Object.entries(storeMap)) {
-    if (cat && cat !== "その他") {
+    if (cat && cat !== "その他" && existingCatSet.has(cat)) {
       catToStores[cat] = [...(catToStores[cat] ?? []), store];
     }
   }

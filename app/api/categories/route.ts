@@ -6,16 +6,28 @@ export async function GET() {
   if (result instanceof NextResponse) return result;
   const { db } = result;
 
-  const { data, error } = await db
-    .from("categories")
-    .select("id, name")
-    .order("created_at");
+  const [catsRes, txRes] = await Promise.all([
+    db.from("categories").select("id, name").order("created_at"),
+    db.from("transactions").select("category").limit(100000),
+  ]);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (catsRes.error) {
+    return NextResponse.json({ error: catsRes.error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data ?? []);
+  const counts: Record<string, number> = {};
+  for (const t of txRes.data ?? []) {
+    if (t.category)
+      counts[t.category] = (counts[t.category] ?? 0) + 1;
+  }
+
+  const sorted = (catsRes.data ?? []).slice().sort((a, b) => {
+    const diff = (counts[b.name] ?? 0) - (counts[a.name] ?? 0);
+    if (diff !== 0) return diff;
+    return a.name.localeCompare(b.name, "ja");
+  });
+
+  return NextResponse.json(sorted);
 }
 
 export async function POST(req: NextRequest) {

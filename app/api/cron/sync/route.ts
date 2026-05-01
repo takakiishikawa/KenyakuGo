@@ -40,11 +40,24 @@ export async function GET(req: Request) {
   const db = createDbAdmin();
 
   // DB に保存されたリフレッシュトークンで Gmail アクセストークンを取得
-  const { data: settings } = await db
+  const { data: settings, error: settingsError } = await db
     .from("settings")
     .select("google_refresh_token")
     .eq("id", "singleton")
     .maybeSingle();
+
+  if (settingsError) {
+    return NextResponse.json(
+      {
+        error: "Settings fetch failed",
+        code: settingsError.code,
+        message: settingsError.message,
+        details: settingsError.details,
+        hint: settingsError.hint,
+      },
+      { status: 500 },
+    );
+  }
 
   const refreshToken = (
     settings as Pick<Settings, "google_refresh_token"> | null
@@ -52,7 +65,10 @@ export async function GET(req: Request) {
 
   if (!refreshToken) {
     return NextResponse.json(
-      { error: "No refresh token stored" },
+      {
+        error: "No refresh token stored",
+        settingsExists: settings !== null,
+      },
       { status: 400 },
     );
   }

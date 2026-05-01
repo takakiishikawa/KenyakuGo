@@ -21,7 +21,6 @@ import {
   BarChart2,
   List,
   Droplets,
-  BookOpen,
   Sun,
   Moon,
   Lightbulb,
@@ -69,7 +68,6 @@ const navItems = [
   { href: "/transactions", label: "取引一覧", icon: List },
   { href: "/subscriptions", label: "サブスク", icon: Repeat2 },
   { href: "/dam", label: "貴蓄ダム", icon: Droplets },
-  { href: "/column", label: "マインドセット", icon: BookOpen },
 ];
 
 const supabaseConfigured =

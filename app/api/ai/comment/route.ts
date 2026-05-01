@@ -79,44 +79,6 @@ export async function POST(req: NextRequest) {
   "savingsReason": "そのカテゴリを推奨する理由（1文、日本語）",
   "savingsSuggestion": "具体的な倹約方法（3つまで、改行区切り、「・」始まり）"
 }`;
-  } else if (type === "column") {
-    isStructured = true;
-    const d = data as {
-      categories: string;
-      thisMonthTotal: number;
-      targetMonthly: number;
-    };
-    const remaining = d.targetMonthly - d.thisMonthTotal;
-    const pct =
-      d.targetMonthly > 0
-        ? Math.round((d.thisMonthTotal / d.targetMonthly) * 100)
-        : 0;
-    prompt = `あなたは倹約哲学に精通した財務コーチです。ホーチミン在住の日本人の今月の支出を分析し、倹約の観点から深い洞察を提供してください。
-
-【今月の支出データ】
-- 月予算: ${d.targetMonthly.toLocaleString("vi-VN")} ₫
-- 現在の支出: ${d.thisMonthTotal.toLocaleString("vi-VN")} ₫（予算の${pct}%使用）
-- 残り予算: ${remaining.toLocaleString("vi-VN")} ₫
-- 支出カテゴリ: ${d.categories}
-
-【倹約の哲学】「使いたい時に使う」ために、日常のベース支出を下げること。節約は我慢ではなく、価値ある選択のための余白を作ること。
-
-以下のJSON形式のみで返してください（マークダウン不要）:
-{
-  "monthlyTheme": "今月の支出パターンを一言で表すテーマ（例: 外食費の最適化月間）",
-  "insights": [
-    {
-      "headline": "洞察のタイトル（15文字以内）",
-      "insight": "支出データから導き出した具体的な洞察（2文、ホーチミンの文脈を踏まえて）",
-      "action": "今日からできる具体的なアクション（1文）"
-    },
-    {
-      "headline": "洞察のタイトル（15文字以内）",
-      "insight": "別の視点からの洞察（2文）",
-      "action": "具体的なアクション（1文）"
-    }
-  ]
-}`;
   } else if (type === "dam-qa") {
     isStructured = true;
     const d = data as {

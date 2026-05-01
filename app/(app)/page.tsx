@@ -5,7 +5,6 @@ import { PieChart, Pie, Cell } from "recharts";
 import {
   TrendingDown,
   TrendingUp,
-  Sparkles,
   RefreshCw,
   ChevronRight,
 } from "lucide-react";
@@ -15,7 +14,6 @@ import { getCategoryColors } from "@/lib/category-colors";
 import {
   Button,
   Card,
-  Badge,
   PageHeader,
   Skeleton,
   Dialog,
@@ -54,12 +52,6 @@ interface DashboardData {
     category: string;
     date: string;
   }[];
-}
-
-interface DashboardFeedback {
-  summary: string;
-  point: string;
-  tip: string;
 }
 
 interface TxItem {
@@ -326,8 +318,6 @@ function WeekComparePopup({
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
-  const [feedback, setFeedback] = useState<DashboardFeedback | null>(null);
-  const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncState, setSyncState] = useState<"idle" | "upToDate">("idle");
   const [syncProgress, setSyncProgress] = useState<{
@@ -347,25 +337,6 @@ export default function Dashboard() {
     const json = await res.json();
     if (!res.ok) return;
     setData(json);
-    if (json.categoryBreakdown?.length > 0) {
-      setFeedbackLoading(true);
-      const r = await fetch("/api/ai/comment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "dashboard",
-          data: Object.fromEntries(
-            json.categoryBreakdown.map((c: { name: string; value: number }) => [
-              c.name,
-              c.value,
-            ]),
-          ),
-        }),
-      });
-      const result = await r.json();
-      if (result.feedback) setFeedback(result.feedback as DashboardFeedback);
-      setFeedbackLoading(false);
-    }
   }, []);
 
   useEffect(() => {
@@ -593,7 +564,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 gap-5 mb-8">
+      <div className="mb-8">
         <Card
           className="p-7 animate-fade-up"
           style={{ animationDelay: "200ms" }}
@@ -701,79 +672,6 @@ export default function Dashboard() {
           )}
         </Card>
 
-        <Card
-          className="p-7 animate-fade-up"
-          style={{ animationDelay: "240ms" }}
-        >
-          <div className="flex items-center gap-2 mb-5">
-            <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              支出チェック
-            </span>
-            <Badge className="gap-1 bg-primary/10 text-primary border-0 px-2 py-0.5">
-              <Sparkles size={10} /> AI
-            </Badge>
-          </div>
-
-          {feedbackLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-14 w-full rounded-lg" />
-              <Skeleton className="h-14 w-full rounded-lg" />
-              <Skeleton className="h-14 w-full rounded-lg" />
-            </div>
-          ) : feedback ? (
-            <div className="space-y-3">
-              <div
-                className="rounded-lg p-4"
-                style={{ backgroundColor: "var(--kg-surface-2)" }}
-              >
-                <p className="text-sm font-medium mb-1.5 text-muted-foreground">
-                  今週の状況
-                </p>
-                <p
-                  className="text-sm leading-6"
-                  style={{ color: "var(--kg-text-secondary)" }}
-                >
-                  {feedback.summary}
-                </p>
-              </div>
-              <div
-                className="rounded-lg p-4"
-                style={{ backgroundColor: "var(--kg-surface-2)" }}
-              >
-                <p
-                  className="text-sm font-medium mb-1.5"
-                  style={{ color: "var(--kg-accent)" }}
-                >
-                  注目のポイント
-                </p>
-                <p
-                  className="text-sm leading-6"
-                  style={{ color: "var(--kg-text-secondary)" }}
-                >
-                  {feedback.point}
-                </p>
-              </div>
-              <div
-                className="rounded-lg p-4"
-                style={{ backgroundColor: "var(--kg-surface-2)" }}
-              >
-                <p className="text-sm font-medium mb-1.5 text-muted-foreground">
-                  一言アドバイス
-                </p>
-                <p
-                  className="text-sm leading-6"
-                  style={{ color: "var(--kg-text-secondary)" }}
-                >
-                  {feedback.tip}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              取引データを同期するとチェックが表示されます
-            </p>
-          )}
-        </Card>
       </div>
 
       <Card className="animate-fade-up" style={{ animationDelay: "300ms" }}>

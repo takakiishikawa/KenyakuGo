@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
       // 構造化フィードバック（JSON）か旧フォーマット（プレーンテキスト）か判定
       try {
         const parsed = JSON.parse(cached.comment);
-        if (parsed.analysis !== undefined) {
+        if (parsed && typeof parsed === "object") {
           return NextResponse.json({ feedback: parsed });
         }
       } catch {
@@ -36,18 +36,31 @@ export async function POST(req: NextRequest) {
   let prompt = "";
   let isStructured = false;
 
-  if (type === "dashboard") {
+  if (type === "weekly") {
     isStructured = true;
-    const entries = Object.entries(data as Record<string, number>)
-      .map(([k, v]) => `${k}: ${v.toLocaleString()} VND`)
-      .join("、");
-    prompt = `ホーチミン在住日本人の直近7日間の支出（カテゴリ別VND）: ${entries}
+    prompt = `ホーチミン在住日本人の週次支出分析（カテゴリ別VND）
+今週: ${JSON.stringify(data.thisWeek)}
+先週: ${JSON.stringify(data.lastWeek)}
 
-以下のJSON形式のみで返してください（マークダウン不要）:
+以下のJSON形式のみで回答してください（マークダウン・コードブロック不要、JSONのみ）。
+固定費（家賃・ローン・公共料金・通信費）は倹約推奨から除外。
+
 {
-  "summary": "今週の支出についての一言まとめ（1文、日本語）",
-  "point": "注目すべき支出や良い点（1文、ポジティブな視点で、日本語）",
-  "tip": "倹約のための具体的な一言アドバイス（1文、日本語）"
+  "savingsCategory": "最も削減を推奨する裁量的支出カテゴリ名（削減不要ならnull）",
+  "savingsSuggestion": "具体的な倹約方法（3つまで、改行区切り、「・」始まり）"
+}`;
+  } else if (type === "monthly") {
+    isStructured = true;
+    prompt = `ホーチミン在住日本人の月次支出分析（カテゴリ別VND）
+今月: ${JSON.stringify(data.thisWeek)}
+先月: ${JSON.stringify(data.lastWeek)}
+
+以下のJSON形式のみで回答してください（マークダウン・コードブロック不要、JSONのみ）。
+固定費（家賃・ローン・公共料金・通信費）は倹約推奨から除外。
+
+{
+  "savingsCategory": "最も削減を推奨する裁量的支出カテゴリ名（削減不要ならnull）",
+  "savingsSuggestion": "具体的な倹約方法（3つまで、改行区切り、「・」始まり）"
 }`;
   } else if (type === "dam-qa") {
     isStructured = true;

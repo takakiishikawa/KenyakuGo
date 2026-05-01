@@ -75,7 +75,6 @@ export default function TransactionsPage() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [addingCategory, setAddingCategory] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
-  const [categorizing, setCategorizing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [bulkCategory, setBulkCategory] = useState("");
   const [bulkApplying, setBulkApplying] = useState(false);
@@ -145,25 +144,6 @@ export default function TransactionsPage() {
     });
     fetchTransactions();
     fetchCategories();
-  };
-
-  const handleCategorizeAll = async () => {
-    setCategorizing(true);
-    try {
-      const res = await fetch("/api/ai/categorize-all", { method: "POST" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const { updated, total } = await res.json();
-      toast.success(`${total}件中${updated}件のカテゴリを更新しました`);
-      fetchTransactions();
-      fetchCategories();
-      fetchUncategorizedCount();
-    } catch (e) {
-      toast.error(
-        `分類に失敗しました: ${e instanceof Error ? e.message : "不明なエラー"}`,
-      );
-    } finally {
-      setCategorizing(false);
-    }
   };
 
   const handleAddCategory = async () => {
@@ -247,20 +227,8 @@ export default function TransactionsPage() {
       <PageHeader
         title="トランザクション"
         actions={
-          <div className="flex gap-2">
-            {allCategorized ? (
-              <div
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md font-medium"
-                style={{
-                  color: "var(--color-success)",
-                  backgroundColor: "var(--color-success-subtle)",
-                  border: "1px solid var(--color-success)",
-                }}
-              >
-                <span>✓</span>
-                <span>全て分類済み</span>
-              </div>
-            ) : (
+          <div className="flex gap-2 items-center">
+            {!allCategorized && (
               <Button
                 variant="outline"
                 size="sm"
@@ -281,14 +249,50 @@ export default function TransactionsPage() {
                   : `要確認リスト${uncategorizedCount ? `（${uncategorizedCount}）` : ""}`}
               </Button>
             )}
-            <Button
-              size="sm"
-              onClick={handleCategorizeAll}
-              disabled={categorizing || allCategorized}
-              variant={allCategorized ? "outline" : "default"}
-            >
-              {categorizing ? "分類中..." : "AI一括分類"}
-            </Button>
+            {showAddCategory ? (
+              <div className="flex gap-2 items-center">
+                <Input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAddCategory();
+                    if (e.key === "Escape") {
+                      setShowAddCategory(false);
+                      setNewCategoryName("");
+                    }
+                  }}
+                  placeholder="カテゴリ名..."
+                  autoFocus
+                  className="w-44 h-9"
+                />
+                <Button
+                  onClick={handleAddCategory}
+                  disabled={addingCategory || !newCategoryName.trim()}
+                  size="sm"
+                >
+                  {addingCategory ? "..." : "追加"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowAddCategory(false);
+                    setNewCategoryName("");
+                  }}
+                >
+                  ✕
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddCategory(true)}
+              >
+                + カテゴリ追加
+              </Button>
+            )}
           </div>
         }
       />
@@ -372,8 +376,8 @@ export default function TransactionsPage() {
         </Card>
       )}
 
-      {/* Filters row: Tabs + Select */}
-      <div className="flex items-center gap-4 mb-4 mt-6">
+      {/* Period tabs */}
+      <div className="mt-6 mb-4">
         <Tabs value={period} onValueChange={setPeriod}>
           <TabsList>
             <TabsTrigger value="week">今週</TabsTrigger>
@@ -381,23 +385,10 @@ export default function TransactionsPage() {
             <TabsTrigger value="all">全期間</TabsTrigger>
           </TabsList>
         </Tabs>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">すべてのカテゴリ</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {cat}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
-      {/* 検索 + カテゴリ追加 */}
-      <div className="flex gap-3 mb-4">
+      {/* 検索 + カテゴリフィルタ */}
+      <div className="flex items-center gap-3 mb-4">
         <div className="relative flex-1" style={{ maxWidth: 320 }}>
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"
@@ -419,50 +410,19 @@ export default function TransactionsPage() {
             className="pl-9"
           />
         </div>
-        {showAddCategory ? (
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAddCategory();
-                if (e.key === "Escape") {
-                  setShowAddCategory(false);
-                  setNewCategoryName("");
-                }
-              }}
-              placeholder="カテゴリ名..."
-              autoFocus
-              className="w-44"
-            />
-            <Button
-              onClick={handleAddCategory}
-              disabled={addingCategory || !newCategoryName.trim()}
-              size="sm"
-            >
-              {addingCategory ? "..." : "追加"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setShowAddCategory(false);
-                setNewCategoryName("");
-              }}
-            >
-              ✕
-            </Button>
-          </div>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowAddCategory(true)}
-          >
-            + カテゴリ追加
-          </Button>
-        )}
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="カテゴリ" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">すべて</SelectItem>
+            {categories.map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {cat}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* 一括カテゴリ変更バナー */}

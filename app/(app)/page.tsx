@@ -2,12 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { PieChart, Pie, Cell } from "recharts";
-import {
-  TrendingDown,
-  TrendingUp,
-  RefreshCw,
-  ChevronRight,
-} from "lucide-react";
+import { TrendingDown, TrendingUp, ChevronRight } from "lucide-react";
 import { toast } from "@takaki/go-design-system";
 import { formatVND, formatDate } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
@@ -318,12 +313,6 @@ function WeekComparePopup({
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
-  const [syncing, setSyncing] = useState(false);
-  const [syncState, setSyncState] = useState<"idle" | "upToDate">("idle");
-  const [syncProgress, setSyncProgress] = useState<{
-    done: number;
-    total: number;
-  } | null>(null);
   const [popupCategory, setPopupCategory] = useState<{
     name: string;
     colorIndex: number;
@@ -342,57 +331,6 @@ export default function Dashboard() {
   useEffect(() => {
     fetchDashboard();
   }, [fetchDashboard]);
-
-  const handleSync = async () => {
-    setSyncing(true);
-    setSyncState("idle");
-    setSyncProgress(null);
-    let totalSynced = 0;
-    let estimatedTotal = 0;
-    let processed = 0;
-
-    try {
-      while (true) {
-        const res = await fetch("/api/gmail/sync");
-        let json: { synced?: number; remaining?: number; error?: string } = {};
-        try {
-          json = await res.json();
-        } catch {
-          toast.error(
-            "同期失敗: サーバーエラー（タイムアウトの可能性があります）",
-          );
-          break;
-        }
-        if (!res.ok) {
-          toast.error(`同期失敗: ${json.error ?? res.status}`);
-          break;
-        }
-
-        const remaining = json.remaining ?? 0;
-        totalSynced += json.synced ?? 0;
-        processed += 200;
-
-        if (estimatedTotal === 0) estimatedTotal = processed + remaining;
-        const done = Math.min(processed, estimatedTotal);
-        setSyncProgress({ done, total: estimatedTotal });
-
-        if (remaining === 0) break;
-      }
-
-      setSyncState("upToDate");
-      if (totalSynced > 0)
-        toast.success(`${totalSynced}件の取引を取得しました`);
-      setTimeout(() => setSyncState("idle"), 5000);
-      fetchDashboard();
-    } catch (e) {
-      toast.error(
-        `同期失敗: ${e instanceof Error ? e.message : "network error"}`,
-      );
-    } finally {
-      setSyncing(false);
-      setSyncProgress(null);
-    }
-  };
 
   const projected = data?.projectedMonthTotal ?? null;
   const target = data?.targetMonthly ?? 0;
@@ -418,26 +356,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      <PageHeader
-        title="ダッシュボード"
-        actions={
-          <Button
-            variant="default"
-            size="sm"
-            onClick={handleSync}
-            disabled={syncing}
-          >
-            <RefreshCw size={15} className={syncing ? "animate-spin" : ""} />
-            {syncing && syncProgress
-              ? `${syncProgress.done}/${syncProgress.total}件`
-              : syncing
-                ? "同期中..."
-                : syncState === "upToDate"
-                  ? "最新の状態"
-                  : "同期"}
-          </Button>
-        }
-      />
+      <PageHeader title="ダッシュボード" />
 
       <div className="mt-8 grid grid-cols-3 gap-5 mb-8">
         <Card
@@ -447,25 +366,13 @@ export default function Dashboard() {
           <p className="text-xs font-medium uppercase tracking-widest mb-3 text-muted-foreground">
             今月の出費
           </p>
-          <p
-            className="font-num text-4xl font-semibold leading-none"
-            style={{ color: "var(--kg-text)" }}
-          >
+          <p className="font-num text-4xl font-semibold leading-none text-foreground">
             {data ? formatVND(monthTotal) : "—"}
           </p>
           {projected && (
-            <p className="mt-2 text-sm font-medium text-muted-foreground">
+            <p className="mt-2 text-sm text-muted-foreground">
               月末予測{" "}
-              <span
-                className="font-num"
-                style={{
-                  color: projVsTarget
-                    ? projVsTarget.ok
-                      ? "var(--kg-success)"
-                      : "var(--kg-danger)"
-                    : "var(--kg-text)",
-                }}
-              >
+              <span className="font-num text-foreground">
                 {formatVND(projected)}
               </span>
             </p>
@@ -496,10 +403,7 @@ export default function Dashboard() {
           <p className="text-xs font-medium uppercase tracking-widest mb-3 text-muted-foreground">
             直近7日間の出費
           </p>
-          <p
-            className="font-num text-4xl font-semibold leading-none"
-            style={{ color: "var(--kg-text)" }}
-          >
+          <p className="font-num text-4xl font-semibold leading-none text-foreground">
             {data ? formatVND(data.thisWeekTotal) : "—"}
           </p>
           {data && data.lastWeekTotal > 0 && (
@@ -531,16 +435,7 @@ export default function Dashboard() {
           <p className="text-xs font-medium uppercase tracking-widest mb-3 text-muted-foreground">
             累計ダム残高
           </p>
-          <p
-            className="font-num text-4xl font-semibold leading-none"
-            style={{
-              color: data
-                ? data.cumulativeBalance >= 0
-                  ? "var(--kg-success)"
-                  : "var(--kg-danger)"
-                : "var(--kg-text)",
-            }}
-          >
+          <p className="font-num text-4xl font-semibold leading-none text-foreground">
             {data ? formatVND(data.cumulativeBalance) : "—"}
           </p>
           {data && (
@@ -573,98 +468,85 @@ export default function Dashboard() {
             直近7日間の内訳
           </p>
           {data?.categoryBreakdown?.length ? (
-            <div className="flex flex-col items-center gap-4">
-              <ChartContainer
-                config={donutConfig}
-                className="aspect-auto h-[220px] w-full"
-              >
-                <PieChart>
-                  <Pie
-                    data={data.categoryBreakdown}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    dataKey="value"
-                    paddingAngle={2}
-                    onClick={(entry: { name?: string }, index: number) => {
-                      if (entry.name)
-                        setPopupCategory({
-                          name: entry.name,
-                          colorIndex: index,
-                        });
-                    }}
-                    style={{ cursor: "pointer" }}
-                  >
-                    {data.categoryBreakdown.map((_, i) => (
-                      <Cell
-                        key={i}
-                        fill={DONUT_COLORS[i % DONUT_COLORS.length]}
-                        stroke="transparent"
-                      />
-                    ))}
-                  </Pie>
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        hideLabel
-                        formatter={(value) => formatVND(value as number)}
-                      />
-                    }
-                  />
-                </PieChart>
-              </ChartContainer>
-              <div className="w-full space-y-0.5">
-                {data.categoryBreakdown.slice(0, 6).map((item, i) => {
-                  const prev = data.prevCategoryBreakdown?.[item.name] ?? 0;
-                  const diff =
-                    prev > 0
-                      ? Math.round(((item.value - prev) / prev) * 100)
-                      : null;
-                  return (
-                    <Button
-                      key={item.name}
-                      variant="ghost"
-                      className="flex items-center gap-2 w-full text-left rounded-lg px-2 py-1.5 transition-colors h-auto justify-start"
-                      onClick={() =>
-                        setPopupCategory({ name: item.name, colorIndex: i })
-                      }
-                    >
-                      <span
-                        className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{
-                          backgroundColor:
-                            DONUT_COLORS[i % DONUT_COLORS.length],
-                        }}
-                      />
-                      <span className="text-sm truncate flex-1 text-muted-foreground">
-                        {item.name}
-                      </span>
-                      <span
-                        className="text-xs font-num font-medium"
-                        style={{ color: "var(--kg-text)" }}
+            <ChartContainer
+              config={donutConfig}
+              className="aspect-auto h-[420px] w-full"
+            >
+              <PieChart>
+                <Pie
+                  data={data.categoryBreakdown}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={130}
+                  dataKey="value"
+                  paddingAngle={2}
+                  labelLine={{
+                    stroke: "var(--color-border-strong)",
+                    strokeWidth: 1,
+                  }}
+                  label={(props) => {
+                    const cx = Number(props.cx ?? 0);
+                    const cy = Number(props.cy ?? 0);
+                    const midAngle = Number(props.midAngle ?? 0);
+                    const outerRadius = Number(props.outerRadius ?? 0);
+                    const percent = Number(props.percent ?? 0);
+                    const name = String(props.name ?? "");
+                    if (percent < 0.03) return null as unknown as React.ReactElement;
+                    const RADIAN = Math.PI / 180;
+                    const r = outerRadius + 18;
+                    const x = cx + r * Math.cos(-midAngle * RADIAN);
+                    const y = cy + r * Math.sin(-midAngle * RADIAN);
+                    const anchor = x > cx ? "start" : "end";
+                    return (
+                      <text
+                        x={x}
+                        y={y}
+                        textAnchor={anchor}
+                        dominantBaseline="central"
+                        fontSize={12}
+                        fill="var(--color-text-secondary)"
                       >
-                        {formatVND(item.value)}
-                      </span>
-                      {diff !== null && (
-                        <span
-                          className="text-xs font-num font-medium w-10 text-right shrink-0"
-                          style={{
-                            color:
-                              diff <= 0
-                                ? "var(--kg-success)"
-                                : "var(--kg-danger)",
-                          }}
+                        <tspan x={x} dy="-0.4em" fontWeight={500}>
+                          {name}
+                        </tspan>
+                        <tspan
+                          x={x}
+                          dy="1.2em"
+                          fill="var(--color-text-subtle)"
                         >
-                          {diff > 0 ? "+" : ""}
-                          {diff}%
-                        </span>
-                      )}
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
+                          {(percent * 100).toFixed(0)}%
+                        </tspan>
+                      </text>
+                    );
+                  }}
+                  onClick={(entry: { name?: string }, index: number) => {
+                    if (entry.name)
+                      setPopupCategory({
+                        name: entry.name,
+                        colorIndex: index,
+                      });
+                  }}
+                  style={{ cursor: "pointer" }}
+                >
+                  {data.categoryBreakdown.map((_, i) => (
+                    <Cell
+                      key={i}
+                      fill={DONUT_COLORS[i % DONUT_COLORS.length]}
+                      stroke="transparent"
+                    />
+                  ))}
+                </Pie>
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      hideLabel
+                      formatter={(value) => formatVND(value as number)}
+                    />
+                  }
+                />
+              </PieChart>
+            </ChartContainer>
           ) : (
             <p className="text-center py-16 text-sm text-muted-foreground">
               直近7日間の取引データがありません
@@ -672,17 +554,17 @@ export default function Dashboard() {
           )}
         </Card>
 
-        <Card className="animate-fade-up" style={{ animationDelay: "300ms" }}>
+        <Card className="animate-fade-up flex flex-col" style={{ animationDelay: "300ms" }}>
           <div
             className="px-7 py-5 border-b"
             style={{ borderColor: "var(--kg-border-subtle)" }}
           >
             <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              直近の取引
+              直近の取引（3日間）
             </p>
           </div>
           {data?.recentTransactions?.length ? (
-            <div>
+            <div className="overflow-y-auto" style={{ maxHeight: 420 }}>
               {data.recentTransactions.map((tx) => (
                 <div
                   key={tx.id}
@@ -691,18 +573,12 @@ export default function Dashboard() {
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <CategoryBadge category={tx.category} />
-                    <span
-                      className="text-sm font-medium truncate"
-                      style={{ color: "var(--kg-text)" }}
-                    >
+                    <span className="text-sm font-medium truncate text-foreground">
                       {tx.store}
                     </span>
                   </div>
                   <div className="text-right shrink-0 ml-3">
-                    <p
-                      className="text-sm font-num font-semibold"
-                      style={{ color: "var(--kg-text)" }}
-                    >
+                    <p className="text-sm font-num font-semibold text-foreground">
                       {formatVND(tx.amount)}
                     </p>
                     <p className="text-xs mt-0.5 text-muted-foreground">
@@ -714,7 +590,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <p className="text-sm text-center py-16 text-muted-foreground">
-              取引データがありません。同期ボタンを押してください。
+              直近3日間の取引データがありません。
             </p>
           )}
         </Card>

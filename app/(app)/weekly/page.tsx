@@ -57,17 +57,17 @@ function ChartTooltipContentTop5({
 }) {
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
-  const top5 = Object.entries(row.byCategory)
+  const top10 = Object.entries(row.byCategory)
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 5);
+    .slice(0, 10);
   return (
     <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-sm min-w-44">
       <p className="font-medium text-foreground mb-1.5">{row.label}</p>
       <div className="space-y-1">
-        {top5.length === 0 ? (
+        {top10.length === 0 ? (
           <p className="text-muted-foreground">データなし</p>
         ) : (
-          top5.map(([cat, amt]) => (
+          top10.map(([cat, amt]) => (
             <div
               key={cat}
               className="flex items-center justify-between gap-3"

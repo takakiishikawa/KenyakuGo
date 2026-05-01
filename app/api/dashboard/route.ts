@@ -58,11 +58,17 @@ export async function GET() {
         .select("amount")
         .gte("date", monthStart.toISOString())
         .lte("date", monthEnd.toISOString()),
-      db
-        .from("transactions")
-        .select("id, store, amount, category, date")
-        .order("date", { ascending: false })
-        .limit(5),
+      (() => {
+        const recentStart = new Date(now);
+        recentStart.setDate(recentStart.getDate() - 2);
+        recentStart.setHours(0, 0, 0, 0);
+        return db
+          .from("transactions")
+          .select("id, store, amount, category, date")
+          .gte("date", recentStart.toISOString())
+          .order("date", { ascending: false })
+          .limit(200);
+      })(),
       fetchAllBudgets(db),
       db
         .from("transactions")

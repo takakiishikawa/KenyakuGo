@@ -45,7 +45,7 @@ function SubscriptionRow({ sub }: { sub: SubscriptionItem }) {
           {sub.store}
         </p>
         <p className="text-xs mt-0.5 text-muted-foreground">
-          {sub.monthsActive}ヶ月継続 · 最終課金:{" "}
+          {sub.category} · {sub.monthsActive}ヶ月継続 · 最終課金:{" "}
           {formatMonth(sub.lastChargedAt)}
         </p>
       </div>
@@ -88,10 +88,10 @@ export default function SubscriptionsPage() {
       ) : subscriptions.length === 0 ? (
         <Card className="mt-8 p-10 text-center">
           <p className="text-sm text-muted-foreground">
-            「サブスク」カテゴリの取引がありません
+            毎月課金されている取引が見つかりませんでした
           </p>
           <p className="text-xs mt-2 text-muted-foreground">
-            取引一覧でカテゴリを「サブスク」に設定すると自動で表示されます
+            同じ店舗で 2ヶ月以上、ほぼ同額の支払いがあるものを自動でサブスクと判定します
           </p>
         </Card>
       ) : (

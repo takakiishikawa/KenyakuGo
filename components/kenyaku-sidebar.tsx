@@ -109,10 +109,16 @@ export function KenyakuGoSidebar() {
   const fullName = user?.user_metadata?.full_name as string | undefined;
   const displayName = fullName || user?.email?.split("@")[0] || "";
 
+  const APPS = GO_APPS.map((app) =>
+    app.name === "KenyakuGo"
+      ? { ...app, color: "var(--color-primary)" }
+      : app,
+  );
+
   return (
     <Sidebar>
       <SidebarHeader>
-        <AppSwitcher currentApp="KenyakuGo" apps={GO_APPS} placement="bottom" />
+        <AppSwitcher currentApp="KenyakuGo" apps={APPS} placement="bottom" />
       </SidebarHeader>
 
       <SidebarContent>

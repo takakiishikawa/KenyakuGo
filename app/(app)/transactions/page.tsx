@@ -245,7 +245,7 @@ export default function TransactionsPage() {
   return (
     <div>
       <PageHeader
-        title="取引一覧"
+        title="トランザクション"
         actions={
           <div className="flex gap-2">
             {allCategorized ? (

@@ -46,11 +46,6 @@ const GO_APPS = [
     color: "#0052CC",
   },
   {
-    name: "CareGo",
-    url: "https://care-go-mu.vercel.app/dashboard",
-    color: "#00875A",
-  },
-  {
     name: "KenyakuGo",
     url: "https://kenyaku-go.vercel.app/",
     color: "#FF5630",
@@ -59,11 +54,6 @@ const GO_APPS = [
     name: "CookGo",
     url: "https://cook-go-lovat.vercel.app/dashboard",
     color: "#FF991F",
-  },
-  {
-    name: "PhysicalGo",
-    url: "https://physical-go.vercel.app/dashboard",
-    color: "#6554C0",
   },
   { name: "TaskGo", url: "https://taskgo-dun.vercel.app/", color: "#00B8D9" },
   {

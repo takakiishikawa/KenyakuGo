@@ -15,6 +15,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  GO_APPS,
 } from "@takaki/go-design-system";
 import {
   LayoutDashboard,
@@ -26,10 +27,6 @@ import {
   Lightbulb,
   Repeat2,
   Settings,
-  Languages,
-  Wallet,
-  Zap,
-  ChefHat,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
@@ -40,33 +37,6 @@ const AppSwitcher = dynamic(() =>
 const UserMenu = dynamic(() =>
   import("@takaki/go-design-system").then((m) => ({ default: m.UserMenu })),
 );
-
-const GO_APPS = [
-  {
-    name: "NativeGo",
-    url: "https://english-learning-app-black.vercel.app/",
-    color: "#0052CC",
-    icon: Languages,
-  },
-  {
-    name: "KenyakuGo",
-    url: "https://kenyaku-go.vercel.app/",
-    color: "#FF5630",
-    icon: Wallet,
-  },
-  {
-    name: "CookGo",
-    url: "https://cook-go-lovat.vercel.app/dashboard",
-    color: "#FF991F",
-    icon: ChefHat,
-  },
-  {
-    name: "TaskGo",
-    url: "https://taskgo-dun.vercel.app/",
-    color: "#00B8D9",
-    icon: Zap,
-  },
-];
 
 const navItems = [
   { href: "/", label: "ダッシュボード", icon: LayoutDashboard },

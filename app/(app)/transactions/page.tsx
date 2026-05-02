@@ -164,9 +164,11 @@ function CategoryManagerDialog({
           <DialogTitle>カテゴリ管理</DialogTitle>
         </DialogHeader>
         <div className="max-h-[60vh] overflow-y-auto">
-          {items.map((item) => {
+          {items
+            .filter((item) => item.name !== "その他")
+            .map((item) => {
             const isEditing = editingId === item.id;
-            const isProtected = item.name === "その他";
+            const isProtected = false;
             return (
               <div
                 key={item.id}
@@ -411,10 +413,7 @@ export default function TransactionsPage() {
         header: "名前",
         cell: ({ row }) => (
           <div className="max-w-[220px]">
-            <span
-              className="text-sm font-medium truncate block"
-              style={{ color: "var(--kg-text)" }}
-            >
+            <span className="text-sm text-foreground truncate block">
               {row.original.store}
             </span>
           </div>
@@ -423,7 +422,7 @@ export default function TransactionsPage() {
       {
         id: "category",
         accessorKey: "category",
-        header: "タグ",
+        header: "カテゴリ",
         cell: ({ row }) => {
           const tx = row.original;
           const isEditing = editingId === tx.id;
@@ -478,7 +477,7 @@ export default function TransactionsPage() {
         accessorKey: "date",
         header: "日時",
         cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
+          <span className="text-sm text-foreground whitespace-nowrap">
             {formatDateWithYear(row.original.date)}
           </span>
         ),
@@ -488,10 +487,7 @@ export default function TransactionsPage() {
         accessorKey: "amount",
         header: () => <div className="text-right pr-4">金額</div>,
         cell: ({ row }) => (
-          <div
-            className="text-right font-num text-sm font-semibold pr-4 min-w-[180px]"
-            style={{ color: "var(--kg-text)" }}
-          >
+          <div className="text-right font-num text-sm text-foreground pr-4 min-w-[180px]">
             {formatVND(row.original.amount)}
           </div>
         ),
@@ -508,47 +504,27 @@ export default function TransactionsPage() {
       <PageHeader
         title="トランザクション"
         actions={
-          <div className="flex gap-2 items-center">
-            {!allCategorized && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchUncategorizedStores}
-                disabled={reviewLoading}
-                style={
-                  uncategorizedCount && uncategorizedCount > 0
-                    ? {
-                        borderColor: "var(--color-warning)",
-                        color: "var(--color-warning)",
-                        backgroundColor: "var(--color-warning-subtle)",
-                      }
-                    : undefined
-                }
-              >
-                {reviewLoading
-                  ? "読込中..."
-                  : `要確認リスト${uncategorizedCount ? `（${uncategorizedCount}）` : ""}`}
-              </Button>
-            )}
-            <Dialog
-              open={categoryDialogOpen}
-              onOpenChange={setCategoryDialogOpen}
+          !allCategorized ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchUncategorizedStores}
+              disabled={reviewLoading}
+              style={
+                uncategorizedCount && uncategorizedCount > 0
+                  ? {
+                      borderColor: "var(--color-warning)",
+                      color: "var(--color-warning)",
+                      backgroundColor: "var(--color-warning-subtle)",
+                    }
+                  : undefined
+              }
             >
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  カテゴリ管理
-                </Button>
-              </DialogTrigger>
-              <CategoryManagerDialog
-                open={categoryDialogOpen}
-                onOpenChange={setCategoryDialogOpen}
-                onChanged={() => {
-                  fetchCategories();
-                  fetchTransactions();
-                }}
-              />
-            </Dialog>
-          </div>
+              {reviewLoading
+                ? "読込中..."
+                : `要確認リスト${uncategorizedCount ? `（${uncategorizedCount}）` : ""}`}
+            </Button>
+          ) : null
         }
       />
 
@@ -631,7 +607,7 @@ export default function TransactionsPage() {
         </Card>
       )}
 
-      {/* 検索 + カテゴリフィルタ */}
+      {/* 検索 + カテゴリフィルタ + カテゴリ管理 */}
       <div className="flex items-center gap-3 mt-6 mb-4">
         <div className="relative flex-1" style={{ maxWidth: 320 }}>
           <svg
@@ -650,16 +626,16 @@ export default function TransactionsPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="店名で検索..."
+            placeholder="店舗名を検索"
             className="pl-9"
           />
         </div>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-44">
-            <SelectValue placeholder="カテゴリ" />
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">すべて</SelectItem>
+            <SelectItem value="all">カテゴリ</SelectItem>
             {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>
                 {cat}
@@ -667,6 +643,25 @@ export default function TransactionsPage() {
             ))}
           </SelectContent>
         </Select>
+        <span className="flex-1" />
+        <Dialog
+          open={categoryDialogOpen}
+          onOpenChange={setCategoryDialogOpen}
+        >
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm">
+              カテゴリ管理
+            </Button>
+          </DialogTrigger>
+          <CategoryManagerDialog
+            open={categoryDialogOpen}
+            onOpenChange={setCategoryDialogOpen}
+            onChanged={() => {
+              fetchCategories();
+              fetchTransactions();
+            }}
+          />
+        </Dialog>
       </div>
 
       {/* 一括カテゴリ変更バナー */}

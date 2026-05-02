@@ -11,7 +11,10 @@ export function formatDate(date: string | Date): string {
   });
 }
 
+const DOW = ["日", "月", "火", "水", "木", "金", "土"] as const;
+
 export function formatDateWithYear(date: string | Date): string {
   const d = new Date(date);
-  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const dow = DOW[d.getDay()];
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}(${dow}) ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }

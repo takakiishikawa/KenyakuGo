@@ -170,37 +170,7 @@ export default function SubscriptionsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="サブスク"
-        actions={
-          <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <TrendingUp size={14} />
-                推移
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl p-0 overflow-hidden">
-              <DialogHeader className="px-7 py-5 border-b">
-                <DialogTitle>月額の推移（直近12ヶ月）</DialogTitle>
-              </DialogHeader>
-              <div className="p-7">
-                {history === null ? (
-                  <Skeleton className="h-72 w-full rounded" />
-                ) : (
-                  <ChartArea
-                    data={history as unknown as Record<string, unknown>[]}
-                    config={chartConfig}
-                    xKey="label"
-                    yKeys={["total"]}
-                    filterByDate={false}
-                  />
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
-        }
-      />
+      <PageHeader title="サブスク" />
 
       {subscriptions === null ? (
         <div className="mt-8 space-y-3">
@@ -210,7 +180,7 @@ export default function SubscriptionsPage() {
         </div>
       ) : (
         <>
-          <div className="mt-6 mb-4 flex items-center justify-between">
+          <div className="mt-6 mb-4 flex items-center gap-3">
             <Tabs value={tab} onValueChange={(v) => setTab(v as TabValue)}>
               <TabsList>
                 <TabsTrigger value="active">
@@ -225,19 +195,46 @@ export default function SubscriptionsPage() {
             </Tabs>
             {tab === "active" && active.length > 0 && (
               <p
-                className="text-sm font-num font-semibold"
+                className="text-sm font-num font-semibold ml-2"
                 style={{ color: "var(--color-primary)" }}
               >
                 月額合計 {formatVND(monthlyTotal)}
               </p>
             )}
+            <span className="flex-1" />
+            <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <TrendingUp size={14} />
+                  推移
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl p-0 overflow-hidden">
+                <DialogHeader className="px-7 py-5 border-b">
+                  <DialogTitle>月額の推移（直近12ヶ月）</DialogTitle>
+                </DialogHeader>
+                <div className="p-7">
+                  {history === null ? (
+                    <Skeleton className="h-72 w-full rounded" />
+                  ) : (
+                    <ChartArea
+                      data={history as unknown as Record<string, unknown>[]}
+                      config={chartConfig}
+                      xKey="label"
+                      yKeys={["total"]}
+                      filterByDate={false}
+                    />
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
 
           <div className="kg-hide-pagesize">
             <DataTable
               columns={columns}
               data={tableData}
-              searchable={{ columnId: "store", placeholder: "店名で検索..." }}
+              searchable={false}
               pageSize={100}
               pageSizeOptions={[100]}
               emptyMessage={

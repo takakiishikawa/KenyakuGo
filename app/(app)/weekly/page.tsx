@@ -53,24 +53,9 @@ const LABELS: Record<
   Period,
   { current: string; prev: string; compare: string; projection: string }
 > = {
-  week: {
-    current: "今週",
-    prev: "先週",
-    compare: "先週比",
-    projection: "週末予測",
-  },
-  month: {
-    current: "今月",
-    prev: "先月",
-    compare: "先月比",
-    projection: "月末予測",
-  },
-  year: {
-    current: "今年",
-    prev: "昨年",
-    compare: "昨年比",
-    projection: "年末予測",
-  },
+  week: { current: "今週", prev: "先週", compare: "先週比", projection: "週予測" },
+  month: { current: "今月", prev: "先月", compare: "先月比", projection: "月予測" },
+  year: { current: "今年", prev: "昨年", compare: "昨年比", projection: "年予測" },
 };
 
 interface ChartRow {
@@ -156,7 +141,7 @@ function SavingsHistoryTable({ months }: { months: MonthRecord[] }) {
       </TableHeader>
 
       <TableBody>
-        <TableRow className="bg-muted/40 font-semibold hover:bg-muted/40 border-b-2 border-border">
+        <TableRow className="font-semibold border-b-2 border-border">
           <TableCell className="px-7 py-4 text-sm text-foreground">
             合計
           </TableCell>
@@ -203,12 +188,7 @@ function SavingsHistoryTable({ months }: { months: MonthRecord[] }) {
           const isCurrent = currentMonth?.key === m.key;
           const monthSaved = m.balance >= 0;
           return (
-            <TableRow
-              key={m.key}
-              className={
-                isCurrent ? "bg-primary/[0.04] hover:bg-primary/[0.08]" : ""
-              }
-            >
+            <TableRow key={m.key}>
               <TableCell className="px-7 py-4 whitespace-nowrap">
                 <span
                   className={`text-sm font-medium ${
@@ -323,13 +303,6 @@ export default function ReportPage() {
       : null;
   const card2Improved = card2Diff <= 0;
 
-  const projVsTarget =
-    period === "month" && projected != null && target > 0
-      ? projected > target
-        ? { text: `目標 ${formatVND(target)} を超過見込み`, ok: false }
-        : { text: `目標 ${formatVND(target)} 内で推移中`, ok: true }
-      : null;
-
   return (
     <div>
       <PageHeader
@@ -339,12 +312,12 @@ export default function ReportPage() {
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
                 <History size={14} />
-                月別倹約履歴
+                月毎の倹約
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-5xl p-0 overflow-hidden">
               <DialogHeader className="px-7 py-5 border-b">
-                <DialogTitle>月別倹約履歴</DialogTitle>
+                <DialogTitle>月毎の倹約</DialogTitle>
               </DialogHeader>
               <div className="max-h-[70vh] overflow-y-auto">
                 {history === null ? (
@@ -390,38 +363,18 @@ export default function ReportPage() {
           >
             {data ? formatVND(data.currentTotal) : "—"}
           </p>
-          {period === "month" && projected != null && (
-            <p className="mt-2 text-sm font-medium text-muted-foreground">
-              月末予測{" "}
-              <span
-                className="font-num"
-                style={{
-                  color: projVsTarget
-                    ? projVsTarget.ok
-                      ? "var(--kg-success)"
-                      : "var(--kg-danger)"
-                    : "var(--kg-text)",
-                }}
-              >
+          {projected != null && (
+            <p className="mt-3 text-sm text-muted-foreground">
+              {labels.projection}{" "}
+              <span className="font-num text-foreground">
                 {formatVND(projected)}
               </span>
-            </p>
-          )}
-          {projVsTarget && (
-            <p
-              className="mt-1 text-sm flex items-center gap-1"
-              style={{
-                color: projVsTarget.ok
-                  ? "var(--kg-success)"
-                  : "var(--kg-danger)",
-              }}
-            >
-              {projVsTarget.ok ? (
-                <TrendingDown size={12} />
-              ) : (
-                <TrendingUp size={12} />
+              {period === "month" && target > 0 && (
+                <span className="text-muted-foreground">
+                  {" "}
+                  / {formatVND(target)}
+                </span>
               )}
-              {projVsTarget.text}
             </p>
           )}
         </Card>
@@ -448,7 +401,7 @@ export default function ReportPage() {
           </p>
           {data && card2Pct !== null && (
             <p
-              className="mt-2 text-sm font-medium flex items-center gap-1"
+              className="mt-3 text-sm font-medium flex items-center gap-1"
               style={{
                 color: card2Improved ? "var(--kg-success)" : "var(--kg-danger)",
               }}
@@ -460,14 +413,6 @@ export default function ReportPage() {
               )}
               {labels.compare} {card2Pct > 0 ? "+" : ""}
               {card2Pct}%
-            </p>
-          )}
-          {projected != null && (
-            <p
-              className="text-sm mt-1 text-muted-foreground"
-              style={{ opacity: 0.8 }}
-            >
-              {labels.projection} {formatVND(projected)}
             </p>
           )}
         </Card>

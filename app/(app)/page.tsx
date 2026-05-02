@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { PieChart, Pie, Cell } from "recharts";
+import { PieChart, Pie, Cell, Label } from "recharts";
 import { TrendingDown, TrendingUp, ChevronRight } from "lucide-react";
 import { toast } from "@takaki/go-design-system";
 import { formatVND, formatDate } from "@/lib/format";
@@ -17,6 +17,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
   type ChartConfig,
 } from "@takaki/go-design-system";
 
@@ -28,6 +30,9 @@ const DONUT_COLORS = [
   "#C084FC",
   "#38BDF8",
   "#F87171",
+  "#FBBF24",
+  "#A78BFA",
+  "#34D399",
 ];
 
 interface DashboardData {
@@ -229,11 +234,10 @@ function WeekComparePopup({
       }}
     >
       <DialogContent className="max-w-lg p-0 overflow-hidden flex flex-col gap-0">
-        {/* Header */}
         <div className="flex items-start justify-between px-6 pt-6 pb-5 border-b pr-14">
           <div>
             <h2 className="text-base font-semibold text-foreground">
-              直近7日間 vs 前の7日間
+              先週との比較
             </h2>
             <p className="text-sm text-muted-foreground mt-0.5">
               カテゴリ別の支出変化
@@ -250,31 +254,28 @@ function WeekComparePopup({
           </span>
         </div>
 
-        {/* Totals row */}
         <div className="grid grid-cols-2 border-b text-center">
           <div className="px-6 py-4 border-r">
-            <p className="text-sm text-muted-foreground mb-1">直近7日間</p>
+            <p className="text-sm text-muted-foreground mb-1">今週</p>
             <p className="font-num text-lg font-semibold text-foreground">
               {formatVND(thisWeekTotal)}
             </p>
           </div>
           <div className="px-6 py-4">
-            <p className="text-sm text-muted-foreground mb-1">前の7日間</p>
+            <p className="text-sm text-muted-foreground mb-1">先週</p>
             <p className="font-num text-lg font-semibold text-muted-foreground">
               {formatVND(lastWeekTotal)}
             </p>
           </div>
         </div>
 
-        {/* Category table header */}
         <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 px-6 py-2 border-b bg-muted/30 text-xs font-medium text-muted-foreground uppercase tracking-wider">
           <span>カテゴリ</span>
-          <span className="text-right w-24">前の7日間</span>
-          <span className="text-right w-24">直近7日間</span>
+          <span className="text-right w-24">先週</span>
+          <span className="text-right w-24">今週</span>
           <span className="text-right w-12">変化</span>
         </div>
 
-        {/* Scrollable category rows */}
         <div className="overflow-y-auto" style={{ maxHeight: 320 }}>
           {rows.map(({ cat, current, prev, diff }) => (
             <div
@@ -334,13 +335,6 @@ export default function Dashboard() {
 
   const projected = data?.projectedMonthTotal ?? null;
   const target = data?.targetMonthly ?? 0;
-  const projVsTarget =
-    projected != null && target > 0
-      ? projected > target
-        ? { text: `目標 ${formatVND(target)} を超過見込み`, ok: false }
-        : { text: `目標 ${formatVND(target)} 内で推移中`, ok: true }
-      : null;
-
   const weekImproved = data ? data.weekDiff <= 0 : undefined;
 
   const donutConfig = useMemo<ChartConfig>(() => {
@@ -353,6 +347,10 @@ export default function Dashboard() {
     });
     return cfg;
   }, [data?.categoryBreakdown]);
+
+  const weekTotal = data
+    ? data.categoryBreakdown.reduce((s, c) => s + c.value, 0)
+    : 0;
 
   return (
     <div>
@@ -369,29 +367,18 @@ export default function Dashboard() {
           <p className="font-num text-4xl font-semibold leading-none text-foreground">
             {data ? formatVND(monthTotal) : "—"}
           </p>
-          {projected && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              月末予測{" "}
+          {projected != null && (
+            <p className="mt-3 text-sm text-muted-foreground">
+              月予測{" "}
               <span className="font-num text-foreground">
                 {formatVND(projected)}
               </span>
-            </p>
-          )}
-          {projVsTarget && (
-            <p
-              className="mt-1 text-sm flex items-center gap-1"
-              style={{
-                color: projVsTarget.ok
-                  ? "var(--kg-success)"
-                  : "var(--kg-danger)",
-              }}
-            >
-              {projVsTarget.ok ? (
-                <TrendingDown size={12} />
-              ) : (
-                <TrendingUp size={12} />
+              {target > 0 && (
+                <span className="text-muted-foreground">
+                  {" "}
+                  / {formatVND(target)}
+                </span>
               )}
-              {projVsTarget.text}
             </p>
           )}
         </Card>
@@ -401,7 +388,7 @@ export default function Dashboard() {
           style={{ animationDelay: "80ms", animationFillMode: "both" }}
         >
           <p className="text-xs font-medium uppercase tracking-widest mb-3 text-muted-foreground">
-            直近7日間の出費
+            今週の出費
           </p>
           <p className="font-num text-4xl font-semibold leading-none text-foreground">
             {data ? formatVND(data.thisWeekTotal) : "—"}
@@ -409,7 +396,7 @@ export default function Dashboard() {
           {data && data.lastWeekTotal > 0 && (
             <Button
               variant="ghost"
-              className="mt-2 flex items-center gap-1 text-sm font-medium rounded-lg transition-opacity hover:opacity-70 h-auto p-0"
+              className="mt-3 flex items-center gap-1 text-sm font-medium rounded-lg transition-opacity hover:opacity-70 h-auto p-0"
               onClick={() => setShowWeekCompare(true)}
               style={{
                 color: weekImproved ? "var(--kg-success)" : "var(--kg-danger)",
@@ -420,9 +407,8 @@ export default function Dashboard() {
               ) : (
                 <TrendingUp size={14} />
               )}
-              {weekImproved
-                ? `前の7日間より倹約（${Math.abs(data.weekDiff)}%↓）`
-                : `前の7日間より増加（${data.weekDiff}%↑）`}
+              先週比 {data.weekDiff > 0 ? "+" : ""}
+              {data.weekDiff}%
               <ChevronRight size={13} className="opacity-60" />
             </Button>
           )}
@@ -435,27 +421,18 @@ export default function Dashboard() {
           <p className="text-xs font-medium uppercase tracking-widest mb-3 text-muted-foreground">
             累計ダム残高
           </p>
-          <p className="font-num text-4xl font-semibold leading-none text-foreground">
+          <p
+            className="font-num text-4xl font-semibold leading-none"
+            style={{
+              color: data
+                ? data.cumulativeBalance >= 0
+                  ? "var(--kg-success)"
+                  : "var(--kg-danger)"
+                : "var(--kg-text)",
+            }}
+          >
             {data ? formatVND(data.cumulativeBalance) : "—"}
           </p>
-          {data && (
-            <p
-              className="mt-2 text-sm font-medium flex items-center gap-1"
-              style={{
-                color:
-                  data.cumulativeBalance >= 0
-                    ? "var(--kg-success)"
-                    : "var(--kg-danger)",
-              }}
-            >
-              {data.cumulativeBalance >= 0 ? (
-                <TrendingDown size={14} />
-              ) : (
-                <TrendingUp size={14} />
-              )}
-              {data.cumulativeBalance >= 0 ? "累計プラス" : "累計マイナス"}
-            </p>
-          )}
         </Card>
       </div>
 
@@ -464,62 +441,35 @@ export default function Dashboard() {
           className="p-7 animate-fade-up"
           style={{ animationDelay: "200ms" }}
         >
-          <p className="text-xs font-medium uppercase tracking-widest mb-4 text-muted-foreground">
-            直近7日間の内訳
+          <p className="text-xs font-medium uppercase tracking-widest mb-2 text-muted-foreground">
+            今週の内訳
           </p>
           {data?.categoryBreakdown?.length ? (
             <ChartContainer
               config={donutConfig}
-              className="aspect-auto h-[300px] w-full"
+              className="mx-auto aspect-square max-h-[360px]"
             >
               <PieChart>
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent
+                      hideLabel
+                      formatter={(value) => formatVND(value as number)}
+                    />
+                  }
+                />
                 <Pie
                   data={data.categoryBreakdown}
                   cx="50%"
                   cy="50%"
-                  innerRadius={50}
-                  outerRadius={95}
-                  dataKey="value"
+                  innerRadius={75}
+                  outerRadius={115}
                   paddingAngle={2}
-                  labelLine={{
-                    stroke: "var(--color-border-strong)",
-                    strokeWidth: 1,
-                  }}
-                  label={(props) => {
-                    const cx = Number(props.cx ?? 0);
-                    const cy = Number(props.cy ?? 0);
-                    const midAngle = Number(props.midAngle ?? 0);
-                    const outerRadius = Number(props.outerRadius ?? 0);
-                    const percent = Number(props.percent ?? 0);
-                    const name = String(props.name ?? "");
-                    if (percent < 0.03) return null as unknown as React.ReactElement;
-                    const RADIAN = Math.PI / 180;
-                    const r = outerRadius + 18;
-                    const x = cx + r * Math.cos(-midAngle * RADIAN);
-                    const y = cy + r * Math.sin(-midAngle * RADIAN);
-                    const anchor = x > cx ? "start" : "end";
-                    return (
-                      <text
-                        x={x}
-                        y={y}
-                        textAnchor={anchor}
-                        dominantBaseline="central"
-                        fontSize={12}
-                        fill="var(--color-text-secondary)"
-                      >
-                        <tspan x={x} dy="-0.4em" fontWeight={500}>
-                          {name}
-                        </tspan>
-                        <tspan
-                          x={x}
-                          dy="1.2em"
-                          fill="var(--color-text-subtle)"
-                        >
-                          {(percent * 100).toFixed(0)}%
-                        </tspan>
-                      </text>
-                    );
-                  }}
+                  dataKey="value"
+                  nameKey="name"
+                  strokeWidth={2}
+                  stroke="var(--background)"
                   onClick={(entry: { name?: string }, index: number) => {
                     if (entry.name)
                       setPopupCategory({
@@ -529,21 +479,57 @@ export default function Dashboard() {
                   }}
                   style={{ cursor: "pointer" }}
                 >
+                  <Label
+                    content={({ viewBox }) => {
+                      if (
+                        viewBox &&
+                        "cx" in viewBox &&
+                        "cy" in viewBox &&
+                        typeof viewBox.cx === "number" &&
+                        typeof viewBox.cy === "number"
+                      ) {
+                        return (
+                          <text
+                            x={viewBox.cx}
+                            y={viewBox.cy}
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                          >
+                            <tspan
+                              x={viewBox.cx}
+                              y={viewBox.cy - 8}
+                              fill="var(--kg-text)"
+                              fontSize={20}
+                              fontWeight={600}
+                              fontFamily="var(--font-num, monospace)"
+                            >
+                              {formatVND(weekTotal)}
+                            </tspan>
+                            <tspan
+                              x={viewBox.cx}
+                              y={viewBox.cy + 16}
+                              fill="var(--muted-foreground)"
+                              fontSize={11}
+                              letterSpacing="0.1em"
+                            >
+                              合計
+                            </tspan>
+                          </text>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
                   {data.categoryBreakdown.map((_, i) => (
                     <Cell
                       key={i}
                       fill={DONUT_COLORS[i % DONUT_COLORS.length]}
-                      stroke="transparent"
                     />
                   ))}
                 </Pie>
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      hideLabel
-                      formatter={(value) => formatVND(value as number)}
-                    />
-                  }
+                <ChartLegend
+                  content={<ChartLegendContent nameKey="name" />}
+                  verticalAlign="bottom"
                 />
               </PieChart>
             </ChartContainer>
@@ -554,7 +540,10 @@ export default function Dashboard() {
           )}
         </Card>
 
-        <Card className="animate-fade-up flex flex-col" style={{ animationDelay: "300ms" }}>
+        <Card
+          className="animate-fade-up flex flex-col"
+          style={{ animationDelay: "300ms" }}
+        >
           <div
             className="px-7 py-5 border-b"
             style={{ borderColor: "var(--kg-border-subtle)" }}

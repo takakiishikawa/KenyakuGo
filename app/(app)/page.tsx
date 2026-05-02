@@ -5,7 +5,6 @@ import { PieChart, Pie, Cell } from "recharts";
 import { TrendingDown, TrendingUp, ChevronRight } from "lucide-react";
 import { toast } from "@takaki/go-design-system";
 import { formatVND, formatDate } from "@/lib/format";
-import { getCategoryColors } from "@/lib/category-colors";
 import {
   Button,
   Card,
@@ -13,7 +12,7 @@ import {
   Skeleton,
   Dialog,
   DialogContent,
-  Badge,
+  Tag,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -84,19 +83,8 @@ function useCountUp(target: number | null, duration = 700) {
 }
 
 function CategoryBadge({ category }: { category: string }) {
-  const { bg, text } = getCategoryColors(category);
-  const isUncategorized = category === "その他";
-  if (isUncategorized) {
-    return <Badge variant="destructive">未分類</Badge>;
-  }
-  return (
-    <Badge
-      variant="secondary"
-      style={{ backgroundColor: bg, color: text, borderColor: "transparent" }}
-    >
-      {category}
-    </Badge>
-  );
+  if (category === "その他") return <Tag color="danger">未分類</Tag>;
+  return <Tag>{category}</Tag>;
 }
 
 function CategoryPopup({

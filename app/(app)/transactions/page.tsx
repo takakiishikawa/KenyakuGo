@@ -5,9 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Trash2, Pencil } from "lucide-react";
 import { toast } from "@takaki/go-design-system";
 import { formatVND, formatDateWithYear } from "@/lib/format";
-import { getCategoryColors } from "@/lib/category-colors";
 import {
-  Badge,
   Button,
   Card,
   DataTable,
@@ -23,6 +21,7 @@ import {
   SelectContent,
   SelectItem,
   PageHeader,
+  Tag,
 } from "@takaki/go-design-system";
 
 interface Transaction {
@@ -47,19 +46,8 @@ interface UncategorizedStore {
 }
 
 function CategoryBadge({ category }: { category: string }) {
-  const { bg, text } = getCategoryColors(category);
-  const isUncategorized = category === "その他";
-  if (isUncategorized) {
-    return <Badge variant="destructive">未分類</Badge>;
-  }
-  return (
-    <Badge
-      variant="secondary"
-      style={{ backgroundColor: bg, color: text, borderColor: "transparent" }}
-    >
-      {category}
-    </Badge>
-  );
+  if (category === "その他") return <Tag color="danger">未分類</Tag>;
+  return <Tag>{category}</Tag>;
 }
 
 function CategoryManagerDialog({
@@ -496,14 +484,16 @@ export default function TransactionsPage() {
     [editingId, editCategory, savingId, categories],
   );
 
-  const allCategorized = uncategorizedCount === 0;
+  // 初期取得中(null) または 0件 ならボタンを出さない（リロード時のチラ見え対策）
+  const showReviewButton =
+    uncategorizedCount !== null && uncategorizedCount > 0;
 
   return (
     <div>
       <PageHeader
         title="トランザクション"
         actions={
-          !allCategorized ? (
+          showReviewButton ? (
             <Button
               variant="outline"
               size="sm"

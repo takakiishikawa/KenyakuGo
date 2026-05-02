@@ -14,12 +14,6 @@ import {
   DialogTrigger,
   PageHeader,
   Skeleton,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -106,144 +100,140 @@ function ChartTooltipContentTop5({
   );
 }
 
-function SavingsHistoryTable({ months }: { months: MonthRecord[] }) {
-  const currentMonth = months[months.length - 1];
-  const totals = months.reduce(
-    (acc, m) => ({
-      target: acc.target + m.target,
-      projected: acc.projected + m.projected,
-      balance: acc.balance + m.balance,
-    }),
-    { target: 0, projected: 0, balance: 0 },
+interface SavingsRow {
+  label: string;
+  target: number;
+  spent: number;
+  balance: number;
+  cumulative: number;
+  isCurrent: boolean;
+}
+
+function SavingsTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: { payload: SavingsRow }[];
+}) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0].payload;
+  const balanceColor =
+    row.balance >= 0 ? "var(--color-success)" : "var(--color-danger)";
+  return (
+    <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-sm min-w-44">
+      <p className="font-medium text-foreground mb-1.5">
+        {row.label}
+        {row.isCurrent && (
+          <span className="ml-1.5 text-muted-foreground">（予測）</span>
+        )}
+      </p>
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">予算</span>
+          <span className="font-num text-foreground">
+            {formatVND(row.target)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">支出</span>
+          <span className="font-num text-foreground">
+            {formatVND(row.spent)}
+          </span>
+        </div>
+      </div>
+      <div className="mt-2 pt-2 border-t flex items-center justify-between gap-3">
+        <span className="text-muted-foreground">倹約額</span>
+        <span className="font-num font-semibold" style={{ color: balanceColor }}>
+          {row.balance > 0 ? "+" : ""}
+          {formatVND(row.balance)}
+        </span>
+      </div>
+    </div>
   );
-  const totalCumulative = currentMonth?.cumulative ?? 0;
+}
+
+function SavingsHistoryChart({ months }: { months: MonthRecord[] }) {
+  const chartData: SavingsRow[] = months.map((m, i) => ({
+    label: m.label,
+    target: m.target,
+    spent: m.projected,
+    balance: m.balance,
+    cumulative: m.cumulative,
+    isCurrent: i === months.length - 1,
+  }));
+  const cumulative = months[months.length - 1]?.cumulative ?? 0;
+  const cumulativeColor =
+    cumulative >= 0 ? "var(--color-success)" : "var(--color-danger)";
+
+  const config: ChartConfig = {
+    balance: { label: "倹約額", color: "var(--color-primary)" },
+  };
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow className="bg-muted/40 hover:bg-muted/40">
-          <TableHead className="px-7 text-xs uppercase tracking-wider">
-            月
-          </TableHead>
-          <TableHead className="px-7 text-right text-xs uppercase tracking-wider">
-            予算
-          </TableHead>
-          <TableHead className="px-7 text-right text-xs uppercase tracking-wider">
-            支出
-          </TableHead>
-          <TableHead className="px-7 text-right text-xs uppercase tracking-wider">
-            倹約額
-          </TableHead>
-          <TableHead className="px-7 text-right text-xs uppercase tracking-wider">
-            累計
-          </TableHead>
-        </TableRow>
-      </TableHeader>
+    <div className="px-7 pt-6 pb-7">
+      <div className="flex items-end justify-between mb-5">
+        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          累計倹約額
+        </p>
+        <p
+          className="font-num text-2xl font-semibold leading-none"
+          style={{ color: cumulativeColor }}
+        >
+          {cumulative > 0 ? "+" : ""}
+          {formatVND(cumulative)}
+        </p>
+      </div>
 
-      <TableBody>
-        <TableRow className="font-semibold border-b-2 border-border">
-          <TableCell className="px-7 py-4 text-sm text-foreground">
-            合計
-          </TableCell>
-          <TableCell className="px-7 py-4 text-sm font-num text-right text-muted-foreground">
-            {formatVND(totals.target)}
-          </TableCell>
-          <TableCell className="px-7 py-4 text-sm font-num text-right text-foreground">
-            {formatVND(totals.projected)}
-          </TableCell>
-          <TableCell
-            className="px-7 py-4 text-sm font-num text-right"
-            style={{
-              color:
-                totals.balance >= 0
-                  ? "var(--color-success)"
-                  : "var(--color-danger)",
-            }}
-          >
-            <span className="inline-flex items-center justify-end gap-1">
-              {totals.balance >= 0 ? (
-                <TrendingDown size={11} />
-              ) : (
-                <TrendingUp size={11} />
-              )}
-              {totals.balance > 0 ? "+" : ""}
-              {formatVND(totals.balance)}
-            </span>
-          </TableCell>
-          <TableCell
-            className="px-7 py-4 text-sm font-num text-right"
-            style={{
-              color:
-                totalCumulative >= 0
-                  ? "var(--color-success)"
-                  : "var(--color-danger)",
-            }}
-          >
-            {totalCumulative > 0 ? "+" : ""}
-            {formatVND(totalCumulative)}
-          </TableCell>
-        </TableRow>
-
-        {[...months].reverse().map((m) => {
-          const isCurrent = currentMonth?.key === m.key;
-          const monthSaved = m.balance >= 0;
-          return (
-            <TableRow key={m.key}>
-              <TableCell className="px-7 py-4 whitespace-nowrap">
-                <span
-                  className={`text-sm font-medium ${
-                    isCurrent ? "text-primary" : "text-foreground"
-                  }`}
-                >
-                  {m.label}
-                </span>
-                {isCurrent && (
-                  <span className="ml-2 text-xs text-muted-foreground">
-                    （予測）
-                  </span>
-                )}
-              </TableCell>
-              <TableCell className="px-7 py-4 text-sm font-num text-right text-muted-foreground">
-                {formatVND(m.target)}
-              </TableCell>
-              <TableCell className="px-7 py-4 text-sm font-num text-right text-foreground">
-                {formatVND(m.projected)}
-              </TableCell>
-              <TableCell
-                className="px-7 py-4 text-sm font-num font-semibold text-right"
-                style={{
-                  color: monthSaved
-                    ? "var(--color-success)"
-                    : "var(--color-danger)",
-                }}
-              >
-                <span className="inline-flex items-center justify-end gap-1">
-                  {monthSaved ? (
-                    <TrendingDown size={11} />
-                  ) : (
-                    <TrendingUp size={11} />
-                  )}
-                  {m.balance > 0 ? "+" : ""}
-                  {formatVND(m.balance)}
-                </span>
-              </TableCell>
-              <TableCell
-                className="px-7 py-4 text-sm font-num font-semibold text-right"
-                style={{
-                  color:
-                    m.cumulative >= 0
-                      ? "var(--color-success)"
-                      : "var(--color-danger)",
-                }}
-              >
-                {m.cumulative > 0 ? "+" : ""}
-                {formatVND(m.cumulative)}
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+      {chartData.length === 0 ? (
+        <p className="text-center py-16 text-sm text-muted-foreground">
+          履歴データがありません
+        </p>
+      ) : (
+        <ChartContainer
+          config={config}
+          className="aspect-auto h-[320px] w-full"
+        >
+          <AreaChart data={chartData}>
+            <defs>
+              <linearGradient id="savingsFill" x1="0" y1="0" x2="0" y2="1">
+                <stop
+                  offset="5%"
+                  stopColor="var(--color-primary)"
+                  stopOpacity={0.4}
+                />
+                <stop
+                  offset="95%"
+                  stopColor="var(--color-primary)"
+                  stopOpacity={0.05}
+                />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+            />
+            <YAxis
+              tickFormatter={(v) => `${(Number(v) / 1_000_000).toFixed(0)}M`}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+            />
+            <ChartTooltip cursor={false} content={<SavingsTooltip />} />
+            <Area
+              dataKey="balance"
+              type="natural"
+              fill="url(#savingsFill)"
+              stroke="var(--color-primary)"
+              strokeWidth={2}
+            />
+          </AreaChart>
+        </ChartContainer>
+      )}
+    </div>
   );
 }
 
@@ -315,25 +305,17 @@ export default function ReportPage() {
                 月毎の倹約
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-5xl p-0 overflow-hidden">
+            <DialogContent className="max-w-3xl p-0 overflow-hidden">
               <DialogHeader className="px-7 py-5 border-b">
                 <DialogTitle>月毎の倹約</DialogTitle>
               </DialogHeader>
-              <div className="max-h-[70vh] overflow-y-auto">
-                {history === null ? (
-                  <div className="p-7 space-y-3">
-                    {[1, 2, 3, 4].map((i) => (
-                      <Skeleton key={i} className="h-10 rounded" />
-                    ))}
-                  </div>
-                ) : history.length === 0 ? (
-                  <p className="text-center py-16 text-sm text-muted-foreground">
-                    履歴データがありません
-                  </p>
-                ) : (
-                  <SavingsHistoryTable months={history} />
-                )}
-              </div>
+              {history === null ? (
+                <div className="p-7">
+                  <Skeleton className="h-72 w-full rounded" />
+                </div>
+              ) : (
+                <SavingsHistoryChart months={history} />
+              )}
             </DialogContent>
           </Dialog>
         }

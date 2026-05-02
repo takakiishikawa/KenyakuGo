@@ -4,9 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { TrendingUp } from "lucide-react";
 import { formatVND } from "@/lib/format";
-import { getCategoryColors } from "@/lib/category-colors";
 import {
-  Badge,
   Button,
   ChartArea,
   DataTable,
@@ -20,6 +18,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  Tag,
   toast,
   type ChartConfig,
 } from "@takaki/go-design-system";
@@ -35,15 +34,7 @@ function formatDate(date: string): string {
 }
 
 function CategoryBadge({ category }: { category: string }) {
-  const { bg, text } = getCategoryColors(category);
-  return (
-    <Badge
-      variant="secondary"
-      style={{ backgroundColor: bg, color: text, borderColor: "transparent" }}
-    >
-      {category}
-    </Badge>
-  );
+  return <Tag>{category}</Tag>;
 }
 
 type TabValue = "active" | "ended";

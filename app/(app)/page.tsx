@@ -362,7 +362,7 @@ export default function Dashboard() {
           style={{ animationDelay: "80ms", animationFillMode: "both" }}
         >
           <p className="text-xs font-medium uppercase tracking-widest mb-3 text-muted-foreground">
-            直近7日
+            直近7日の出費
           </p>
           <p className="font-num text-4xl font-semibold leading-none text-foreground">
             {data ? formatVND(data.thisWeekTotal) : "—"}
@@ -407,20 +407,20 @@ export default function Dashboard() {
           style={{ animationDelay: "200ms" }}
         >
           <p className="text-xs font-medium uppercase tracking-widest mb-4 text-muted-foreground">
-            直近7日
+            直近7日の内訳
           </p>
           {data?.categoryBreakdown?.length ? (
             <ChartContainer
               config={donutConfig}
-              className="aspect-auto h-[400px] w-full"
+              className="aspect-auto h-[320px] w-full"
             >
               <PieChart>
                 <Pie
                   data={data.categoryBreakdown}
                   cx="50%"
                   cy="50%"
-                  innerRadius={75}
-                  outerRadius={140}
+                  innerRadius={60}
+                  outerRadius={105}
                   dataKey="value"
                   paddingAngle={2}
                   labelLine={{

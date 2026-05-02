@@ -31,6 +31,19 @@ export interface Settings {
   updated_at: string;
 }
 
+export interface Subscription {
+  store: string;
+  category: string;
+  amount: number;
+  last_charged_at: string;
+  judgment: "sub" | "not_sub" | "unknown";
+  reasoning: string | null;
+  is_active: boolean;
+  user_locked: boolean;
+  judged_at: string;
+  updated_at: string;
+}
+
 // kenyakugo スキーマ固定のクライアント
 // accessToken を渡すと RLS が認証済みユーザーとして評価される
 export function createDb(accessToken?: string) {

@@ -1,0 +1,23 @@
+name: Cron — Subscriptions Refresh
+
+# 直近30日のトランザクションをもとに subscriptions テーブルを再判定する。
+# AI コストを抑えるため週1で十分。
+# cron-sync.yml が毎日トランザクションを取り込んだ後、週末にまとめて評価。
+#
+# 必要な GitHub Secrets:
+#   CRON_SECRET — route.ts で検証する Bearer トークン
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 20 * * 6'  # ICT (UTC+7) 日曜 03:00 / JST 日曜 05:00
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger subscriptions refresh
+        run: |
+          curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://kenyaku-go.vercel.app/api/cron/subscriptions"

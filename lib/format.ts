@@ -6,6 +6,7 @@ export function formatDate(date: string | Date): string {
   return new Date(date).toLocaleDateString("ja-JP", {
     month: "short",
     day: "numeric",
+    weekday: "short",
     hour: "2-digit",
     minute: "2-digit",
   });

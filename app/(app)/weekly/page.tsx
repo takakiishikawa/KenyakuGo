@@ -404,10 +404,7 @@ export default function ReportPage() {
           {!data ? (
             <Skeleton className="h-8 w-3/4 rounded-lg" />
           ) : (
-            <p
-              className="font-num text-3xl font-semibold leading-none"
-              style={{ color: "var(--kg-accent)" }}
-            >
+            <p className="text-3xl font-semibold leading-none text-foreground">
               {data.topCategory ?? "—"}
             </p>
           )}

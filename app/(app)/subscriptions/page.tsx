@@ -6,6 +6,7 @@ import { TrendingUp } from "lucide-react";
 import { formatVND } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
 import {
+  Badge,
   Button,
   ChartArea,
   DataTable,
@@ -19,7 +20,6 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  Tag,
   toast,
   type ChartConfig,
 } from "@takaki/go-design-system";
@@ -37,11 +37,12 @@ function formatDate(date: string): string {
 function CategoryBadge({ category }: { category: string }) {
   const { bg, text } = getCategoryColors(category);
   return (
-    <Tag
+    <Badge
+      variant="secondary"
       style={{ backgroundColor: bg, color: text, borderColor: "transparent" }}
     >
       {category}
-    </Tag>
+    </Badge>
   );
 }
 
@@ -107,18 +108,17 @@ export default function SubscriptionsPage() {
         accessorKey: "store",
         header: "名前",
         cell: ({ row }) => (
-          <span
-            className="text-sm font-medium truncate"
-            style={{ color: "var(--kg-text)" }}
-          >
-            {row.original.store}
-          </span>
+          <div className="min-w-[280px] max-w-[420px]">
+            <span className="text-sm text-foreground truncate block">
+              {row.original.store}
+            </span>
+          </div>
         ),
       },
       {
         id: "category",
         accessorKey: "category",
-        header: "タグ",
+        header: "カテゴリ",
         cell: ({ row }) => <CategoryBadge category={row.original.category} />,
       },
       {
@@ -126,7 +126,7 @@ export default function SubscriptionsPage() {
         accessorKey: "lastChargedAt",
         header: "最終課金",
         cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-sm text-foreground whitespace-nowrap">
             {formatDate(row.original.lastChargedAt)}
           </span>
         ),
@@ -134,12 +134,9 @@ export default function SubscriptionsPage() {
       {
         id: "amount",
         accessorKey: "amount",
-        header: () => <div className="text-right">金額</div>,
+        header: () => <div className="text-right pr-4">金額</div>,
         cell: ({ row }) => (
-          <div
-            className="text-right font-num text-sm font-semibold"
-            style={{ color: "var(--kg-text)" }}
-          >
+          <div className="text-right font-num text-sm text-foreground pr-4 min-w-[180px]">
             {formatVND(row.original.amount)}
             <span className="text-xs ml-1 text-muted-foreground">/月</span>
           </div>
@@ -180,7 +177,7 @@ export default function SubscriptionsPage() {
         </div>
       ) : (
         <>
-          <div className="mt-6 mb-4 flex items-center gap-3">
+          <div className="mt-6 mb-4">
             <Tabs value={tab} onValueChange={(v) => setTab(v as TabValue)}>
               <TabsList>
                 <TabsTrigger value="active">
@@ -193,13 +190,18 @@ export default function SubscriptionsPage() {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-            {tab === "active" && active.length > 0 && (
+          </div>
+
+          <div className="flex items-center mb-4">
+            {tab === "active" && active.length > 0 ? (
               <p
-                className="text-sm font-num font-semibold ml-2"
+                className="text-sm font-num font-semibold"
                 style={{ color: "var(--color-primary)" }}
               >
                 月額合計 {formatVND(monthlyTotal)}
               </p>
+            ) : (
+              <span />
             )}
             <span className="flex-1" />
             <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
@@ -211,7 +213,7 @@ export default function SubscriptionsPage() {
               </DialogTrigger>
               <DialogContent className="max-w-3xl p-0 overflow-hidden">
                 <DialogHeader className="px-7 py-5 border-b">
-                  <DialogTitle>月額の推移（直近12ヶ月）</DialogTitle>
+                  <DialogTitle>サブスク推移（直近12ヶ月）</DialogTitle>
                 </DialogHeader>
                 <div className="p-7">
                   {history === null ? (
@@ -223,6 +225,7 @@ export default function SubscriptionsPage() {
                       xKey="label"
                       yKeys={["total"]}
                       filterByDate={false}
+                      timeRanges={[]}
                     />
                   )}
                 </div>

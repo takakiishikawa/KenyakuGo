@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { PieChart, Pie, Cell, Label } from "recharts";
+import { PieChart, Pie, Cell } from "recharts";
 import { TrendingDown, TrendingUp, ChevronRight } from "lucide-react";
 import { toast } from "@takaki/go-design-system";
 import { formatVND, formatDate } from "@/lib/format";
@@ -13,12 +13,10 @@ import {
   Skeleton,
   Dialog,
   DialogContent,
-  Tag,
+  Badge,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
   type ChartConfig,
 } from "@takaki/go-design-system";
 
@@ -88,17 +86,16 @@ function useCountUp(target: number | null, duration = 700) {
 function CategoryBadge({ category }: { category: string }) {
   const { bg, text } = getCategoryColors(category);
   const isUncategorized = category === "その他";
+  if (isUncategorized) {
+    return <Badge variant="destructive">未分類</Badge>;
+  }
   return (
-    <Tag
-      color={isUncategorized ? "danger" : undefined}
-      style={
-        isUncategorized
-          ? undefined
-          : { backgroundColor: bg, color: text, borderColor: "transparent" }
-      }
+    <Badge
+      variant="secondary"
+      style={{ backgroundColor: bg, color: text, borderColor: "transparent" }}
     >
-      {isUncategorized ? "未分類" : category}
-    </Tag>
+      {category}
+    </Badge>
   );
 }
 
@@ -348,10 +345,6 @@ export default function Dashboard() {
     return cfg;
   }, [data?.categoryBreakdown]);
 
-  const weekTotal = data
-    ? data.categoryBreakdown.reduce((s, c) => s + c.value, 0)
-    : 0;
-
   return (
     <div>
       <PageHeader title="ダッシュボード" />
@@ -370,15 +363,8 @@ export default function Dashboard() {
           {projected != null && (
             <p className="mt-3 text-sm text-muted-foreground">
               月予測{" "}
-              <span className="font-num text-foreground">
-                {formatVND(projected)}
-              </span>
-              {target > 0 && (
-                <span className="text-muted-foreground">
-                  {" "}
-                  / {formatVND(target)}
-                </span>
-              )}
+              <span className="font-num">{formatVND(projected)}</span>
+              {target > 0 && <span> / {formatVND(target)}</span>}
             </p>
           )}
         </Card>
@@ -388,7 +374,7 @@ export default function Dashboard() {
           style={{ animationDelay: "80ms", animationFillMode: "both" }}
         >
           <p className="text-xs font-medium uppercase tracking-widest mb-3 text-muted-foreground">
-            今週の出費
+            直近7日
           </p>
           <p className="font-num text-4xl font-semibold leading-none text-foreground">
             {data ? formatVND(data.thisWeekTotal) : "—"}
@@ -421,16 +407,7 @@ export default function Dashboard() {
           <p className="text-xs font-medium uppercase tracking-widest mb-3 text-muted-foreground">
             累計ダム残高
           </p>
-          <p
-            className="font-num text-4xl font-semibold leading-none"
-            style={{
-              color: data
-                ? data.cumulativeBalance >= 0
-                  ? "var(--kg-success)"
-                  : "var(--kg-danger)"
-                : "var(--kg-text)",
-            }}
-          >
+          <p className="font-num text-4xl font-semibold leading-none text-foreground">
             {data ? formatVND(data.cumulativeBalance) : "—"}
           </p>
         </Card>
@@ -441,35 +418,63 @@ export default function Dashboard() {
           className="p-7 animate-fade-up"
           style={{ animationDelay: "200ms" }}
         >
-          <p className="text-xs font-medium uppercase tracking-widest mb-2 text-muted-foreground">
-            今週の内訳
+          <p className="text-xs font-medium uppercase tracking-widest mb-4 text-muted-foreground">
+            直近7日
           </p>
           {data?.categoryBreakdown?.length ? (
             <ChartContainer
               config={donutConfig}
-              className="mx-auto aspect-square max-h-[360px]"
+              className="aspect-auto h-[400px] w-full"
             >
               <PieChart>
-                <ChartTooltip
-                  cursor={false}
-                  content={
-                    <ChartTooltipContent
-                      hideLabel
-                      formatter={(value) => formatVND(value as number)}
-                    />
-                  }
-                />
                 <Pie
                   data={data.categoryBreakdown}
                   cx="50%"
                   cy="50%"
                   innerRadius={75}
-                  outerRadius={115}
-                  paddingAngle={2}
+                  outerRadius={140}
                   dataKey="value"
-                  nameKey="name"
-                  strokeWidth={2}
-                  stroke="var(--background)"
+                  paddingAngle={2}
+                  labelLine={{
+                    stroke: "var(--color-border-strong)",
+                    strokeWidth: 1,
+                  }}
+                  label={(props) => {
+                    const cx = Number(props.cx ?? 0);
+                    const cy = Number(props.cy ?? 0);
+                    const midAngle = Number(props.midAngle ?? 0);
+                    const outerRadius = Number(props.outerRadius ?? 0);
+                    const percent = Number(props.percent ?? 0);
+                    const name = String(props.name ?? "");
+                    if (percent < 0.03)
+                      return null as unknown as React.ReactElement;
+                    const RADIAN = Math.PI / 180;
+                    const r = outerRadius + 18;
+                    const x = cx + r * Math.cos(-midAngle * RADIAN);
+                    const y = cy + r * Math.sin(-midAngle * RADIAN);
+                    const anchor = x > cx ? "start" : "end";
+                    return (
+                      <text
+                        x={x}
+                        y={y}
+                        textAnchor={anchor}
+                        dominantBaseline="central"
+                        fontSize={12}
+                        fill="var(--color-text-secondary)"
+                      >
+                        <tspan x={x} dy="-0.4em" fontWeight={500}>
+                          {name}
+                        </tspan>
+                        <tspan
+                          x={x}
+                          dy="1.2em"
+                          fill="var(--color-text-subtle)"
+                        >
+                          {(percent * 100).toFixed(0)}%
+                        </tspan>
+                      </text>
+                    );
+                  }}
                   onClick={(entry: { name?: string }, index: number) => {
                     if (entry.name)
                       setPopupCategory({
@@ -479,57 +484,21 @@ export default function Dashboard() {
                   }}
                   style={{ cursor: "pointer" }}
                 >
-                  <Label
-                    content={({ viewBox }) => {
-                      if (
-                        viewBox &&
-                        "cx" in viewBox &&
-                        "cy" in viewBox &&
-                        typeof viewBox.cx === "number" &&
-                        typeof viewBox.cy === "number"
-                      ) {
-                        return (
-                          <text
-                            x={viewBox.cx}
-                            y={viewBox.cy}
-                            textAnchor="middle"
-                            dominantBaseline="middle"
-                          >
-                            <tspan
-                              x={viewBox.cx}
-                              y={viewBox.cy - 8}
-                              fill="var(--kg-text)"
-                              fontSize={20}
-                              fontWeight={600}
-                              fontFamily="var(--font-num, monospace)"
-                            >
-                              {formatVND(weekTotal)}
-                            </tspan>
-                            <tspan
-                              x={viewBox.cx}
-                              y={viewBox.cy + 16}
-                              fill="var(--muted-foreground)"
-                              fontSize={11}
-                              letterSpacing="0.1em"
-                            >
-                              合計
-                            </tspan>
-                          </text>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
                   {data.categoryBreakdown.map((_, i) => (
                     <Cell
                       key={i}
                       fill={DONUT_COLORS[i % DONUT_COLORS.length]}
+                      stroke="transparent"
                     />
                   ))}
                 </Pie>
-                <ChartLegend
-                  content={<ChartLegendContent nameKey="name" />}
-                  verticalAlign="bottom"
+                <ChartTooltip
+                  content={
+                    <ChartTooltipContent
+                      hideLabel
+                      formatter={(value) => formatVND(value as number)}
+                    />
+                  }
                 />
               </PieChart>
             </ChartContainer>

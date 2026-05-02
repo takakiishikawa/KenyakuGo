@@ -366,14 +366,9 @@ export default function ReportPage() {
           {projected != null && (
             <p className="mt-3 text-sm text-muted-foreground">
               {labels.projection}{" "}
-              <span className="font-num text-foreground">
-                {formatVND(projected)}
-              </span>
+              <span className="font-num">{formatVND(projected)}</span>
               {period === "month" && target > 0 && (
-                <span className="text-muted-foreground">
-                  {" "}
-                  / {formatVND(target)}
-                </span>
+                <span> / {formatVND(target)}</span>
               )}
             </p>
           )}

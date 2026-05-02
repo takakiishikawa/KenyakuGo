@@ -7,6 +7,7 @@ import { toast } from "@takaki/go-design-system";
 import { formatVND, formatDateWithYear } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
 import {
+  Badge,
   Button,
   Card,
   DataTable,
@@ -22,7 +23,6 @@ import {
   SelectContent,
   SelectItem,
   PageHeader,
-  Tag,
 } from "@takaki/go-design-system";
 
 interface Transaction {
@@ -49,17 +49,16 @@ interface UncategorizedStore {
 function CategoryBadge({ category }: { category: string }) {
   const { bg, text } = getCategoryColors(category);
   const isUncategorized = category === "その他";
+  if (isUncategorized) {
+    return <Badge variant="destructive">未分類</Badge>;
+  }
   return (
-    <Tag
-      color={isUncategorized ? "danger" : undefined}
-      style={
-        isUncategorized
-          ? undefined
-          : { backgroundColor: bg, color: text, borderColor: "transparent" }
-      }
+    <Badge
+      variant="secondary"
+      style={{ backgroundColor: bg, color: text, borderColor: "transparent" }}
     >
-      {isUncategorized ? "未分類" : category}
-    </Tag>
+      {category}
+    </Badge>
   );
 }
 
@@ -399,7 +398,7 @@ export default function TransactionsPage() {
     () =>
       searchQuery.trim()
         ? transactions.filter((tx) =>
-            tx.store.toLowerCase().includes(searchQuery.toLowerCase()),
+            tx.category.toLowerCase().includes(searchQuery.toLowerCase()),
           )
         : transactions,
     [transactions, searchQuery],
@@ -412,7 +411,7 @@ export default function TransactionsPage() {
         accessorKey: "store",
         header: "名前",
         cell: ({ row }) => (
-          <div className="max-w-[220px]">
+          <div className="min-w-[280px] max-w-[420px]">
             <span className="text-sm text-foreground truncate block">
               {row.original.store}
             </span>
@@ -626,7 +625,7 @@ export default function TransactionsPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="店舗名を検索"
+            placeholder="カテゴリを入力"
             className="pl-9"
           />
         </div>

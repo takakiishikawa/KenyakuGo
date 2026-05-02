@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { TrendingUp } from "lucide-react";
 import { formatVND } from "@/lib/format";
+import { getCategoryColors } from "@/lib/category-colors";
 import {
   Button,
   ChartArea,
@@ -34,7 +35,12 @@ function formatDate(date: string): string {
 }
 
 function CategoryBadge({ category }: { category: string }) {
-  return <Tag>{category}</Tag>;
+  const { bg, border, text } = getCategoryColors(category);
+  return (
+    <Tag style={{ backgroundColor: bg, borderColor: border, color: text }}>
+      {category}
+    </Tag>
+  );
 }
 
 type TabValue = "active" | "ended";

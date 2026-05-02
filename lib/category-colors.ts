@@ -1,36 +1,71 @@
-const COLORS: Record<string, [string, string]> = {
-  外食: ["#dcfce7", "#15803d"],
-  自炊: ["#ccfbf1", "#0f766e"],
-  カフェ: ["#fef9c3", "#a16207"],
-  家賃: ["#dbeafe", "#1d4ed8"],
-  通信: ["#e0f2fe", "#0369a1"],
-  メディア: ["#fde68a", "#b45309"],
-  AI: ["#ede9fe", "#5b21b6"],
-  マッサージ: ["#f3e8ff", "#7e22ce"],
-  ジム: ["#fce7f3", "#be185d"],
-  医薬品: ["#fce7f3", "#9d174d"],
-  ファッション: ["#fef3c7", "#92400e"],
-  EC: ["#ffedd5", "#c2410c"],
-  学習: ["#dbeafe", "#1e40af"],
-  旅行: ["#cffafe", "#0e7490"],
-  エンタメ: ["#ffe4e6", "#be123c"],
-  交通費: ["#e0f2fe", "#075985"],
-  日用品: ["#f5f5f4", "#57534e"],
-  転送: ["#f1f5f9", "#475569"],
-  現金: ["#f1f5f9", "#475569"],
-  その他: ["#fee2e2", "#dc2626"],
+// Tailwind v4 系のカラーパレット（50/100/200/700 を bg/border/text に流用）
+// shadcn 風の落ち着いたトーンで、Tag の rounded-full + border 構造に合わせて
+// 背景は light、border は middle、text は dark で揃えている。
+type Palette = { bg: string; border: string; text: string };
+
+const PALETTES: Record<string, Palette> = {
+  emerald: { bg: "#d1fae5", border: "#a7f3d0", text: "#047857" },
+  green: { bg: "#dcfce7", border: "#bbf7d0", text: "#15803d" },
+  teal: { bg: "#ccfbf1", border: "#99f6e4", text: "#0f766e" },
+  cyan: { bg: "#cffafe", border: "#a5f3fc", text: "#0e7490" },
+  sky: { bg: "#e0f2fe", border: "#bae6fd", text: "#0369a1" },
+  blue: { bg: "#dbeafe", border: "#bfdbfe", text: "#1d4ed8" },
+  indigo: { bg: "#e0e7ff", border: "#c7d2fe", text: "#3730a3" },
+  violet: { bg: "#ede9fe", border: "#ddd6fe", text: "#6d28d9" },
+  purple: { bg: "#f3e8ff", border: "#e9d5ff", text: "#7e22ce" },
+  fuchsia: { bg: "#fae8ff", border: "#f5d0fe", text: "#a21caf" },
+  pink: { bg: "#fce7f3", border: "#fbcfe8", text: "#be185d" },
+  rose: { bg: "#ffe4e6", border: "#fecdd3", text: "#be123c" },
+  red: { bg: "#fee2e2", border: "#fecaca", text: "#b91c1c" },
+  orange: { bg: "#ffedd5", border: "#fed7aa", text: "#c2410c" },
+  amber: { bg: "#fef3c7", border: "#fde68a", text: "#b45309" },
+  yellow: { bg: "#fef9c3", border: "#fef08a", text: "#a16207" },
+  lime: { bg: "#ecfccb", border: "#d9f99d", text: "#4d7c0f" },
+  slate: { bg: "#f1f5f9", border: "#e2e8f0", text: "#334155" },
+  stone: { bg: "#f5f5f4", border: "#e7e5e4", text: "#57534e" },
 };
 
-const FALLBACKS: [string, string][] = [
-  ["#dcfce7", "#15803d"],
-  ["#dbeafe", "#1d4ed8"],
-  ["#f3e8ff", "#7e22ce"],
-  ["#ffedd5", "#c2410c"],
-  ["#e0f2fe", "#0369a1"],
-  ["#e0e7ff", "#3730a3"],
-  ["#cffafe", "#0e7490"],
-  ["#fce7f3", "#9d174d"],
+const FALLBACK_ORDER: (keyof typeof PALETTES)[] = [
+  "emerald",
+  "blue",
+  "violet",
+  "orange",
+  "cyan",
+  "pink",
+  "amber",
+  "indigo",
+  "teal",
+  "rose",
+  "lime",
+  "fuchsia",
+  "sky",
+  "purple",
 ];
+
+// カテゴリ名 → パレット名 の固定マップ。意味的な紐付け（食事系=緑系、固定費=青系など）
+const CATEGORY_TO_PALETTE: Record<string, keyof typeof PALETTES> = {
+  外食: "emerald",
+  自炊: "teal",
+  カフェ: "amber",
+  家賃: "blue",
+  通信: "sky",
+  メディア: "amber",
+  AI: "violet",
+  マッサージ: "purple",
+  ジム: "pink",
+  医薬品: "rose",
+  ファッション: "orange",
+  EC: "orange",
+  学習: "indigo",
+  旅行: "cyan",
+  エンタメ: "rose",
+  交通費: "sky",
+  日用品: "stone",
+  Moca: "lime",
+  転送: "slate",
+  現金: "slate",
+  その他: "red",
+};
 
 function hashStr(s: string): number {
   let h = 0;
@@ -38,12 +73,9 @@ function hashStr(s: string): number {
   return Math.abs(h);
 }
 
-export function getCategoryColors(category: string): {
-  bg: string;
-  text: string;
-} {
-  const match = COLORS[category];
-  if (match) return { bg: match[0], text: match[1] };
-  const fb = FALLBACKS[hashStr(category) % FALLBACKS.length];
-  return { bg: fb[0], text: fb[1] };
+export function getCategoryColors(category: string): Palette {
+  const key = CATEGORY_TO_PALETTE[category];
+  if (key) return PALETTES[key];
+  const fb = FALLBACK_ORDER[hashStr(category) % FALLBACK_ORDER.length];
+  return PALETTES[fb];
 }

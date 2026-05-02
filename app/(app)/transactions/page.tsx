@@ -5,6 +5,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Trash2, Pencil } from "lucide-react";
 import { toast } from "@takaki/go-design-system";
 import { formatVND, formatDateWithYear } from "@/lib/format";
+import { getCategoryColors } from "@/lib/category-colors";
 import {
   Button,
   Card,
@@ -47,7 +48,12 @@ interface UncategorizedStore {
 
 function CategoryBadge({ category }: { category: string }) {
   if (category === "その他") return <Tag color="danger">未分類</Tag>;
-  return <Tag>{category}</Tag>;
+  const { bg, border, text } = getCategoryColors(category);
+  return (
+    <Tag style={{ backgroundColor: bg, borderColor: border, color: text }}>
+      {category}
+    </Tag>
+  );
 }
 
 function CategoryManagerDialog({

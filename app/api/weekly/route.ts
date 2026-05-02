@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthDb } from "@/lib/supabase/auth-db";
 import { type Transaction } from "@/lib/supabase/db";
 import { fetchAllBudgets, getCurrentMonthKey } from "@/lib/budget";
+import { FIXED_CATEGORIES } from "@/lib/constants";
 
 function getWeekStart(date: Date): Date {
   const d = new Date(date);
@@ -120,14 +121,22 @@ export async function GET(req: NextRequest) {
   const currentPeriod = periods[periods.length - 1];
   const prevPeriod = periods[periods.length - 2];
   const diff = (currentPeriod?.total ?? 0) - (prevPeriod?.total ?? 0);
+  // 固定費（家賃・通信）は変更不可なので「気になる支出」から除外
   const topCategory =
-    Object.entries(currentPeriod?.byCategory ?? {}).sort(
-      ([, a], [, b]) => b - a,
-    )[0]?.[0] ?? "—";
+    Object.entries(currentPeriod?.byCategory ?? {})
+      .filter(([cat]) => !FIXED_CATEGORIES.includes(cat as never))
+      .sort(([, a], [, b]) => b - a)[0]?.[0] ?? "—";
 
   const currentTotal = currentPeriod?.total ?? 0;
   const prevTotal = prevPeriod?.total ?? 0;
   let projectedTotal: number | null = null;
+
+  // 期間中に発生済みの固定費（家賃・通信）。これは日割り対象から外す
+  const fixedSpentThisPeriod = FIXED_CATEGORIES.reduce(
+    (sum, cat) => sum + (currentPeriod?.byCategory[cat] ?? 0),
+    0,
+  );
+  const variableSpend = Math.max(0, currentTotal - fixedSpentThisPeriod);
 
   if (period === "month" && currentTotal > 0) {
     const dayOfMonth = now.getDate();
@@ -136,20 +145,23 @@ export async function GET(req: NextRequest) {
       now.getMonth() + 1,
       0,
     ).getDate();
-    const variableSpend = Math.max(0, currentTotal - fixedCosts);
     projectedTotal = Math.round(
-      fixedCosts + (variableSpend / dayOfMonth) * daysInMonth,
+      fixedSpentThisPeriod + (variableSpend / dayOfMonth) * daysInMonth,
     );
   } else if (period === "week" && currentTotal > 0) {
     const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
-    projectedTotal = Math.round((currentTotal / dayOfWeek) * 7);
+    projectedTotal = Math.round(
+      fixedSpentThisPeriod + (variableSpend / dayOfWeek) * 7,
+    );
   } else if (period === "year" && currentTotal > 0) {
     const startOfYear = new Date(now.getFullYear(), 0, 1);
     const dayOfYear =
       Math.floor((now.getTime() - startOfYear.getTime()) / 86400000) + 1;
     const daysInYear =
       new Date(now.getFullYear(), 1, 29).getMonth() === 1 ? 366 : 365;
-    projectedTotal = Math.round((currentTotal / dayOfYear) * daysInYear);
+    projectedTotal = Math.round(
+      fixedSpentThisPeriod + (variableSpend / dayOfYear) * daysInYear,
+    );
   }
 
   const projectedDiff =

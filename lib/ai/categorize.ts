@@ -54,6 +54,7 @@ export async function categorizeUncategorized(
   // ルールベース処理（カテゴリが categories に存在する場合のみ適用）
   // - 9.000.000 / 8.000.000 VND の送金は家賃（店舗名は人名等でも判定）
   // - chuyen/transfer/remit 系キーワードは転送
+  // - MOCAVN / Moca は Grab 系決済代行（交通・配達・GrabFood 等）→ Moca
   for (const tx of txs) {
     const store = tx.store?.trim() ?? "";
     const amount = tx.amount ?? 0;
@@ -70,6 +71,10 @@ export async function categorizeUncategorized(
       existingCatSet.has("転送")
     ) {
       storeMap[store] = "転送";
+      continue;
+    }
+    if (/\bmoca(vn)?\b/i.test(store) && existingCatSet.has("Moca")) {
+      storeMap[store] = "Moca";
     }
   }
 

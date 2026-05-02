@@ -95,6 +95,14 @@ export async function GET(req: NextRequest) {
   let range: { start: Date; end: Date } | null = null;
   if (period === "week") range = getWeekRange(now);
   else if (period === "month") range = getMonthRange(now);
+  else if (period === "last7") {
+    const start = new Date(now);
+    start.setDate(start.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    range = { start, end };
+  }
 
   const { data, error } = await buildQuery(range?.start, range?.end);
   if (error) {

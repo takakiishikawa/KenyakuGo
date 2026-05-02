@@ -23,7 +23,6 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  Tag,
   ChartContainer,
   ChartTooltip,
   type ChartConfig,
@@ -50,10 +49,28 @@ interface ReportData {
 }
 type Period = "week" | "month" | "year";
 
-const LABELS: Record<Period, { current: string; prev: string }> = {
-  week: { current: "今週", prev: "先週" },
-  month: { current: "今月", prev: "先月" },
-  year: { current: "今年", prev: "昨年" },
+const LABELS: Record<
+  Period,
+  { current: string; prev: string; compare: string; projection: string }
+> = {
+  week: {
+    current: "今週",
+    prev: "先週",
+    compare: "先週比",
+    projection: "週末予測",
+  },
+  month: {
+    current: "今月",
+    prev: "先月",
+    compare: "先月比",
+    projection: "月末予測",
+  },
+  year: {
+    current: "今年",
+    prev: "昨年",
+    compare: "昨年比",
+    projection: "年末予測",
+  },
 };
 
 interface ChartRow {
@@ -192,21 +209,19 @@ function SavingsHistoryTable({ months }: { months: MonthRecord[] }) {
                 isCurrent ? "bg-primary/[0.04] hover:bg-primary/[0.08]" : ""
               }
             >
-              <TableCell className="px-7 py-4">
-                <span className="inline-flex items-center gap-2">
-                  <span
-                    className={`text-sm font-medium ${
-                      isCurrent ? "text-primary" : "text-foreground"
-                    }`}
-                  >
-                    {m.label}
-                  </span>
-                  {isCurrent && (
-                    <Tag color="info" className="text-[10px] px-1.5 py-0">
-                      予測
-                    </Tag>
-                  )}
+              <TableCell className="px-7 py-4 whitespace-nowrap">
+                <span
+                  className={`text-sm font-medium ${
+                    isCurrent ? "text-primary" : "text-foreground"
+                  }`}
+                >
+                  {m.label}
                 </span>
+                {isCurrent && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    （予測）
+                  </span>
+                )}
               </TableCell>
               <TableCell className="px-7 py-4 text-sm font-num text-right text-muted-foreground">
                 {formatVND(m.target)}
@@ -327,7 +342,7 @@ export default function ReportPage() {
                 月別倹約履歴
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl p-0 overflow-hidden">
+            <DialogContent className="max-w-5xl p-0 overflow-hidden">
               <DialogHeader className="px-7 py-5 border-b">
                 <DialogTitle>月別倹約履歴</DialogTitle>
               </DialogHeader>
@@ -443,9 +458,8 @@ export default function ReportPage() {
               ) : (
                 <TrendingUp size={14} />
               )}
-              {card2Improved
-                ? `${labels.prev}より倹約見込み（${Math.abs(card2Pct)}%↓）`
-                : `${labels.prev}より増加見込み（${card2Pct}%↑）`}
+              {labels.compare} {card2Pct > 0 ? "+" : ""}
+              {card2Pct}%
             </p>
           )}
           {projected != null && (
@@ -453,12 +467,7 @@ export default function ReportPage() {
               className="text-sm mt-1 text-muted-foreground"
               style={{ opacity: 0.8 }}
             >
-              {period === "week"
-                ? "今週"
-                : period === "month"
-                  ? "今月"
-                  : "今年"}
-              の予測: {formatVND(projected)}
+              {labels.projection} {formatVND(projected)}
             </p>
           )}
         </Card>
@@ -485,7 +494,7 @@ export default function ReportPage() {
 
       <Card className="p-7 mb-5">
         <p className="text-xs font-medium uppercase tracking-widest mb-6 text-muted-foreground">
-          使い道の推移
+          支出推移
         </p>
         {chartData.length > 0 ? (
           <ChartContainer

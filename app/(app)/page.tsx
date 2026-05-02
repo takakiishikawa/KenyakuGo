@@ -453,7 +453,7 @@ export default function Dashboard() {
               ) : (
                 <TrendingUp size={14} />
               )}
-              {data.cumulativeBalance >= 0 ? "今月は黒字" : "今月は赤字"}
+              {data.cumulativeBalance >= 0 ? "累計プラス" : "累計マイナス"}
             </p>
           )}
         </Card>
@@ -470,15 +470,15 @@ export default function Dashboard() {
           {data?.categoryBreakdown?.length ? (
             <ChartContainer
               config={donutConfig}
-              className="aspect-auto h-[420px] w-full"
+              className="aspect-auto h-[300px] w-full"
             >
               <PieChart>
                 <Pie
                   data={data.categoryBreakdown}
                   cx="50%"
                   cy="50%"
-                  innerRadius={70}
-                  outerRadius={130}
+                  innerRadius={50}
+                  outerRadius={95}
                   dataKey="value"
                   paddingAngle={2}
                   labelLine={{
@@ -564,7 +564,7 @@ export default function Dashboard() {
             </p>
           </div>
           {data?.recentTransactions?.length ? (
-            <div className="overflow-y-auto" style={{ maxHeight: 420 }}>
+            <div className="overflow-y-auto" style={{ maxHeight: 320 }}>
               {data.recentTransactions.map((tx) => (
                 <div
                   key={tx.id}

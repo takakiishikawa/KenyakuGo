@@ -125,3 +125,8 @@
     background: var(--color-text-subtle);
   }
 }
+
+/* DataTable の「表示件数」セレクタを隠す（kg-hide-pagesize で囲ったときのみ） */
+.kg-hide-pagesize div.lg\:flex:has(> label[for="page-size"]) {
+  display: none !important;
+}

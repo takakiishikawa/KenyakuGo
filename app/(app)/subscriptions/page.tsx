@@ -85,9 +85,15 @@ export default function SubscriptionsPage() {
 
   const { active, ended } = useMemo(() => {
     const list = subscriptions ?? [];
+    // タグ（カテゴリ）昇順 → 同じタグ内は金額降順
+    const sortByCategoryThenAmount = (a: SubscriptionItem, b: SubscriptionItem) => {
+      const c = a.category.localeCompare(b.category, "ja");
+      if (c !== 0) return c;
+      return b.amount - a.amount;
+    };
     return {
-      active: list.filter((s) => s.isActive),
-      ended: list.filter((s) => !s.isActive),
+      active: list.filter((s) => s.isActive).sort(sortByCategoryThenAmount),
+      ended: list.filter((s) => !s.isActive).sort(sortByCategoryThenAmount),
     };
   }, [subscriptions]);
 
@@ -227,17 +233,20 @@ export default function SubscriptionsPage() {
             )}
           </div>
 
-          <DataTable
-            columns={columns}
-            data={tableData}
-            searchable={{ columnId: "store", placeholder: "店名で検索..." }}
-            pageSize={20}
-            emptyMessage={
-              tab === "active"
-                ? "実行中のサブスクはありません"
-                : "終了したサブスクはありません"
-            }
-          />
+          <div className="kg-hide-pagesize">
+            <DataTable
+              columns={columns}
+              data={tableData}
+              searchable={{ columnId: "store", placeholder: "店名で検索..." }}
+              pageSize={100}
+              pageSizeOptions={[100]}
+              emptyMessage={
+                tab === "active"
+                  ? "実行中のサブスクはありません"
+                  : "終了したサブスクはありません"
+              }
+            />
+          </div>
         </>
       )}
     </div>

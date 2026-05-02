@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
+import { Trash2, Pencil } from "lucide-react";
 import { toast } from "@takaki/go-design-system";
 import { formatVND, formatDateWithYear } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
@@ -9,15 +10,17 @@ import {
   Button,
   Card,
   DataTable,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   Input,
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-  Tabs,
-  TabsList,
-  TabsTrigger,
   PageHeader,
   Tag,
 } from "@takaki/go-design-system";
@@ -28,6 +31,11 @@ interface Transaction {
   amount: number;
   category: string;
   date: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
 }
 
 interface UncategorizedStore {
@@ -55,10 +63,203 @@ function CategoryBadge({ category }: { category: string }) {
   );
 }
 
+function CategoryManagerDialog({
+  open,
+  onOpenChange,
+  onChanged,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onChanged: () => void;
+}) {
+  const [items, setItems] = useState<Category[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const data = (await fetch("/api/categories").then((r) =>
+      r.json(),
+    )) as Category[];
+    setItems(data);
+  }, []);
+
+  useEffect(() => {
+    if (open) load();
+  }, [open, load]);
+
+  const handleAdd = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    setBusy("__add__");
+    const res = await fetch("/api/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    setBusy(null);
+    if (res.status === 409) {
+      toast.error("そのカテゴリは既に存在します");
+      return;
+    }
+    if (!res.ok) {
+      toast.error("追加に失敗しました");
+      return;
+    }
+    toast.success(`「${name}」を追加しました`);
+    setNewName("");
+    load();
+    onChanged();
+  };
+
+  const handleSaveRename = async (item: Category) => {
+    const name = editName.trim();
+    if (!name || name === item.name) {
+      setEditingId(null);
+      return;
+    }
+    setBusy(item.id);
+    const res = await fetch(`/api/categories/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    setBusy(null);
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: "" }));
+      toast.error(error || "更新に失敗しました");
+      return;
+    }
+    toast.success(`「${item.name}」→「${name}」に変更しました`);
+    setEditingId(null);
+    load();
+    onChanged();
+  };
+
+  const handleDelete = async (item: Category) => {
+    if (
+      !window.confirm(
+        `「${item.name}」を削除しますか？\nこのカテゴリの取引はすべて「その他」に戻されます。`,
+      )
+    )
+      return;
+    setBusy(item.id);
+    const res = await fetch(`/api/categories/${item.id}`, { method: "DELETE" });
+    setBusy(null);
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: "" }));
+      toast.error(error || "削除に失敗しました");
+      return;
+    }
+    toast.success(`「${item.name}」を削除しました`);
+    load();
+    onChanged();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md p-0 overflow-hidden">
+        <DialogHeader className="px-6 py-5 border-b">
+          <DialogTitle>カテゴリ管理</DialogTitle>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-y-auto">
+          {items.map((item) => {
+            const isEditing = editingId === item.id;
+            const isProtected = item.name === "その他";
+            return (
+              <div
+                key={item.id}
+                className="flex items-center gap-2 px-6 py-3 border-b last:border-0"
+              >
+                {isEditing ? (
+                  <>
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveRename(item);
+                        if (e.key === "Escape") setEditingId(null);
+                      }}
+                      autoFocus
+                      className="flex-1 h-9"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => handleSaveRename(item)}
+                      disabled={busy === item.id}
+                    >
+                      保存
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingId(null)}
+                    >
+                      ✕
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <CategoryBadge category={item.name} />
+                    <span className="flex-1" />
+                    {!isProtected && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditingId(item.id);
+                            setEditName(item.name);
+                          }}
+                          aria-label="編集"
+                        >
+                          <Pencil size={14} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(item)}
+                          disabled={busy === item.id}
+                          aria-label="削除"
+                          style={{ color: "var(--color-danger)" }}
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-2 px-6 py-4 border-t bg-muted/30">
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAdd();
+            }}
+            placeholder="新しいカテゴリ名..."
+            className="flex-1 h-9"
+          />
+          <Button
+            size="sm"
+            onClick={handleAdd}
+            disabled={!newName.trim() || busy === "__add__"}
+          >
+            追加
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [period, setPeriod] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editCategory, setEditCategory] = useState("");
@@ -74,12 +275,10 @@ export default function TransactionsPage() {
     Record<string, string>
   >({});
   const [applyingStore, setApplyingStore] = useState<string | null>(null);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [addingCategory, setAddingCategory] = useState(false);
-  const [showAddCategory, setShowAddCategory] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [bulkCategory, setBulkCategory] = useState("");
   const [bulkApplying, setBulkApplying] = useState(false);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
 
   const fetchCategories = useCallback(() => {
     fetch("/api/categories")
@@ -103,11 +302,11 @@ export default function TransactionsPage() {
   }, [fetchUncategorizedCount]);
 
   const fetchTransactions = useCallback(async () => {
-    const params = new URLSearchParams({ period });
+    const params = new URLSearchParams({ period: "all" });
     if (categoryFilter !== "all") params.set("category", categoryFilter);
     const res = await fetch(`/api/transactions?${params}`);
     setTransactions(await res.json());
-  }, [period, categoryFilter]);
+  }, [categoryFilter]);
 
   useEffect(() => {
     fetchTransactions();
@@ -146,24 +345,6 @@ export default function TransactionsPage() {
     });
     fetchTransactions();
     fetchCategories();
-  };
-
-  const handleAddCategory = async () => {
-    if (!newCategoryName.trim()) return;
-    setAddingCategory(true);
-    const res = await fetch("/api/categories", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newCategoryName.trim() }),
-    });
-    if (res.status === 409) toast.error("そのカテゴリはすでに存在します");
-    else if (res.ok) {
-      toast.success(`「${newCategoryName.trim()}」を追加しました`);
-      setNewCategoryName("");
-      setShowAddCategory(false);
-      fetchCategories();
-    }
-    setAddingCategory(false);
   };
 
   const handleSaveCategory = async (tx: Transaction) => {
@@ -222,11 +403,6 @@ export default function TransactionsPage() {
     [transactions, searchQuery],
   );
 
-  const totalAmount = useMemo(
-    () => filteredTransactions.reduce((s, t) => s + t.amount, 0),
-    [filteredTransactions],
-  );
-
   const columns = useMemo<ColumnDef<Transaction>[]>(
     () => [
       {
@@ -234,12 +410,14 @@ export default function TransactionsPage() {
         accessorKey: "store",
         header: "名前",
         cell: ({ row }) => (
-          <span
-            className="text-sm font-medium truncate"
-            style={{ color: "var(--kg-text)" }}
-          >
-            {row.original.store}
-          </span>
+          <div className="max-w-[220px]">
+            <span
+              className="text-sm font-medium truncate block"
+              style={{ color: "var(--kg-text)" }}
+            >
+              {row.original.store}
+            </span>
+          </div>
         ),
       },
       {
@@ -300,7 +478,7 @@ export default function TransactionsPage() {
         accessorKey: "date",
         header: "日時",
         cell: ({ row }) => (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
             {formatDateWithYear(row.original.date)}
           </span>
         ),
@@ -308,10 +486,10 @@ export default function TransactionsPage() {
       {
         id: "amount",
         accessorKey: "amount",
-        header: () => <div className="text-right">金額</div>,
+        header: () => <div className="text-right pr-4">金額</div>,
         cell: ({ row }) => (
           <div
-            className="text-right font-num text-sm font-semibold"
+            className="text-right font-num text-sm font-semibold pr-4 min-w-[180px]"
             style={{ color: "var(--kg-text)" }}
           >
             {formatVND(row.original.amount)}
@@ -352,50 +530,24 @@ export default function TransactionsPage() {
                   : `要確認リスト${uncategorizedCount ? `（${uncategorizedCount}）` : ""}`}
               </Button>
             )}
-            {showAddCategory ? (
-              <div className="flex gap-2 items-center">
-                <Input
-                  type="text"
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleAddCategory();
-                    if (e.key === "Escape") {
-                      setShowAddCategory(false);
-                      setNewCategoryName("");
-                    }
-                  }}
-                  placeholder="カテゴリ名..."
-                  autoFocus
-                  className="w-44 h-9"
-                />
-                <Button
-                  onClick={handleAddCategory}
-                  disabled={addingCategory || !newCategoryName.trim()}
-                  size="sm"
-                >
-                  {addingCategory ? "..." : "追加"}
+            <Dialog
+              open={categoryDialogOpen}
+              onOpenChange={setCategoryDialogOpen}
+            >
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  カテゴリ管理
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setShowAddCategory(false);
-                    setNewCategoryName("");
-                  }}
-                >
-                  ✕
-                </Button>
-              </div>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAddCategory(true)}
-              >
-                + カテゴリ追加
-              </Button>
-            )}
+              </DialogTrigger>
+              <CategoryManagerDialog
+                open={categoryDialogOpen}
+                onOpenChange={setCategoryDialogOpen}
+                onChanged={() => {
+                  fetchCategories();
+                  fetchTransactions();
+                }}
+              />
+            </Dialog>
           </div>
         }
       />
@@ -479,19 +631,8 @@ export default function TransactionsPage() {
         </Card>
       )}
 
-      {/* Period tabs */}
-      <div className="mt-6 mb-4">
-        <Tabs value={period} onValueChange={setPeriod}>
-          <TabsList>
-            <TabsTrigger value="week">今週</TabsTrigger>
-            <TabsTrigger value="month">今月</TabsTrigger>
-            <TabsTrigger value="all">全期間</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-
       {/* 検索 + カテゴリフィルタ */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mt-6 mb-4">
         <div className="relative flex-1" style={{ maxWidth: 320 }}>
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"
@@ -568,28 +709,26 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      {/* 件数 + 合計 */}
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-          {filteredTransactions.length.toLocaleString()}件の取引
-          {searchQuery.trim() ? ` — 「${searchQuery}」で絞り込み中` : ""}
-        </p>
-        <p className="text-sm font-num font-semibold text-foreground">
-          合計 {formatVND(totalAmount)}
-        </p>
-      </div>
+      {/* 件数 */}
+      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">
+        {filteredTransactions.length.toLocaleString()}件
+        {searchQuery.trim() ? ` — 「${searchQuery}」で絞り込み中` : ""}
+      </p>
 
-      <DataTable
-        columns={columns}
-        data={filteredTransactions}
-        searchable={false}
-        pageSize={20}
-        emptyMessage={
-          searchQuery.trim()
-            ? `「${searchQuery}」に一致する取引はありません`
-            : "取引データがありません"
-        }
-      />
+      <div className="kg-hide-pagesize">
+        <DataTable
+          columns={columns}
+          data={filteredTransactions}
+          searchable={false}
+          pageSize={100}
+          pageSizeOptions={[100]}
+          emptyMessage={
+            searchQuery.trim()
+              ? `「${searchQuery}」に一致する取引はありません`
+              : "取引データがありません"
+          }
+        />
+      </div>
     </div>
   );
 }

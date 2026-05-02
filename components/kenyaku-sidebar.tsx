@@ -21,7 +21,6 @@ import {
   LayoutDashboard,
   BarChart2,
   List,
-  Droplets,
   Sun,
   Moon,
   Lightbulb,
@@ -41,7 +40,6 @@ const UserMenu = dynamic(() =>
 const navItems = [
   { href: "/", label: "ダッシュボード", icon: LayoutDashboard },
   { href: "/weekly", label: "レポート", icon: BarChart2 },
-  { href: "/dam", label: "ダム", icon: Droplets },
   { href: "/transactions", label: "トランザクション", icon: List },
   { href: "/subscriptions", label: "サブスク", icon: Repeat2 },
 ];

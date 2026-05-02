@@ -153,15 +153,12 @@ export async function refreshSubscriptions(db: Db): Promise<SubscriptionRow[]> {
 }
 
 export async function loadDisplayRows(db: Db): Promise<SubscriptionRow[]> {
-  // 表示対象: sub 全件（active/ended）+ 直近30日に登場した unknown
+  // 表示対象: sub のみ（active/ended）。unknown / not_sub は AI 判断に委ねて非表示
   const { data, error } = await db
     .from("subscriptions")
     .select("*")
-    .in("judgment", ["sub", "unknown"])
+    .eq("judgment", "sub")
     .order("amount", { ascending: false });
   if (error) throw new Error(error.message);
-  // unknown は is_active=true のみ（直近30日に再登場したもの）
-  return ((data ?? []) as SubscriptionRow[]).filter(
-    (r) => r.judgment === "sub" || r.is_active,
-  );
+  return (data ?? []) as SubscriptionRow[];
 }

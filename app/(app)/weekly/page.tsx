@@ -2,19 +2,33 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp, History } from "lucide-react";
 import { formatVND } from "@/lib/format";
 import {
+  Button,
   Card,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   PageHeader,
   Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tabs,
   TabsList,
   TabsTrigger,
+  Tag,
   ChartContainer,
   ChartTooltip,
   type ChartConfig,
 } from "@takaki/go-design-system";
+import type { MonthRecord } from "@/app/api/dam/route";
 
 interface PeriodItem {
   label: string;
@@ -90,9 +104,159 @@ function ChartTooltipContentTop5({
   );
 }
 
+function SavingsHistoryTable({ months }: { months: MonthRecord[] }) {
+  const currentMonth = months[months.length - 1];
+  const totals = months.reduce(
+    (acc, m) => ({
+      target: acc.target + m.target,
+      projected: acc.projected + m.projected,
+      balance: acc.balance + m.balance,
+    }),
+    { target: 0, projected: 0, balance: 0 },
+  );
+  const totalCumulative = currentMonth?.cumulative ?? 0;
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow className="bg-muted/40 hover:bg-muted/40">
+          <TableHead className="px-7 text-xs uppercase tracking-wider">
+            月
+          </TableHead>
+          <TableHead className="px-7 text-right text-xs uppercase tracking-wider">
+            予算
+          </TableHead>
+          <TableHead className="px-7 text-right text-xs uppercase tracking-wider">
+            支出
+          </TableHead>
+          <TableHead className="px-7 text-right text-xs uppercase tracking-wider">
+            倹約額
+          </TableHead>
+          <TableHead className="px-7 text-right text-xs uppercase tracking-wider">
+            累計
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+
+      <TableBody>
+        <TableRow className="bg-muted/40 font-semibold hover:bg-muted/40 border-b-2 border-border">
+          <TableCell className="px-7 py-4 text-sm text-foreground">
+            合計
+          </TableCell>
+          <TableCell className="px-7 py-4 text-sm font-num text-right text-muted-foreground">
+            {formatVND(totals.target)}
+          </TableCell>
+          <TableCell className="px-7 py-4 text-sm font-num text-right text-foreground">
+            {formatVND(totals.projected)}
+          </TableCell>
+          <TableCell
+            className="px-7 py-4 text-sm font-num text-right"
+            style={{
+              color:
+                totals.balance >= 0
+                  ? "var(--color-success)"
+                  : "var(--color-danger)",
+            }}
+          >
+            <span className="inline-flex items-center justify-end gap-1">
+              {totals.balance >= 0 ? (
+                <TrendingDown size={11} />
+              ) : (
+                <TrendingUp size={11} />
+              )}
+              {totals.balance > 0 ? "+" : ""}
+              {formatVND(totals.balance)}
+            </span>
+          </TableCell>
+          <TableCell
+            className="px-7 py-4 text-sm font-num text-right"
+            style={{
+              color:
+                totalCumulative >= 0
+                  ? "var(--color-success)"
+                  : "var(--color-danger)",
+            }}
+          >
+            {totalCumulative > 0 ? "+" : ""}
+            {formatVND(totalCumulative)}
+          </TableCell>
+        </TableRow>
+
+        {[...months].reverse().map((m) => {
+          const isCurrent = currentMonth?.key === m.key;
+          const monthSaved = m.balance >= 0;
+          return (
+            <TableRow
+              key={m.key}
+              className={
+                isCurrent ? "bg-primary/[0.04] hover:bg-primary/[0.08]" : ""
+              }
+            >
+              <TableCell className="px-7 py-4">
+                <span className="inline-flex items-center gap-2">
+                  <span
+                    className={`text-sm font-medium ${
+                      isCurrent ? "text-primary" : "text-foreground"
+                    }`}
+                  >
+                    {m.label}
+                  </span>
+                  {isCurrent && (
+                    <Tag color="info" className="text-[10px] px-1.5 py-0">
+                      予測
+                    </Tag>
+                  )}
+                </span>
+              </TableCell>
+              <TableCell className="px-7 py-4 text-sm font-num text-right text-muted-foreground">
+                {formatVND(m.target)}
+              </TableCell>
+              <TableCell className="px-7 py-4 text-sm font-num text-right text-foreground">
+                {formatVND(m.projected)}
+              </TableCell>
+              <TableCell
+                className="px-7 py-4 text-sm font-num font-semibold text-right"
+                style={{
+                  color: monthSaved
+                    ? "var(--color-success)"
+                    : "var(--color-danger)",
+                }}
+              >
+                <span className="inline-flex items-center justify-end gap-1">
+                  {monthSaved ? (
+                    <TrendingDown size={11} />
+                  ) : (
+                    <TrendingUp size={11} />
+                  )}
+                  {m.balance > 0 ? "+" : ""}
+                  {formatVND(m.balance)}
+                </span>
+              </TableCell>
+              <TableCell
+                className="px-7 py-4 text-sm font-num font-semibold text-right"
+                style={{
+                  color:
+                    m.cumulative >= 0
+                      ? "var(--color-success)"
+                      : "var(--color-danger)",
+                }}
+              >
+                {m.cumulative > 0 ? "+" : ""}
+                {formatVND(m.cumulative)}
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  );
+}
+
 export default function ReportPage() {
   const [period, setPeriod] = useState<Period>("week");
   const [data, setData] = useState<ReportData | null>(null);
+  const [history, setHistory] = useState<MonthRecord[] | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const fetchData = useCallback(async (p: Period) => {
     setData(null);
@@ -105,6 +269,16 @@ export default function ReportPage() {
   useEffect(() => {
     fetchData(period);
   }, [period, fetchData]);
+
+  // 履歴は初回 Dialog を開いた時にだけ取得
+  useEffect(() => {
+    if (!historyOpen || history !== null) return;
+    fetch("/api/dam")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json: { months: MonthRecord[] } | null) => {
+        if (json) setHistory(json.months);
+      });
+  }, [historyOpen, history]);
 
   const chartData: ChartRow[] =
     data?.periods.map((p) => ({
@@ -143,7 +317,39 @@ export default function ReportPage() {
 
   return (
     <div>
-      <PageHeader title="レポート" />
+      <PageHeader
+        title="レポート"
+        actions={
+          <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <History size={14} />
+                月別倹約履歴
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl p-0 overflow-hidden">
+              <DialogHeader className="px-7 py-5 border-b">
+                <DialogTitle>月別倹約履歴</DialogTitle>
+              </DialogHeader>
+              <div className="max-h-[70vh] overflow-y-auto">
+                {history === null ? (
+                  <div className="p-7 space-y-3">
+                    {[1, 2, 3, 4].map((i) => (
+                      <Skeleton key={i} className="h-10 rounded" />
+                    ))}
+                  </div>
+                ) : history.length === 0 ? (
+                  <p className="text-center py-16 text-sm text-muted-foreground">
+                    履歴データがありません
+                  </p>
+                ) : (
+                  <SavingsHistoryTable months={history} />
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        }
+      />
 
       <div className="mt-6 mb-8">
         <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>

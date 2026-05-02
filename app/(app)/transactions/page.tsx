@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "@takaki/go-design-system";
 import { formatVND, formatDateWithYear } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
 import {
   Button,
   Card,
+  DataTable,
   Input,
   Select,
   SelectTrigger,
@@ -218,6 +220,107 @@ export default function TransactionsPage() {
           )
         : transactions,
     [transactions, searchQuery],
+  );
+
+  const totalAmount = useMemo(
+    () => filteredTransactions.reduce((s, t) => s + t.amount, 0),
+    [filteredTransactions],
+  );
+
+  const columns = useMemo<ColumnDef<Transaction>[]>(
+    () => [
+      {
+        id: "store",
+        accessorKey: "store",
+        header: "名前",
+        cell: ({ row }) => (
+          <span
+            className="text-sm font-medium truncate"
+            style={{ color: "var(--kg-text)" }}
+          >
+            {row.original.store}
+          </span>
+        ),
+      },
+      {
+        id: "category",
+        accessorKey: "category",
+        header: "タグ",
+        cell: ({ row }) => {
+          const tx = row.original;
+          const isEditing = editingId === tx.id;
+          if (isEditing) {
+            return (
+              <div className="flex items-center gap-2">
+                <Select value={editCategory} onValueChange={setEditCategory}>
+                  <SelectTrigger className="w-32 h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  size="sm"
+                  onClick={() => handleSaveCategory(tx)}
+                  disabled={savingId === tx.id}
+                >
+                  {savingId === tx.id ? "…" : "保存"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditingId(null)}
+                >
+                  ✕
+                </Button>
+              </div>
+            );
+          }
+          return (
+            <button
+              type="button"
+              onClick={() => {
+                setEditingId(tx.id);
+                setEditCategory(tx.category);
+              }}
+              className="cursor-pointer bg-transparent border-0 p-0"
+            >
+              <CategoryBadge category={tx.category} />
+            </button>
+          );
+        },
+      },
+      {
+        id: "date",
+        accessorKey: "date",
+        header: "日時",
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {formatDateWithYear(row.original.date)}
+          </span>
+        ),
+      },
+      {
+        id: "amount",
+        accessorKey: "amount",
+        header: () => <div className="text-right">金額</div>,
+        cell: ({ row }) => (
+          <div
+            className="text-right font-num text-sm font-semibold"
+            style={{ color: "var(--kg-text)" }}
+          >
+            {formatVND(row.original.amount)}
+          </div>
+        ),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [editingId, editCategory, savingId, categories],
   );
 
   const allCategorized = uncategorizedCount === 0;
@@ -465,123 +568,28 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      <Card>
-        <div
-          className="px-7 py-5 border-b"
-          style={{ borderColor: "var(--kg-border-subtle)" }}
-        >
-          <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            {filteredTransactions.length}件の取引
-            {searchQuery.trim() ? ` — 「${searchQuery}」で絞り込み中` : ""}
-          </p>
-        </div>
-        {filteredTransactions.length > 0 ? (
-          <div>
-            {filteredTransactions.map((tx) => {
-              const isUncategorized = tx.category === "その他";
-              const isEditing = editingId === tx.id;
-              return (
-                <div
-                  key={tx.id}
-                  className="flex items-center gap-4 px-7 py-4 border-b last:border-0 transition-colors"
-                  style={{
-                    borderColor: "var(--kg-border-subtle)",
-                    borderLeft: isUncategorized
-                      ? "3px solid var(--color-warning)"
-                      : "3px solid transparent",
-                    backgroundColor: isUncategorized
-                      ? "var(--color-warning-subtle)"
-                      : "transparent",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isEditing)
-                      (e.currentTarget as HTMLElement).style.backgroundColor =
-                        isUncategorized
-                          ? "color-mix(in srgb, var(--color-warning) 18%, transparent)"
-                          : "var(--kg-surface-2)";
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isEditing)
-                      (e.currentTarget as HTMLElement).style.backgroundColor =
-                        isUncategorized
-                          ? "var(--color-warning-subtle)"
-                          : "transparent";
-                  }}
-                >
-                  {isEditing ? (
-                    <div className="flex items-center gap-2">
-                      <Select
-                        value={editCategory}
-                        onValueChange={setEditCategory}
-                      >
-                        <SelectTrigger className="w-36">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((cat) => (
-                            <SelectItem key={cat} value={cat}>
-                              {cat}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        size="sm"
-                        onClick={() => handleSaveCategory(tx)}
-                        disabled={savingId === tx.id}
-                      >
-                        {savingId === tx.id ? "…" : "保存"}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingId(null)}
-                      >
-                        ✕
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setEditingId(tx.id);
-                        setEditCategory(tx.category);
-                      }}
-                      className="cursor-pointer p-0 h-auto hover:bg-transparent"
-                    >
-                      <CategoryBadge category={tx.category} />
-                    </Button>
-                  )}
-                  <span
-                    className="text-sm font-medium flex-1 truncate"
-                    style={{ color: "var(--kg-text)" }}
-                  >
-                    {tx.store}
-                  </span>
-                  <div className="text-right shrink-0">
-                    <p
-                      className="text-sm font-num font-semibold"
-                      style={{ color: "var(--kg-text)" }}
-                    >
-                      {formatVND(tx.amount)}
-                    </p>
-                    <p className="text-xs mt-0.5 text-muted-foreground">
-                      {formatDateWithYear(tx.date)}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-center py-16 text-sm text-muted-foreground">
-            {searchQuery.trim()
-              ? `「${searchQuery}」に一致する取引はありません`
-              : "取引データがありません"}
-          </p>
-        )}
-      </Card>
+      {/* 件数 + 合計 */}
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+          {filteredTransactions.length.toLocaleString()}件の取引
+          {searchQuery.trim() ? ` — 「${searchQuery}」で絞り込み中` : ""}
+        </p>
+        <p className="text-sm font-num font-semibold text-foreground">
+          合計 {formatVND(totalAmount)}
+        </p>
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={filteredTransactions}
+        searchable={false}
+        pageSize={20}
+        emptyMessage={
+          searchQuery.trim()
+            ? `「${searchQuery}」に一致する取引はありません`
+            : "取引データがありません"
+        }
+      />
     </div>
   );
 }

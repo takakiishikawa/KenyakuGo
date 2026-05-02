@@ -101,8 +101,25 @@ export default function SettingsPage() {
         });
         if (data.remaining === 0) break;
       }
+
+      // 取り込み直後の「その他」を AI で一括カテゴリ分類。
+      // synced=0（再ボタン押下時）でも未分類があれば走らせる。
+      let aiSummary = "";
+      try {
+        const cat = await fetch("/api/ai/categorize-all", { method: "POST" });
+        if (cat.ok) {
+          const { updated, total } = (await cat.json()) as {
+            updated: number;
+            total: number;
+          };
+          if (total > 0) aiSummary = ` / AI分類 ${updated}/${total} 件`;
+        }
+      } catch {
+        // 分類失敗時はスキップ（手動でも実行可能）
+      }
+
       toast.success(
-        `再取り込み完了: ${totalSynced} 件追加${totalDeleted > 0 ? ` / ${totalDeleted} 件のゴミレコード削除` : ""}`,
+        `再取り込み完了: ${totalSynced} 件追加${aiSummary}${totalDeleted > 0 ? ` / ${totalDeleted} 件のゴミレコード削除` : ""}`,
       );
     } catch (e) {
       toast.error(

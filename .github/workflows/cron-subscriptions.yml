@@ -10,7 +10,7 @@ name: Cron — Subscriptions Refresh
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 20 * * 6'  # ICT (UTC+7) 日曜 03:00 / JST 日曜 05:00
+    - cron: '0 16 * * 6'  # UTC 土曜 16:00 = ICT 土曜 23:00 / JST 日曜 01:00
 
 jobs:
   refresh:

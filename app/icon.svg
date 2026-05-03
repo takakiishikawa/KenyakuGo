@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
   <style>
-    .s { fill: none; stroke: #F5A623; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .s { fill: none; stroke: #047857; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
   </style>
   <path class="s" d="M12 9.5V21m0-11.5L6 3m6 6.5L18 3"/>
   <path class="s" d="M6 15h12"/>

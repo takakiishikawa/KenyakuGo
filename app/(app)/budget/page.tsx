@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { Pencil, Trash2, Plus, Check, X } from "lucide-react";
 import { toast } from "@takaki/go-design-system";
-import { formatVND } from "@/lib/format";
+import { formatVND, formatJPY } from "@/lib/format";
 import { getCategoryColors, getCategoryColorTint } from "@/lib/category-colors";
 import { getCategoryIcon } from "@/lib/category-icons";
+import { CurrencySwitch, type DisplayCurrency } from "@/components/currency-switch";
 import {
   Button,
   Card,
@@ -17,6 +18,13 @@ interface Category {
   name: string;
   budget: number;
   is_fixed: boolean;
+}
+
+const VND_PER_JPY = 162;
+
+function makeFormatAmount(displayCurrency: DisplayCurrency) {
+  return (vndAmount: number) =>
+    displayCurrency === "VND" ? formatVND(vndAmount) : formatJPY(vndAmount / VND_PER_JPY);
 }
 
 function CategoryIcon({ name, fixed }: { name: string; fixed?: boolean }) {
@@ -235,6 +243,7 @@ function SectionGrid({
   title,
   categories,
   totalBudget,
+  formatAmount,
   onUpdate,
   onDelete,
   onAdd,
@@ -242,6 +251,7 @@ function SectionGrid({
   title: string;
   categories: Category[];
   totalBudget: number;
+  formatAmount: (vndAmount: number) => string;
   onUpdate: (id: string, patch: Partial<Pick<Category, "name" | "budget" | "is_fixed">>) => Promise<void>;
   onDelete: (id: string, name: string) => Promise<void>;
   onAdd: (name: string, budget: number, is_fixed: boolean) => Promise<void>;
@@ -269,7 +279,7 @@ function SectionGrid({
         </span>
         {totalBudget > 0 && (
           <span className="font-num font-bold text-[15px]" style={{ color: "var(--color-text-primary)" }}>
-            {formatVND(totalBudget)}
+            {formatAmount(totalBudget)}
           </span>
         )}
       </div>
@@ -292,6 +302,8 @@ function SectionGrid({
 export default function BudgetPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>("VND");
+  const formatAmount = makeFormatAmount(displayCurrency);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/categories");
@@ -381,9 +393,13 @@ export default function BudgetPage() {
 
   return (
     <div>
+      <div className="mt-8 mb-5 flex items-center justify-end">
+        <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
+      </div>
+
       {grandTotal > 0 && (
         <Card
-          className="mt-8 mb-6 p-7 rounded-2xl"
+          className="mb-6 p-7 rounded-2xl"
           style={{
             borderColor: "var(--color-border-default)",
             boxShadow: "0 1px 2px rgba(120,72,10,.04), 0 8px 24px rgba(120,72,10,.05)",
@@ -393,19 +409,19 @@ export default function BudgetPage() {
             Total Monthly Budget
           </p>
           <p className="font-display text-[44px] font-bold leading-none mb-4" style={{ color: "var(--color-text-primary)" }}>
-            {formatVND(grandTotal)}
+            {formatAmount(grandTotal)}
           </p>
           <div className="flex gap-7 text-sm">
             <div style={{ color: "var(--color-text-secondary)" }}>
               Variable{" "}
               <b className="font-num font-bold" style={{ color: "var(--color-text-primary)" }}>
-                {formatVND(variableBudgetTotal)}
+                {formatAmount(variableBudgetTotal)}
               </b>
             </div>
             <div style={{ color: "var(--color-text-secondary)" }}>
               Fixed{" "}
               <b className="font-num font-bold" style={{ color: "var(--color-text-primary)" }}>
-                {formatVND(fixedBudgetTotal)}
+                {formatAmount(fixedBudgetTotal)}
               </b>
             </div>
           </div>
@@ -416,6 +432,7 @@ export default function BudgetPage() {
         title="Variable Costs"
         categories={variable}
         totalBudget={variableBudgetTotal}
+        formatAmount={formatAmount}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
         onAdd={handleAdd}
@@ -425,6 +442,7 @@ export default function BudgetPage() {
         title="Fixed Costs"
         categories={fixed}
         totalBudget={fixedBudgetTotal}
+        formatAmount={formatAmount}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
         onAdd={handleAdd}

@@ -5,6 +5,7 @@ import { AlertTriangle, Archive, ChevronDown, Plus, Trash2, MessageSquare, Check
 import { formatJPY, formatVND } from "@/lib/format";
 import type { SimulationMonth, SpecialEntry } from "@/lib/simulation";
 import { NoteTag } from "@/components/note-tag";
+import { CurrencySwitch, type DisplayCurrency } from "@/components/currency-switch";
 import {
   Button,
   Card,
@@ -40,8 +41,6 @@ interface SimulationData {
   yearEndProjection: number;
 }
 
-type DisplayCurrency = "JPY" | "VND";
-
 const YEAR_OPTIONS = [2025, 2026, 2027];
 const CARD_SHADOW = "0 1px 2px rgba(120,72,10,.04), 0 8px 24px rgba(120,72,10,.05)";
 const GRID_COLS = "0.95fr 0.78fr 0.78fr 0.78fr 0.78fr 0.78fr 0.9fr";
@@ -62,33 +61,6 @@ function withCommas(v: string): string {
 function makeFormatAmount(displayCurrency: DisplayCurrency, vndPerJpy: number) {
   return (jpyAmount: number) =>
     displayCurrency === "JPY" ? formatJPY(jpyAmount) : formatVND(jpyAmount * vndPerJpy);
-}
-
-function CurrencySwitch({
-  value,
-  onChange,
-}: {
-  value: DisplayCurrency;
-  onChange: (v: DisplayCurrency) => void;
-}) {
-  return (
-    <div className="flex rounded-[10px] overflow-hidden shrink-0" style={{ border: "1px solid var(--color-border-default)" }}>
-      {(["JPY", "VND"] as const).map((c) => (
-        <button
-          key={c}
-          type="button"
-          onClick={() => onChange(c)}
-          className="px-3 h-[38px] text-sm font-semibold cursor-pointer transition-all hover:opacity-80 active:scale-95"
-          style={{
-            backgroundColor: value === c ? "var(--color-primary)" : "transparent",
-            color: value === c ? "#fff" : "var(--color-text-secondary)",
-          }}
-        >
-          {c === "JPY" ? "¥ JPY" : "₫ VND"}
-        </button>
-      ))}
-    </div>
-  );
 }
 
 // Income is stored/edited in JPY internally, but shown and typed in

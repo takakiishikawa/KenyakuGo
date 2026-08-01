@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Pencil, Trash2, Plus, Check, X } from "lucide-react";
 import { toast } from "@takaki/go-design-system";
 import { formatVND, formatJPY } from "@/lib/format";
@@ -27,6 +27,21 @@ function makeFormatAmount(displayCurrency: DisplayCurrency) {
     displayCurrency === "VND" ? formatVND(vndAmount) : formatJPY(vndAmount / VND_PER_JPY);
 }
 
+// Budgets are stored in VND internally, but shown and typed in whichever
+// currency the display switch is set to — converting on the way in and out.
+function toDisplayAmount(vnd: number, displayCurrency: DisplayCurrency): number {
+  return displayCurrency === "VND" ? Math.round(vnd) : Math.round(vnd / VND_PER_JPY);
+}
+
+function toVndAmount(displayAmount: number, displayCurrency: DisplayCurrency): number {
+  return displayCurrency === "VND" ? displayAmount : Math.round(displayAmount * VND_PER_JPY);
+}
+
+function withThousands(v: string, displayCurrency: DisplayCurrency): string {
+  const sep = displayCurrency === "VND" ? "." : ",";
+  return v.replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+}
+
 function CategoryIcon({ name, fixed }: { name: string; fixed?: boolean }) {
   const { text } = getCategoryColors(name);
   const Icon = getCategoryIcon(name);
@@ -35,17 +50,25 @@ function CategoryIcon({ name, fixed }: { name: string; fixed?: boolean }) {
 
 function CategoryCard({
   cat,
+  displayCurrency,
   onUpdate,
   onDelete,
 }: {
   cat: Category;
+  displayCurrency: DisplayCurrency;
   onUpdate: (id: string, patch: Partial<Pick<Category, "name" | "budget" | "is_fixed">>) => Promise<void>;
   onDelete: (id: string, name: string) => Promise<void>;
 }) {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(cat.name);
-  const [budgetInput, setBudgetInput] = useState(String(cat.budget));
+  const [budgetInput, setBudgetInput] = useState(String(toDisplayAmount(cat.budget, displayCurrency)));
   const [saving, setSaving] = useState(false);
+  const savedBudgetRef = useRef(cat.budget);
+
+  useEffect(() => {
+    setBudgetInput(String(toDisplayAmount(cat.budget, displayCurrency)));
+    savedBudgetRef.current = cat.budget;
+  }, [cat.budget, displayCurrency]);
 
   const saveName = async () => {
     const trimmed = nameInput.trim();
@@ -62,8 +85,9 @@ function CategoryCard({
 
   const saveBudget = async () => {
     const val = parseInt(budgetInput.replace(/[^0-9]/g, ""), 10);
-    const budget = isNaN(val) ? 0 : val;
-    if (budget === cat.budget) return;
+    const budget = toVndAmount(isNaN(val) ? 0 : val, displayCurrency);
+    if (budget === savedBudgetRef.current) return;
+    savedBudgetRef.current = budget;
     setSaving(true);
     await onUpdate(cat.id, { budget });
     setSaving(false);
@@ -127,7 +151,7 @@ function CategoryCard({
           <Input
             type="text"
             inputMode="numeric"
-            value={budgetInput.replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+            value={withThousands(budgetInput, displayCurrency)}
             onChange={(e) => setBudgetInput(e.target.value.replace(/[^0-9]/g, ""))}
             onBlur={saveBudget}
             onKeyDown={(e) => {
@@ -162,9 +186,11 @@ function CategoryCard({
 
 function AddCategoryCard({
   isFixed,
+  displayCurrency,
   onAdd,
 }: {
   isFixed: boolean;
+  displayCurrency: DisplayCurrency;
   onAdd: (name: string, budget: number, is_fixed: boolean) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
@@ -177,7 +203,7 @@ function AddCategoryCard({
     if (!trimmed) return;
     const budgetVal = parseInt(budget.replace(/[^0-9]/g, ""), 10);
     setSaving(true);
-    await onAdd(trimmed, isNaN(budgetVal) ? 0 : budgetVal, isFixed);
+    await onAdd(trimmed, toVndAmount(isNaN(budgetVal) ? 0 : budgetVal, displayCurrency), isFixed);
     setSaving(false);
     setName("");
     setBudget("");
@@ -215,13 +241,13 @@ function AddCategoryCard({
         <Input
           type="text"
           inputMode="numeric"
-          value={budget.replace(/\B(?=(\d{3})+(?!\d))/g, ".")}
+          value={withThousands(budget, displayCurrency)}
           onChange={(e) => setBudget(e.target.value.replace(/[^0-9]/g, ""))}
           onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-          placeholder="Budget (VND)"
+          placeholder={`Budget (${displayCurrency})`}
           className="h-7 text-sm text-right flex-1 font-num"
         />
-        <span className="text-xs shrink-0" style={{ color: "var(--color-text-secondary)" }}>VND</span>
+        <span className="text-xs shrink-0" style={{ color: "var(--color-text-secondary)" }}>{displayCurrency}</span>
       </div>
       <div className="flex gap-2">
         <Button size="sm" onClick={handleAdd} disabled={saving || !name.trim()} className="flex-1">
@@ -244,6 +270,7 @@ function SectionGrid({
   categories,
   totalBudget,
   formatAmount,
+  displayCurrency,
   onUpdate,
   onDelete,
   onAdd,
@@ -252,6 +279,7 @@ function SectionGrid({
   categories: Category[];
   totalBudget: number;
   formatAmount: (vndAmount: number) => string;
+  displayCurrency: DisplayCurrency;
   onUpdate: (id: string, patch: Partial<Pick<Category, "name" | "budget" | "is_fixed">>) => Promise<void>;
   onDelete: (id: string, name: string) => Promise<void>;
   onAdd: (name: string, budget: number, is_fixed: boolean) => Promise<void>;
@@ -289,11 +317,12 @@ function SectionGrid({
           <CategoryCard
             key={cat.id}
             cat={cat}
+            displayCurrency={displayCurrency}
             onUpdate={onUpdate}
             onDelete={onDelete}
           />
         ))}
-        <AddCategoryCard isFixed={isFixed} onAdd={onAdd} />
+        <AddCategoryCard isFixed={isFixed} displayCurrency={displayCurrency} onAdd={onAdd} />
       </div>
     </Card>
   );
@@ -393,21 +422,20 @@ export default function BudgetPage() {
 
   return (
     <div>
-      <div className="mt-8 mb-5 flex items-center justify-end">
-        <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
-      </div>
-
       {grandTotal > 0 && (
         <Card
-          className="mb-6 p-7 rounded-2xl"
+          className="mt-8 mb-6 p-7 rounded-2xl"
           style={{
             borderColor: "var(--color-border-default)",
             boxShadow: "0 1px 2px rgba(120,72,10,.04), 0 8px 24px rgba(120,72,10,.05)",
           }}
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.06em] mb-2.5" style={{ color: "var(--color-text-subtle)" }}>
-            Total Monthly Budget
-          </p>
+          <div className="flex items-start justify-between mb-2.5">
+            <p className="text-xs font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--color-text-subtle)" }}>
+              Total Monthly Budget
+            </p>
+            <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
+          </div>
           <p className="font-display text-[44px] font-bold leading-none mb-4" style={{ color: "var(--color-text-primary)" }}>
             {formatAmount(grandTotal)}
           </p>
@@ -433,6 +461,7 @@ export default function BudgetPage() {
         categories={variable}
         totalBudget={variableBudgetTotal}
         formatAmount={formatAmount}
+        displayCurrency={displayCurrency}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
         onAdd={handleAdd}
@@ -443,6 +472,7 @@ export default function BudgetPage() {
         categories={fixed}
         totalBudget={fixedBudgetTotal}
         formatAmount={formatAmount}
+        displayCurrency={displayCurrency}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
         onAdd={handleAdd}

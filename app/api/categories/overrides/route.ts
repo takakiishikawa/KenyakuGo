@@ -10,7 +10,7 @@ export async function GET() {
 
   const { data, error } = await db
     .from("category_budget_overrides")
-    .select("id, category_id, month, budget")
+    .select("id, category_id, month, end_month, budget")
     .order("month", { ascending: true });
 
   if (error) {

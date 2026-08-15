@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { Pencil, Trash2, Plus, Check, X, CalendarClock } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Check, X, CalendarClock, Settings2, TrendingUp } from "lucide-react";
 import { toast } from "@takaki/go-design-system";
-import { formatVND, formatJPY } from "@/lib/format";
 import { getCategoryColors, getCategoryColorTint } from "@/lib/category-colors";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { CurrencySwitch, type DisplayCurrency } from "@/components/currency-switch";
+import { ManageCategoriesDialog } from "@/components/manage-categories-dialog";
+import { BudgetTrendDialog } from "@/components/budget-trend-dialog";
+import { findEffectiveOverride } from "@/lib/category-budget";
+import { makeFormatAmount, toDisplayAmount, toVndAmount, withThousands } from "@/lib/currency";
 import {
   Button,
   Card,
@@ -28,12 +31,14 @@ interface Category {
   is_fixed: boolean;
 }
 
-// カテゴリの月次予算オーバーライド（effective-dated）。
-// month 以降、次のオーバーライドが入るまでこの budget がずっと適用される。
+// カテゴリの月次予算オーバーライド。
+// end_month が null なら「month以降ずっと」(恒久変更)、値があれば
+// 「month〜end_month の間だけ」(期間限定)。期間限定は恒久変更より優先される。
 interface CategoryOverride {
   id: string;
   category_id: string;
   month: string; // 'YYYY-MM'
+  end_month: string | null;
   budget: number;
 }
 
@@ -54,26 +59,15 @@ function getUpcomingMonths(count: number): { key: string; label: string }[] {
   });
 }
 
-const VND_PER_JPY = 162;
-
-function makeFormatAmount(displayCurrency: DisplayCurrency) {
-  return (vndAmount: number) =>
-    displayCurrency === "VND" ? formatVND(vndAmount) : formatJPY(vndAmount / VND_PER_JPY);
-}
-
-// Budgets are stored in VND internally, but shown and typed in whichever
-// currency the display switch is set to — converting on the way in and out.
-function toDisplayAmount(vnd: number, displayCurrency: DisplayCurrency): number {
-  return displayCurrency === "VND" ? Math.round(vnd) : Math.round(vnd / VND_PER_JPY);
-}
-
-function toVndAmount(displayAmount: number, displayCurrency: DisplayCurrency): number {
-  return displayCurrency === "VND" ? displayAmount : Math.round(displayAmount * VND_PER_JPY);
-}
-
-function withThousands(v: string, displayCurrency: DisplayCurrency): string {
-  const sep = displayCurrency === "VND" ? "." : ",";
-  return v.replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+function overrideLabel(o: CategoryOverride, isActive: boolean): string {
+  if (o.end_month === null) {
+    return isActive ? `Since ${monthShortLabel(o.month)}` : `From ${monthShortLabel(o.month)}`;
+  }
+  const range =
+    o.end_month === o.month
+      ? monthShortLabel(o.month)
+      : `${monthShortLabel(o.month)}–${monthShortLabel(o.end_month)}`;
+  return isActive ? `Now: ${range}` : range;
 }
 
 function CategoryIcon({ name, fixed }: { name: string; fixed?: boolean }) {
@@ -89,23 +83,31 @@ function ScheduleOverridePopover({
 }: {
   cat: Category;
   displayCurrency: DisplayCurrency;
-  onSchedule: (categoryId: string, month: string, budget: number) => Promise<void>;
+  onSchedule: (categoryId: string, month: string, endMonth: string | null, budget: number) => Promise<void>;
 }) {
   const monthOptions = getUpcomingMonths(12);
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"persistent" | "period">("persistent");
   const [month, setMonth] = useState(monthOptions[1]?.key ?? monthOptions[0].key); // default: next month
+  const [endMonth, setEndMonth] = useState(monthOptions[1]?.key ?? monthOptions[0].key);
   const [amountInput, setAmountInput] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (endMonth < month) setEndMonth(month);
+  }, [month, endMonth]);
 
   const handleSave = async () => {
     const val = parseInt(amountInput.replace(/[^0-9]/g, ""), 10);
     const budget = toVndAmount(isNaN(val) ? 0 : val, displayCurrency);
     setSaving(true);
-    await onSchedule(cat.id, month, budget);
+    await onSchedule(cat.id, month, mode === "period" ? endMonth : null, budget);
     setSaving(false);
     setAmountInput("");
     setOpen(false);
   };
+
+  const endMonthOptions = monthOptions.filter((m) => m.key >= month);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -119,22 +121,70 @@ function ScheduleOverridePopover({
           <CalendarClock size={14} />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-3 flex flex-col gap-2.5" align="end">
+      <PopoverContent className="w-72 p-3 flex flex-col gap-2.5" align="end">
         <p className="text-xs font-semibold" style={{ color: "var(--color-text-primary)" }}>
           Schedule a change for {cat.name}
         </p>
-        <Select value={month} onValueChange={setMonth}>
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {monthOptions.map((m) => (
-              <SelectItem key={m.key} value={m.key}>
-                {m.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+
+        <div
+          className="flex rounded-lg overflow-hidden border"
+          style={{ borderColor: "var(--color-border-default)" }}
+        >
+          {(
+            [
+              { key: "persistent", label: "From this month" },
+              { key: "period", label: "Just a period" },
+            ] as const
+          ).map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => setMode(m.key)}
+              className="flex-1 h-7 text-[11px] font-semibold transition-all"
+              style={{
+                backgroundColor: mode === m.key ? "var(--color-primary)" : "transparent",
+                color: mode === m.key ? "#fff" : "var(--color-text-secondary)",
+              }}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Select value={month} onValueChange={setMonth}>
+            <SelectTrigger className="h-8 text-xs flex-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {monthOptions.map((m) => (
+                <SelectItem key={m.key} value={m.key}>
+                  {m.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {mode === "period" && (
+            <>
+              <span className="text-xs shrink-0" style={{ color: "var(--color-text-subtle)" }}>
+                to
+              </span>
+              <Select value={endMonth} onValueChange={setEndMonth}>
+                <SelectTrigger className="h-8 text-xs flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {endMonthOptions.map((m) => (
+                    <SelectItem key={m.key} value={m.key}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
+        </div>
+
         <Input
           type="text"
           inputMode="numeric"
@@ -145,7 +195,9 @@ function ScheduleOverridePopover({
           className="h-8 text-xs font-num"
         />
         <p className="text-[11px] leading-snug" style={{ color: "var(--color-text-subtle)" }}>
-          Applies from that month onward, until you schedule another change.
+          {mode === "persistent"
+            ? "Applies from that month onward, until you schedule another change."
+            : "Applies only for that month/period, then reverts automatically."}
         </p>
         <Button size="sm" onClick={handleSave} disabled={saving || !amountInput}>
           Schedule
@@ -160,7 +212,6 @@ function CategoryCard({
   displayCurrency,
   overrides,
   onUpdate,
-  onDelete,
   onScheduleOverride,
   onDeleteOverride,
 }: {
@@ -168,19 +219,16 @@ function CategoryCard({
   displayCurrency: DisplayCurrency;
   overrides: CategoryOverride[];
   onUpdate: (id: string, patch: Partial<Pick<Category, "name" | "budget" | "is_fixed">>) => Promise<void>;
-  onDelete: (id: string, name: string) => Promise<void>;
-  onScheduleOverride: (categoryId: string, month: string, budget: number) => Promise<void>;
-  onDeleteOverride: (categoryId: string, overrideId: string, month: string) => Promise<void>;
+  onScheduleOverride: (categoryId: string, month: string, endMonth: string | null, budget: number) => Promise<void>;
+  onDeleteOverride: (categoryId: string, overrideId: string) => Promise<void>;
 }) {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(cat.name);
   const [budgetInput, setBudgetInput] = useState(String(toDisplayAmount(cat.budget, displayCurrency)));
   const [saving, setSaving] = useState(false);
-  const savedBudgetRef = useRef(cat.budget);
 
   useEffect(() => {
     setBudgetInput(String(toDisplayAmount(cat.budget, displayCurrency)));
-    savedBudgetRef.current = cat.budget;
   }, [cat.budget, displayCurrency]);
 
   const saveName = async () => {
@@ -199,8 +247,7 @@ function CategoryCard({
   const saveBudget = async () => {
     const val = parseInt(budgetInput.replace(/[^0-9]/g, ""), 10);
     const budget = toVndAmount(isNaN(val) ? 0 : val, displayCurrency);
-    if (budget === savedBudgetRef.current) return;
-    savedBudgetRef.current = budget;
+    if (budget === cat.budget) return;
     setSaving(true);
     await onUpdate(cat.id, { budget });
     setSaving(false);
@@ -209,10 +256,10 @@ function CategoryCard({
   const formatAmount = makeFormatAmount(displayCurrency);
   const currentMonth = monthKeyLocal(new Date());
   const sortedOverrides = [...overrides].sort((a, b) => a.month.localeCompare(b.month));
-  // The active override is the most recent one at or before this month —
+  // The active override is whichever one actually resolves for this month —
   // it's already in effect on the Dashboard/Simulation even though the
-  // number field above (categories.budget) still shows the pre-override value.
-  const activeOverride = [...sortedOverrides].reverse().find((o) => o.month <= currentMonth) ?? null;
+  // number field below (categories.budget) still shows the pre-override value.
+  const activeOverride = findEffectiveOverride(overrides, currentMonth);
 
   return (
     <div
@@ -220,89 +267,75 @@ function CategoryCard({
       style={{ borderColor: "var(--color-border-default)", backgroundColor: "var(--color-surface-subtle)" }}
     >
       <div className="flex items-center gap-2.5">
-      <div
-        className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg"
-        style={{ backgroundColor: cat.is_fixed ? "var(--kg-track)" : getCategoryColorTint(cat.name) }}
-      >
-        <CategoryIcon name={cat.name} fixed={cat.is_fixed} />
-      </div>
-      {editingName ? (
-        <>
-          <Input
-            value={nameInput}
-            onChange={(e) => setNameInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") saveName();
-              if (e.key === "Escape") {
+        <div
+          className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg"
+          style={{ backgroundColor: cat.is_fixed ? "var(--kg-track)" : getCategoryColorTint(cat.name) }}
+        >
+          <CategoryIcon name={cat.name} fixed={cat.is_fixed} />
+        </div>
+        {editingName ? (
+          <>
+            <Input
+              value={nameInput}
+              onChange={(e) => setNameInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") saveName();
+                if (e.key === "Escape") {
+                  setEditingName(false);
+                  setNameInput(cat.name);
+                }
+              }}
+              className="h-7 text-sm flex-1 min-w-0"
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={saveName}
+              disabled={saving}
+              className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 disabled:pointer-events-none disabled:opacity-50 shrink-0"
+              style={{ color: "var(--color-text-subtle)" }}
+            >
+              <Check size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
                 setEditingName(false);
                 setNameInput(cat.name);
-              }
-            }}
-            className="h-7 text-sm flex-1 min-w-0"
-            autoFocus
-          />
-          <button
-            type="button"
-            onClick={saveName}
-            disabled={saving}
-            className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 disabled:pointer-events-none disabled:opacity-50 shrink-0"
-            style={{ color: "var(--color-text-subtle)" }}
-          >
-            <Check size={13} />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setEditingName(false);
-              setNameInput(cat.name);
-            }}
-            className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 disabled:pointer-events-none disabled:opacity-50 shrink-0"
-            style={{ color: "var(--color-text-subtle)" }}
-          >
-            <X size={13} />
-          </button>
-        </>
-      ) : (
-        <>
-          <span
-            className="text-[13.5px] font-semibold truncate min-w-0 flex-1"
-            style={{ color: "var(--color-text-primary)" }}
-          >
-            {cat.name}
-          </span>
-          <Input
-            type="text"
-            inputMode="numeric"
-            value={withThousands(budgetInput, displayCurrency)}
-            onChange={(e) => setBudgetInput(e.target.value.replace(/[^0-9]/g, ""))}
-            onBlur={saveBudget}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-            }}
-            className="h-8 text-[12.5px] text-right w-28 shrink-0 font-num rounded-lg"
-            style={{ borderColor: "var(--color-border-default)" }}
-            placeholder="0"
-          />
-          <ScheduleOverridePopover cat={cat} displayCurrency={displayCurrency} onSchedule={onScheduleOverride} />
-          <button
-            type="button"
-            onClick={() => setEditingName(true)}
-            className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 disabled:pointer-events-none disabled:opacity-50 shrink-0"
-            style={{ color: "var(--color-text-subtle)" }}
-          >
-            <Pencil size={14} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(cat.id, cat.name)}
-            disabled={saving}
-            className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 disabled:pointer-events-none disabled:opacity-50 shrink-0"
-            style={{ color: "var(--color-text-subtle)" }}
-          >
-            <Trash2 size={14} />
-          </button>
-        </>
-      )}
+              }}
+              className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 disabled:pointer-events-none disabled:opacity-50 shrink-0"
+              style={{ color: "var(--color-text-subtle)" }}
+            >
+              <X size={13} />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setEditingName(true)}
+              title="Click to rename"
+              className="text-[13.5px] font-semibold truncate min-w-0 flex-1 text-left cursor-pointer hover:underline decoration-dotted underline-offset-2"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              {cat.name}
+            </button>
+            <Input
+              type="text"
+              inputMode="numeric"
+              value={withThousands(budgetInput, displayCurrency)}
+              onChange={(e) => setBudgetInput(e.target.value.replace(/[^0-9]/g, ""))}
+              onBlur={saveBudget}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              }}
+              className="h-8 text-[12.5px] text-right w-24 shrink-0 font-num rounded-lg"
+              style={{ borderColor: "var(--color-border-default)" }}
+              placeholder="0"
+            />
+            <ScheduleOverridePopover cat={cat} displayCurrency={displayCurrency} onSchedule={onScheduleOverride} />
+          </>
+        )}
       </div>
       {sortedOverrides.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pl-10">
@@ -318,10 +351,10 @@ function CategoryCard({
                   border: "1px solid var(--color-border-default)",
                 }}
               >
-                {isActive ? "Since" : "From"} {monthShortLabel(o.month)} · {formatAmount(o.budget)}
+                {overrideLabel(o, isActive)} · {formatAmount(o.budget)}
                 <button
                   type="button"
-                  onClick={() => onDeleteOverride(cat.id, o.id, o.month)}
+                  onClick={() => onDeleteOverride(cat.id, o.id)}
                   className="opacity-60 hover:opacity-100 transition-opacity"
                 >
                   <X size={10} />
@@ -335,87 +368,6 @@ function CategoryCard({
   );
 }
 
-function AddCategoryCard({
-  isFixed,
-  displayCurrency,
-  onAdd,
-}: {
-  isFixed: boolean;
-  displayCurrency: DisplayCurrency;
-  onAdd: (name: string, budget: number, is_fixed: boolean) => Promise<void>;
-}) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [budget, setBudget] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const handleAdd = async () => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    const budgetVal = parseInt(budget.replace(/[^0-9]/g, ""), 10);
-    setSaving(true);
-    await onAdd(trimmed, toVndAmount(isNaN(budgetVal) ? 0 : budgetVal, displayCurrency), isFixed);
-    setSaving(false);
-    setName("");
-    setBudget("");
-    setOpen(false);
-  };
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex items-center justify-center gap-2 h-full min-h-[52px] w-full rounded-[10px] border-[1.5px] border-dashed text-sm font-semibold transition-all hover:opacity-80 hover:bg-muted/30 active:scale-[0.98] active:opacity-70"
-        style={{ borderColor: "var(--color-border-default)", color: "var(--color-text-subtle)" }}
-      >
-        <Plus size={15} />
-        Add category
-      </button>
-    );
-  }
-
-  return (
-    <Card className="p-4 flex flex-col gap-3" style={{ borderColor: "var(--color-border-default)" }}>
-      <Input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") handleAdd();
-          if (e.key === "Escape") setOpen(false);
-        }}
-        placeholder="Category name"
-        className="h-7 text-sm"
-        autoFocus
-      />
-      <div className="flex items-center gap-2">
-        <Input
-          type="text"
-          inputMode="numeric"
-          value={withThousands(budget, displayCurrency)}
-          onChange={(e) => setBudget(e.target.value.replace(/[^0-9]/g, ""))}
-          onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-          placeholder={`Budget (${displayCurrency})`}
-          className="h-7 text-sm text-right flex-1 font-num"
-        />
-        <span className="text-xs shrink-0" style={{ color: "var(--color-text-secondary)" }}>{displayCurrency}</span>
-      </div>
-      <div className="flex gap-2">
-        <Button size="sm" onClick={handleAdd} disabled={saving || !name.trim()} className="flex-1">
-          Add
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => { setOpen(false); setName(""); setBudget(""); }}
-        >
-          ✕
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
 function SectionGrid({
   title,
   categories,
@@ -424,8 +376,7 @@ function SectionGrid({
   displayCurrency,
   overridesByCategory,
   onUpdate,
-  onDelete,
-  onAdd,
+  onManageClick,
   onScheduleOverride,
   onDeleteOverride,
 }: {
@@ -436,12 +387,10 @@ function SectionGrid({
   displayCurrency: DisplayCurrency;
   overridesByCategory: Map<string, CategoryOverride[]>;
   onUpdate: (id: string, patch: Partial<Pick<Category, "name" | "budget" | "is_fixed">>) => Promise<void>;
-  onDelete: (id: string, name: string) => Promise<void>;
-  onAdd: (name: string, budget: number, is_fixed: boolean) => Promise<void>;
-  onScheduleOverride: (categoryId: string, month: string, budget: number) => Promise<void>;
-  onDeleteOverride: (categoryId: string, overrideId: string, month: string) => Promise<void>;
+  onManageClick: () => void;
+  onScheduleOverride: (categoryId: string, month: string, endMonth: string | null, budget: number) => Promise<void>;
+  onDeleteOverride: (categoryId: string, overrideId: string) => Promise<void>;
 }) {
-  const isFixed = title === "Fixed Costs";
   const sorted = [...categories].sort((a, b) => b.budget - a.budget);
 
   return (
@@ -462,14 +411,26 @@ function SectionGrid({
             {categories.length} {categories.length === 1 ? "category" : "categories"}
           </span>
         </span>
-        {totalBudget > 0 && (
-          <span className="font-num font-bold text-[15px]" style={{ color: "var(--color-text-primary)" }}>
-            {formatAmount(totalBudget)}
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {totalBudget > 0 && (
+            <span className="font-num font-bold text-[15px]" style={{ color: "var(--color-text-primary)" }}>
+              {formatAmount(totalBudget)}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 text-xs font-semibold hover:opacity-80"
+            style={{ borderColor: "var(--color-border-default)", color: "var(--color-text-primary)" }}
+            onClick={onManageClick}
+          >
+            <Settings2 size={13} />
+            Manage
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 p-5">
+      <div className="grid grid-cols-3 gap-3 p-5">
         {sorted.map((cat) => (
           <CategoryCard
             key={cat.id}
@@ -477,12 +438,10 @@ function SectionGrid({
             displayCurrency={displayCurrency}
             overrides={overridesByCategory.get(cat.id) ?? []}
             onUpdate={onUpdate}
-            onDelete={onDelete}
             onScheduleOverride={onScheduleOverride}
             onDeleteOverride={onDeleteOverride}
           />
         ))}
-        <AddCategoryCard isFixed={isFixed} displayCurrency={displayCurrency} onAdd={onAdd} />
       </div>
     </Card>
   );
@@ -493,6 +452,8 @@ export default function BudgetPage() {
   const [overrides, setOverrides] = useState<CategoryOverride[]>([]);
   const [loading, setLoading] = useState(true);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>("VND");
+  const [manageOpen, setManageOpen] = useState<"variable" | "fixed" | null>(null);
+  const [trendOpen, setTrendOpen] = useState(false);
   const formatAmount = makeFormatAmount(displayCurrency);
 
   const load = useCallback(async () => {
@@ -569,39 +530,36 @@ export default function BudgetPage() {
   );
 
   const handleScheduleOverride = useCallback(
-    async (categoryId: string, month: string, budget: number) => {
+    async (categoryId: string, month: string, endMonth: string | null, budget: number) => {
       const res = await fetch(`/api/categories/${categoryId}/overrides`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ month, budget }),
+        body: JSON.stringify({ month, end_month: endMonth, budget }),
       });
       if (!res.ok) {
         toast.error("Failed to schedule the change");
         return;
       }
-      const saved = (await res.json()) as Pick<CategoryOverride, "id" | "month" | "budget">;
+      const saved = (await res.json()) as Pick<CategoryOverride, "id" | "month" | "end_month" | "budget">;
       setOverrides((prev) => [
-        ...prev.filter((o) => !(o.category_id === categoryId && o.month === month)),
+        ...prev.filter((o) => o.id !== saved.id),
         { ...saved, category_id: categoryId },
       ]);
-      toast.success(`Scheduled for ${month}`);
+      toast.success(endMonth ? `Scheduled for ${month}–${endMonth}` : `Scheduled from ${month}`);
     },
     [],
   );
 
-  const handleDeleteOverride = useCallback(
-    async (categoryId: string, overrideId: string, month: string) => {
-      const res = await fetch(`/api/categories/${categoryId}/overrides?month=${month}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        toast.error("Failed to remove the scheduled change");
-        return;
-      }
-      setOverrides((prev) => prev.filter((o) => o.id !== overrideId));
-    },
-    [],
-  );
+  const handleDeleteOverride = useCallback(async (categoryId: string, overrideId: string) => {
+    const res = await fetch(`/api/categories/${categoryId}/overrides/${overrideId}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      toast.error("Failed to remove the scheduled change");
+      return;
+    }
+    setOverrides((prev) => prev.filter((o) => o.id !== overrideId));
+  }, []);
 
   const overridesByCategory = new Map<string, CategoryOverride[]>();
   for (const o of overrides) {
@@ -630,29 +588,46 @@ export default function BudgetPage() {
     <div>
       {grandTotal > 0 && (
         <Card
-          className="mt-8 mb-6 p-7 rounded-2xl"
+          className="mt-8 mb-5 p-5 rounded-2xl"
           style={{
             borderColor: "var(--color-border-default)",
             boxShadow: "0 1px 2px rgba(120,72,10,.04), 0 8px 24px rgba(120,72,10,.05)",
           }}
         >
-          <div className="flex items-start justify-between mb-2.5">
-            <p className="text-xs font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--color-text-subtle)" }}>
-              Total Monthly Budget
-            </p>
-            <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
+          <div className="flex items-center justify-between gap-4 flex-wrap mb-1.5">
+            <div className="flex items-baseline gap-2.5 flex-wrap">
+              <span
+                className="text-[11px] font-semibold uppercase tracking-[0.06em]"
+                style={{ color: "var(--color-text-subtle)" }}
+              >
+                Total Monthly Budget
+              </span>
+              <span className="font-display text-[28px] font-bold leading-none" style={{ color: "var(--color-text-primary)" }}>
+                {formatAmount(grandTotal)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-[10px] h-[38px] font-semibold hover:opacity-80"
+                style={{ borderColor: "var(--color-border-default)", color: "var(--color-text-primary)" }}
+                onClick={() => setTrendOpen(true)}
+              >
+                <TrendingUp size={14} />
+                Budget Trend
+              </Button>
+              <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
+            </div>
           </div>
-          <p className="font-display text-[44px] font-bold leading-none mb-4" style={{ color: "var(--color-text-primary)" }}>
-            {formatAmount(grandTotal)}
-          </p>
-          <div className="flex gap-7 text-sm">
-            <div style={{ color: "var(--color-text-secondary)" }}>
+          <div className="flex gap-6 text-[13px]" style={{ color: "var(--color-text-secondary)" }}>
+            <div>
               Variable{" "}
               <b className="font-num font-bold" style={{ color: "var(--color-text-primary)" }}>
                 {formatAmount(variableBudgetTotal)}
               </b>
             </div>
-            <div style={{ color: "var(--color-text-secondary)" }}>
+            <div>
               Fixed{" "}
               <b className="font-num font-bold" style={{ color: "var(--color-text-primary)" }}>
                 {formatAmount(fixedBudgetTotal)}
@@ -670,8 +645,7 @@ export default function BudgetPage() {
         displayCurrency={displayCurrency}
         overridesByCategory={overridesByCategory}
         onUpdate={handleUpdate}
-        onDelete={handleDelete}
-        onAdd={handleAdd}
+        onManageClick={() => setManageOpen("variable")}
         onScheduleOverride={handleScheduleOverride}
         onDeleteOverride={handleDeleteOverride}
       />
@@ -684,11 +658,32 @@ export default function BudgetPage() {
         displayCurrency={displayCurrency}
         overridesByCategory={overridesByCategory}
         onUpdate={handleUpdate}
-        onDelete={handleDelete}
-        onAdd={handleAdd}
+        onManageClick={() => setManageOpen("fixed")}
         onScheduleOverride={handleScheduleOverride}
         onDeleteOverride={handleDeleteOverride}
       />
+
+      <ManageCategoriesDialog
+        open={manageOpen === "variable"}
+        onOpenChange={(o) => setManageOpen(o ? "variable" : null)}
+        title="Manage Variable Costs"
+        categories={variable}
+        isFixed={false}
+        displayCurrency={displayCurrency}
+        onDelete={handleDelete}
+        onAdd={handleAdd}
+      />
+      <ManageCategoriesDialog
+        open={manageOpen === "fixed"}
+        onOpenChange={(o) => setManageOpen(o ? "fixed" : null)}
+        title="Manage Fixed Costs"
+        categories={fixed}
+        isFixed={true}
+        displayCurrency={displayCurrency}
+        onDelete={handleDelete}
+        onAdd={handleAdd}
+      />
+      <BudgetTrendDialog open={trendOpen} onOpenChange={setTrendOpen} displayCurrency={displayCurrency} />
     </div>
   );
 }

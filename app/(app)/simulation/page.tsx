@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { AlertTriangle, Archive, ChevronDown, Plus, Trash2, MessageSquare, CheckSquare, TrendingUp, TrendingDown } from "lucide-react";
+import { AlertTriangle, Plus, Trash2, StickyNote, TrendingUp, TrendingDown } from "lucide-react";
 import { formatJPY, formatVND } from "@/lib/format";
 import type { SimulationMonth, SpecialEntry } from "@/lib/simulation";
 import { NoteTag } from "@/components/note-tag";
@@ -9,7 +9,6 @@ import { CurrencySwitch, type DisplayCurrency } from "@/components/currency-swit
 import {
   Button,
   Card,
-  Checkbox,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -19,12 +18,6 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Progress,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
   Skeleton,
   Tag,
   toast,
@@ -41,9 +34,12 @@ interface SimulationData {
   yearEndProjection: number;
 }
 
-const YEAR_OPTIONS = [2025, 2026, 2027];
 const CARD_SHADOW = "0 1px 2px rgba(120,72,10,.04), 0 8px 24px rgba(120,72,10,.05)";
-const GRID_COLS = "0.95fr 0.78fr 0.78fr 0.78fr 0.78fr 0.78fr 0.9fr";
+// 固定幅の列にして、内容に対して余白が広がりすぎないようにする(fr指定だと
+// カード幅いっぱいに間延びしてしまうため)。列数が少ない分、最後の列の右に
+// 余白が残るのは許容。
+const GRID_COLS = "108px 104px 108px 96px 108px 104px 116px";
+const GRID_GAP = 22;
 
 function digitsOnly(v: string): string {
   return v.replace(/[^0-9-]/g, "");
@@ -63,18 +59,30 @@ function makeFormatAmount(displayCurrency: DisplayCurrency, vndPerJpy: number) {
     displayCurrency === "JPY" ? formatJPY(jpyAmount) : formatVND(jpyAmount * vndPerJpy);
 }
 
+function formatNoteTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 // Income is stored/edited in JPY internally, but shown and typed in
 // whichever currency the display switch is set to — converting on the way
 // in and out — so it stays consistent with every other figure on the page.
+// Starts as plain text; a click turns it into an editable field.
 function IncomeInput({
   value,
   displayCurrency,
   vndPerJpy,
+  formatAmount,
   onSave,
 }: {
   value: number;
   displayCurrency: DisplayCurrency;
   vndPerJpy: number;
+  formatAmount: (jpyAmount: number) => string;
   onSave: (jpyAmount: number) => void;
 }) {
   const toDisplay = (jpy: number) =>
@@ -82,6 +90,7 @@ function IncomeInput({
   const toJpy = (displayAmount: number) =>
     displayCurrency === "JPY" ? displayAmount : displayAmount / vndPerJpy;
 
+  const [editing, setEditing] = useState(false);
   const [text, setText] = useState(String(toDisplay(value)));
   const savedValueRef = useRef(value);
 
@@ -99,20 +108,42 @@ function IncomeInput({
       onSave(n);
     }
     setText(String(toDisplay(n)));
+    setEditing(false);
   };
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditing(true);
+        }}
+        className="text-left text-[13px] font-num transition-all hover:opacity-70 active:scale-95 cursor-pointer"
+        style={{ color: "var(--color-text-primary)" }}
+      >
+        {formatAmount(value)}
+      </button>
+    );
+  }
 
   return (
     <Input
       type="text"
       inputMode="numeric"
+      autoFocus
       value={withCommas(text)}
       onChange={(e) => setText(digitsOnly(e.target.value))}
       onBlur={commit}
       onKeyDown={(e) => {
         if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        if (e.key === "Escape") {
+          setText(String(toDisplay(savedValueRef.current)));
+          setEditing(false);
+        }
       }}
       onClick={(e) => e.stopPropagation()}
-      className="h-8 text-right font-num text-[13px] rounded-lg justify-self-end w-full"
+      className="h-8 text-left font-num text-[13px] rounded-lg w-full"
       style={{ borderColor: "var(--color-border-default)", backgroundColor: "var(--color-surface-subtle)" }}
     />
   );
@@ -142,7 +173,7 @@ function MonthRow({
       className="group grid items-center px-7 py-3.5 border-b last:border-0"
       style={{
         gridTemplateColumns: GRID_COLS,
-        gap: 8,
+        gap: GRID_GAP,
         borderColor: "var(--color-border-subtle)",
         backgroundColor: m.isCurrentMonth ? "#EAF6F4" : "transparent",
       }}
@@ -151,7 +182,7 @@ function MonthRow({
         className="text-[14.5px] font-semibold flex items-center gap-2 min-w-0"
         style={{ color: m.isCurrentMonth ? "var(--color-primary-hover)" : "var(--color-text-primary)" }}
       >
-        {m.label} {m.year}
+        {m.label}
         {m.isCurrentMonth && (
           <Tag
             className="text-[10.5px] font-bold px-2 py-0.5 shrink-0"
@@ -169,7 +200,7 @@ function MonthRow({
         )}
       </span>
       {!m.hasRecord ? (
-        <span className="col-span-6 text-right text-sm" style={{ color: "var(--color-text-secondary)" }}>
+        <span className="col-span-6 text-left text-sm" style={{ color: "var(--color-text-secondary)" }}>
           No data
         </span>
       ) : (
@@ -178,18 +209,19 @@ function MonthRow({
             value={m.regularIncome}
             displayCurrency={displayCurrency}
             vndPerJpy={vndPerJpy}
+            formatAmount={formatAmount}
             onSave={(n) => onUpdateIncome(m.month, n)}
           />
           <button
             type="button"
             onClick={() => onOpenEntries(m.month, "income")}
-            className="text-right text-sm font-num transition-all hover:opacity-70 active:scale-95 cursor-pointer"
+            className="text-left text-sm font-num transition-all hover:opacity-70 active:scale-95 cursor-pointer"
             style={{ color: "var(--color-success)" }}
           >
             {formatAmount(m.income - m.regularIncome)}
           </button>
           <span
-            className="text-right text-sm font-num"
+            className="text-left text-sm font-num"
             title={m.isCurrentMonth ? "This month's forecast" : m.isFuture ? "Total Monthly Budget" : "Actual VN spend"}
             style={{ color: m.expense > 0 ? "var(--color-text-secondary)" : "var(--color-text-subtle)" }}
           >
@@ -198,16 +230,16 @@ function MonthRow({
           <button
             type="button"
             onClick={() => onOpenEntries(m.month, "expense")}
-            className="text-right text-sm font-num transition-all hover:opacity-70 active:scale-95 cursor-pointer"
+            className="text-left text-sm font-num transition-all hover:opacity-70 active:scale-95 cursor-pointer"
             style={{ color: m.specialExpenseTotal > 0 ? "var(--color-danger)" : "var(--color-text-secondary)" }}
           >
             {m.specialExpenseTotal > 0 ? formatAmount(m.specialExpenseTotal) : "—"}
           </button>
-          <span className="text-right text-sm font-num font-semibold" style={{ color: "var(--color-text-primary)" }}>
+          <span className="text-left text-sm font-num font-semibold" style={{ color: "var(--color-text-primary)" }}>
             {formatAmount(m.remaining)}
           </span>
           <span
-            className="text-right font-num text-sm font-bold flex items-center justify-end gap-1.5"
+            className="text-left font-num text-sm font-bold flex items-center justify-start gap-1.5"
             style={{ color: negative ? "var(--color-danger)" : "var(--color-text-primary)" }}
           >
             {negative && <AlertTriangle size={14} style={{ color: "var(--color-danger)" }} />}
@@ -386,104 +418,197 @@ function SpecialEntriesDialog({
   );
 }
 
-interface Thread {
+interface SimpleNote {
   id: string;
-  title: string;
-  createdAt: string;
-  closedAt: string | null;
-  noteCount: number;
-  taskCount: number;
-  openTaskCount: number;
-}
-
-interface Note {
-  id: string;
-  thread_id: string;
   body: string;
   created_at: string;
   updated_at: string;
 }
 
-interface SimTask {
-  id: string;
-  thread_id: string;
-  title: string;
-  start_date: string | null;
-  done: boolean;
-  created_at: string;
-}
-
-function formatNoteTime(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatTaskDate(dateStr: string): string {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function NewThreadButton({ onCreated }: { onCreated: () => void }) {
+// Low-key notes feature: an icon button with a count badge that opens a
+// small popover — just freeform comments, no threads/tasks/titles.
+function NotesPopover() {
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("");
+  const [notes, setNotes] = useState<SimpleNote[] | null>(null);
+  const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
 
-  const handleCreate = async () => {
-    if (!title.trim()) return;
+  const load = useCallback(async () => {
+    const res = await fetch("/api/simulation/notes");
+    if (!res.ok) return;
+    setNotes(await res.json());
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleAdd = async () => {
+    if (!text.trim()) return;
     setSaving(true);
-    const res = await fetch("/api/simulation/threads", {
+    const res = await fetch("/api/simulation/notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: title.trim() }),
+      body: JSON.stringify({ body: text.trim() }),
     });
     setSaving(false);
     if (!res.ok) {
-      toast.error("Failed to create thread");
+      toast.error("Failed to save note");
       return;
     }
-    setTitle("");
-    setOpen(false);
-    onCreated();
+    setText("");
+    load();
   };
+
+  const handleDelete = async (id: string) => {
+    const res = await fetch(`/api/simulation/notes/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast.error("Failed to delete note");
+      return;
+    }
+    load();
+  };
+
+  const startEdit = (n: SimpleNote) => {
+    setEditingId(n.id);
+    setEditingText(n.body);
+  };
+
+  const saveEdit = async () => {
+    if (!editingId || !editingText.trim()) return;
+    const res = await fetch(`/api/simulation/notes/${editingId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: editingText.trim() }),
+    });
+    if (!res.ok) {
+      toast.error("Failed to save note");
+      return;
+    }
+    setEditingId(null);
+    load();
+  };
+
+  const count = notes?.length ?? 0;
 
   return (
     <Popover
       open={open}
       onOpenChange={(v) => {
         setOpen(v);
-        if (v) setTitle("");
+        if (v) load();
       }}
     >
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-1.5 h-[34px] px-3 rounded-full text-sm font-semibold cursor-pointer transition-all hover:bg-muted/40 active:scale-[0.96] active:bg-muted/60"
-          style={{ border: "1px dashed var(--color-border-strong)", color: "var(--color-text-secondary)" }}
+          title="Notes"
+          className="relative flex items-center justify-center h-[34px] w-[34px] rounded-full cursor-pointer transition-all hover:bg-muted/40 active:scale-95"
+          style={{ color: "var(--color-text-subtle)" }}
         >
-          <Plus size={14} />
-          New thread
+          <StickyNote size={16} />
+          {count > 0 && (
+            <span
+              className="absolute -top-0.5 -right-0.5 flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[10px] font-bold"
+              style={{ backgroundColor: "var(--color-text-subtle)", color: "var(--color-surface)" }}
+            >
+              {count}
+            </span>
+          )}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-72">
-        <div className="space-y-2">
-          <Input
-            placeholder="e.g. Debt repayment"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+      <PopoverContent className="w-80 p-3" align="end">
+        <p className="text-xs font-semibold uppercase tracking-[0.05em] mb-2" style={{ color: "var(--color-text-subtle)" }}>
+          Notes
+        </p>
+        {!notes ? (
+          <Skeleton className="h-16 w-full rounded-lg" />
+        ) : notes.length === 0 ? (
+          <p className="text-sm py-2 text-center" style={{ color: "var(--color-text-secondary)" }}>
+            No notes yet.
+          </p>
+        ) : (
+          <ul className="space-y-2 max-h-64 overflow-y-auto mb-2 pr-0.5">
+            {notes.map((n) => (
+              <li
+                key={n.id}
+                className="rounded-lg px-2.5 py-2"
+                style={{ border: "1px solid var(--color-border-default)", backgroundColor: "var(--color-surface-subtle)" }}
+              >
+                {editingId === n.id ? (
+                  <div className="space-y-1.5">
+                    <Textarea
+                      value={editingText}
+                      onChange={(e) => setEditingText(e.target.value)}
+                      className="text-sm"
+                      rows={2}
+                      autoFocus
+                    />
+                    <div className="flex justify-end gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 text-[11px] active:scale-95"
+                        onClick={() => setEditingId(null)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-6 px-2 text-[11px] active:scale-95"
+                        onClick={saveEdit}
+                        disabled={!editingText.trim()}
+                      >
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p
+                      onClick={() => startEdit(n)}
+                      className="text-sm whitespace-pre-wrap cursor-pointer transition-opacity hover:opacity-70"
+                      style={{ color: "var(--color-text-primary)" }}
+                    >
+                      {n.body}
+                    </p>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[10.5px]" style={{ color: "var(--color-text-subtle)" }}>
+                        {formatNoteTime(n.updated_at)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(n.id)}
+                        className="cursor-pointer transition-all hover:opacity-70 active:scale-90"
+                        style={{ color: "var(--color-text-subtle)" }}
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex items-end gap-1.5 pt-2" style={{ borderTop: "1px solid var(--color-border-subtle)" }}>
+          <Textarea
+            placeholder="Add a note…"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleCreate();
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleAdd();
+              }
             }}
-            autoFocus
+            className="text-sm flex-1"
+            rows={2}
           />
-          <Button className="w-full active:scale-[0.97]" onClick={handleCreate} disabled={saving || !title.trim()}>
-            Create
+          <Button size="sm" className="h-8 active:scale-95" onClick={handleAdd} disabled={saving || !text.trim()}>
+            <Plus size={14} />
           </Button>
         </div>
       </PopoverContent>
@@ -491,626 +616,11 @@ function NewThreadButton({ onCreated }: { onCreated: () => void }) {
   );
 }
 
-function ThreadChips({
-  threads,
-  onOpen,
-  onDelete,
-}: {
-  threads: Thread[] | null;
-  onOpen: (id: string) => void;
-  onDelete: (id: string) => void;
-}) {
-  if (!threads || threads.length === 0) return null;
-  return (
-    <>
-      {threads.map((t) => (
-        <button
-          key={t.id}
-          type="button"
-          onClick={() => onOpen(t.id)}
-          title={t.title}
-          className="group flex items-center gap-2 h-[34px] pl-3 pr-2 rounded-full text-sm font-semibold cursor-pointer transition-all hover:bg-muted/40 active:scale-[0.96] active:bg-muted/60"
-          style={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border-default)", color: "var(--color-text-primary)" }}
-        >
-          <span className="truncate max-w-[140px]">{t.title}</span>
-          {t.noteCount > 0 && (
-            <span className="flex items-center gap-0.5 text-[11px] font-bold" style={{ color: "var(--color-primary-hover)" }}>
-              <MessageSquare size={11} />
-              {t.noteCount}
-            </span>
-          )}
-          {t.taskCount > 0 && (
-            <span
-              className="flex items-center gap-0.5 text-[11px] font-bold"
-              style={{ color: t.openTaskCount > 0 ? "var(--color-warning)" : "var(--color-success)" }}
-            >
-              <CheckSquare size={11} />
-              {t.openTaskCount}/{t.taskCount}
-            </span>
-          )}
-          <span
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(t.id);
-            }}
-            className="opacity-0 group-hover:opacity-100 transition-all cursor-pointer p-0.5 hover:opacity-70 active:scale-90"
-            style={{ color: "var(--color-text-subtle)" }}
-          >
-            <Trash2 size={12} />
-          </span>
-        </button>
-      ))}
-    </>
-  );
-}
-
-function ArchivedThreadsDialog({
-  open,
-  onOpenChange,
-  threads,
-  onOpenThread,
-  onReopen,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  threads: Thread[];
-  onOpenThread: (id: string) => void;
-  onReopen: (id: string) => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Archived threads</DialogTitle>
-        </DialogHeader>
-        {threads.length === 0 ? (
-          <p className="text-sm py-4 text-center" style={{ color: "var(--color-text-secondary)" }}>
-            Nothing archived yet.
-          </p>
-        ) : (
-          <ul className="space-y-1.5 max-h-[50vh] overflow-y-auto">
-            {threads.map((t) => (
-              <li
-                key={t.id}
-                className="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5"
-                style={{ border: "1px solid var(--color-border-default)" }}
-              >
-                <button
-                  type="button"
-                  onClick={() => onOpenThread(t.id)}
-                  title={t.title}
-                  className="text-sm font-semibold truncate text-left cursor-pointer transition-opacity hover:opacity-70"
-                  style={{ color: "var(--color-text-primary)" }}
-                >
-                  {t.title}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onReopen(t.id)}
-                  className="text-xs font-semibold cursor-pointer transition-all hover:opacity-70 active:scale-95 shrink-0"
-                  style={{ color: "var(--color-primary-hover)" }}
-                >
-                  Reopen
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// A note's first line acts as its title — bold/larger in both view and edit.
-function splitNoteBody(body: string): { title: string; rest: string } {
-  const idx = body.indexOf("\n");
-  if (idx === -1) return { title: body, rest: "" };
-  return { title: body.slice(0, idx), rest: body.slice(idx + 1) };
-}
-
-function joinNoteBody(title: string, rest: string): string {
-  return rest.trim() ? `${title}\n${rest}` : title;
-}
-
-function ThreadDetailDialog({
-  threadId,
-  threadTitle,
-  onOpenChange,
-  onChanged,
-}: {
-  threadId: string;
-  threadTitle: string;
-  onOpenChange: (v: boolean) => void;
-  onChanged: () => void;
-}) {
-  const [title, setTitle] = useState(threadTitle);
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [titleDraft, setTitleDraft] = useState(threadTitle);
-
-  const [notes, setNotes] = useState<Note[] | null>(null);
-  const [newNoteTitle, setNewNoteTitle] = useState("");
-  const [newNoteRest, setNewNoteRest] = useState("");
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [editingNoteTitle, setEditingNoteTitle] = useState("");
-  const [editingNoteRest, setEditingNoteRest] = useState("");
-
-  const [tasks, setTasks] = useState<SimTask[] | null>(null);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskDate, setNewTaskDate] = useState("");
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [editingTaskTitle, setEditingTaskTitle] = useState("");
-
-  useEffect(() => {
-    setTitle(threadTitle);
-    setTitleDraft(threadTitle);
-    setEditingTitle(false);
-  }, [threadId, threadTitle]);
-
-  const handleSaveTitle = async () => {
-    const next = titleDraft.trim();
-    if (!next || next === title) {
-      setEditingTitle(false);
-      setTitleDraft(title);
-      return;
-    }
-    const res = await fetch(`/api/simulation/threads/${threadId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: next }),
-    });
-    if (!res.ok) {
-      toast.error("Failed to rename thread");
-      return;
-    }
-    setTitle(next);
-    setEditingTitle(false);
-    onChanged();
-  };
-
-  const handleCloseThread = async () => {
-    const res = await fetch(`/api/simulation/threads/${threadId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ closed: true }),
-    });
-    if (!res.ok) {
-      toast.error("Failed to close thread");
-      return;
-    }
-    onChanged();
-    onOpenChange(false);
-  };
-
-  const loadNotes = useCallback(async () => {
-    const res = await fetch(`/api/simulation/threads/${threadId}/notes`);
-    if (!res.ok) return;
-    setNotes(await res.json());
-  }, [threadId]);
-
-  const loadTasks = useCallback(async () => {
-    const res = await fetch(`/api/simulation/threads/${threadId}/tasks`);
-    if (!res.ok) return;
-    setTasks(await res.json());
-  }, [threadId]);
-
-  useEffect(() => {
-    setNotes(null);
-    setTasks(null);
-    loadNotes();
-    loadTasks();
-  }, [threadId, loadNotes, loadTasks]);
-
-  const handleAddNote = async () => {
-    if (!newNoteTitle.trim()) return;
-    const res = await fetch(`/api/simulation/threads/${threadId}/notes`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: joinNoteBody(newNoteTitle.trim(), newNoteRest) }),
-    });
-    if (!res.ok) {
-      toast.error("Failed to save note");
-      return;
-    }
-    setNewNoteTitle("");
-    setNewNoteRest("");
-    loadNotes();
-    onChanged();
-  };
-
-  const startEditNote = (note: Note) => {
-    const { title: t, rest } = splitNoteBody(note.body);
-    setEditingNoteId(note.id);
-    setEditingNoteTitle(t);
-    setEditingNoteRest(rest);
-  };
-
-  const handleSaveNoteEdit = async () => {
-    if (!editingNoteId || !editingNoteTitle.trim()) return;
-    const res = await fetch(`/api/simulation/notes/${editingNoteId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: joinNoteBody(editingNoteTitle.trim(), editingNoteRest) }),
-    });
-    if (!res.ok) {
-      toast.error("Failed to save note");
-      return;
-    }
-    setEditingNoteId(null);
-    loadNotes();
-  };
-
-  const handleDeleteNote = async (id: string) => {
-    const res = await fetch(`/api/simulation/notes/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      toast.error("Failed to delete note");
-      return;
-    }
-    loadNotes();
-    onChanged();
-  };
-
-  const handleAddTask = async () => {
-    if (!newTaskTitle.trim()) return;
-    const res = await fetch(`/api/simulation/threads/${threadId}/tasks`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: newTaskTitle.trim(), startDate: newTaskDate || null }),
-    });
-    if (!res.ok) {
-      toast.error("Failed to save task");
-      return;
-    }
-    setNewTaskTitle("");
-    setNewTaskDate("");
-    loadTasks();
-    onChanged();
-  };
-
-  const handleToggleDone = async (task: SimTask) => {
-    const res = await fetch(`/api/simulation/tasks/${task.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ done: !task.done }),
-    });
-    if (!res.ok) {
-      toast.error("Failed to update task");
-      return;
-    }
-    loadTasks();
-    onChanged();
-  };
-
-  const startEditTask = (task: SimTask) => {
-    setEditingTaskId(task.id);
-    setEditingTaskTitle(task.title);
-  };
-
-  const handleSaveTaskTitle = async () => {
-    if (!editingTaskId || !editingTaskTitle.trim()) return;
-    const res = await fetch(`/api/simulation/tasks/${editingTaskId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: editingTaskTitle.trim() }),
-    });
-    if (!res.ok) {
-      toast.error("Failed to save task");
-      return;
-    }
-    setEditingTaskId(null);
-    loadTasks();
-  };
-
-  const handleDeleteTask = async (id: string) => {
-    const res = await fetch(`/api/simulation/tasks/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      toast.error("Failed to delete task");
-      return;
-    }
-    loadTasks();
-    onChanged();
-  };
-
-  return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
-        <DialogHeader>
-          <div className="flex items-center justify-between gap-3 pr-6">
-            {editingTitle ? (
-              <Input
-                value={titleDraft}
-                onChange={(e) => setTitleDraft(e.target.value)}
-                onBlur={handleSaveTitle}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSaveTitle();
-                  if (e.key === "Escape") {
-                    setEditingTitle(false);
-                    setTitleDraft(title);
-                  }
-                }}
-                autoFocus
-                className="text-lg font-semibold h-auto py-1"
-              />
-            ) : (
-              <DialogTitle
-                onClick={() => setEditingTitle(true)}
-                className="cursor-pointer transition-opacity hover:opacity-70 w-fit"
-              >
-                {title}
-              </DialogTitle>
-            )}
-            <button
-              type="button"
-              onClick={handleCloseThread}
-              className="flex items-center gap-1 text-xs font-semibold cursor-pointer transition-all hover:opacity-70 active:scale-95 shrink-0"
-              style={{ color: "var(--color-text-subtle)" }}
-            >
-              <Archive size={13} />
-              Close thread
-            </button>
-          </div>
-        </DialogHeader>
-
-        <div className="grid grid-cols-2 gap-6 flex-1 min-h-0 mt-1">
-          <div className="flex flex-col min-h-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.05em] mb-2.5" style={{ color: "var(--color-text-subtle)" }}>
-              Notes
-            </p>
-            {!notes ? (
-              <Skeleton className="h-24 w-full rounded-lg" />
-            ) : notes.length === 0 ? (
-              <p className="text-sm py-4 text-center flex-1" style={{ color: "var(--color-text-secondary)" }}>
-                No notes yet.
-              </p>
-            ) : (
-              <ul className="space-y-2.5 flex-1 overflow-y-auto pr-1">
-                {notes.map((n) => {
-                  const { title: noteTitle, rest: noteRest } = splitNoteBody(n.body);
-                  return (
-                    <li
-                      key={n.id}
-                      className="rounded-lg px-3 py-2.5"
-                      style={{ border: "1px solid var(--color-border-default)", backgroundColor: "var(--color-surface-subtle)" }}
-                    >
-                      {editingNoteId === n.id ? (
-                        <div className="space-y-2">
-                          <Input
-                            value={editingNoteTitle}
-                            onChange={(e) => setEditingNoteTitle(e.target.value)}
-                            className="text-sm font-bold"
-                            placeholder="Title"
-                            autoFocus
-                          />
-                          <Textarea
-                            value={editingNoteRest}
-                            onChange={(e) => setEditingNoteRest(e.target.value)}
-                            className="text-sm"
-                            rows={3}
-                            placeholder="Details (optional)"
-                          />
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" className="active:scale-[0.96]" onClick={() => setEditingNoteId(null)}>
-                              Cancel
-                            </Button>
-                            <Button size="sm" className="active:scale-[0.96]" onClick={handleSaveNoteEdit} disabled={!editingNoteTitle.trim()}>
-                              Save
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div
-                            onClick={() => startEditNote(n)}
-                            className="cursor-pointer transition-opacity hover:opacity-70"
-                          >
-                            <p className="text-sm font-bold" style={{ color: "var(--color-text-primary)" }}>
-                              {noteTitle}
-                            </p>
-                            {noteRest && (
-                              <p className="text-sm whitespace-pre-wrap mt-1" style={{ color: "var(--color-text-primary)" }}>
-                                {noteRest}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex items-center justify-between mt-2">
-                            <span className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
-                              {formatNoteTime(n.updated_at)}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteNote(n.id)}
-                              className="cursor-pointer transition-all hover:opacity-70 active:scale-90"
-                              style={{ color: "var(--color-danger)" }}
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            <div
-              className="space-y-2 pt-3 mt-2"
-              style={{ borderTop: "1px solid var(--color-border-subtle)" }}
-            >
-              <Input
-                placeholder="Title"
-                value={newNoteTitle}
-                onChange={(e) => setNewNoteTitle(e.target.value)}
-                className="font-bold"
-              />
-              <div className="flex items-end gap-2">
-                <Textarea
-                  placeholder="Details (optional)"
-                  value={newNoteRest}
-                  onChange={(e) => setNewNoteRest(e.target.value)}
-                  className="text-sm flex-1"
-                  rows={2}
-                />
-                <Button className="active:scale-[0.96]" onClick={handleAddNote} disabled={!newNoteTitle.trim()}>
-                  Add
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col min-h-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.05em] mb-2.5" style={{ color: "var(--color-text-subtle)" }}>
-              Tasks
-            </p>
-            {!tasks ? (
-              <Skeleton className="h-24 w-full rounded-lg" />
-            ) : tasks.length === 0 ? (
-              <p className="text-sm py-4 text-center flex-1" style={{ color: "var(--color-text-secondary)" }}>
-                No tasks yet.
-              </p>
-            ) : (
-              <ul className="space-y-2 flex-1 overflow-y-auto pr-1">
-                {tasks.map((t) => (
-                  <li key={t.id} className="rounded-lg" style={{ border: "1px solid var(--color-border-default)" }}>
-                    <div className="flex items-center gap-2.5 px-3 py-2.5">
-                      <Checkbox checked={t.done} onCheckedChange={() => handleToggleDone(t)} />
-                      <div className="flex-1 min-w-0">
-                        {editingTaskId === t.id ? (
-                          <Input
-                            value={editingTaskTitle}
-                            onChange={(e) => setEditingTaskTitle(e.target.value)}
-                            onBlur={handleSaveTaskTitle}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") handleSaveTaskTitle();
-                              if (e.key === "Escape") setEditingTaskId(null);
-                            }}
-                            autoFocus
-                            className="h-7 text-sm"
-                          />
-                        ) : (
-                          <p
-                            onClick={() => startEditTask(t)}
-                            className="text-sm font-medium truncate cursor-pointer transition-opacity hover:opacity-70"
-                            style={{
-                              color: t.done ? "var(--color-text-subtle)" : "var(--color-text-primary)",
-                              textDecoration: t.done ? "line-through" : "none",
-                            }}
-                          >
-                            {t.title}
-                          </p>
-                        )}
-                        {t.start_date && (
-                          <p className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
-                            Starts {formatTaskDate(t.start_date)}
-                          </p>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTask(t.id)}
-                        className="cursor-pointer transition-all hover:opacity-70 active:scale-90 shrink-0"
-                        style={{ color: "var(--color-danger)" }}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div
-              className="space-y-2 pt-3 mt-2"
-              style={{ borderTop: "1px solid var(--color-border-subtle)" }}
-            >
-              <Input
-                placeholder="New task"
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleAddTask();
-                }}
-              />
-              <div className="flex items-center gap-2">
-                <Input
-                  type="date"
-                  value={newTaskDate}
-                  onChange={(e) => setNewTaskDate(e.target.value)}
-                  className="flex-1 font-num"
-                />
-                <Button className="active:scale-[0.96]" onClick={handleAddTask} disabled={!newTaskTitle.trim()}>
-                  <Plus size={15} />
-                  Add
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function SimulationPage() {
-  const [year, setYear] = useState(2026);
+  const [year] = useState(() => new Date().getFullYear());
   const [data, setData] = useState<SimulationData | null>(null);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>("JPY");
   const [entriesDialog, setEntriesDialog] = useState<{ month: string; kind: "income" | "expense" } | null>(null);
-  const [threads, setThreads] = useState<Thread[] | null>(null);
-  const [closedThreads, setClosedThreads] = useState<Thread[] | null>(null);
-  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  const [archivedOpen, setArchivedOpen] = useState(false);
-
-  const loadThreads = useCallback(async () => {
-    const res = await fetch("/api/simulation/threads");
-    if (!res.ok) return;
-    setThreads(await res.json());
-  }, []);
-
-  const loadClosedThreads = useCallback(async () => {
-    const res = await fetch("/api/simulation/threads?closed=true");
-    if (!res.ok) return;
-    setClosedThreads(await res.json());
-  }, []);
-
-  const refreshThreads = useCallback(() => {
-    loadThreads();
-    loadClosedThreads();
-  }, [loadThreads, loadClosedThreads]);
-
-  useEffect(() => {
-    refreshThreads();
-  }, [refreshThreads]);
-
-  const handleDeleteThread = async (id: string) => {
-    const res = await fetch(`/api/simulation/threads/${id}`, { method: "DELETE" });
-    if (!res.ok) {
-      toast.error("Failed to delete thread");
-      return;
-    }
-    if (selectedThreadId === id) setSelectedThreadId(null);
-    refreshThreads();
-  };
-
-  const handleReopenThread = async (id: string) => {
-    const res = await fetch(`/api/simulation/threads/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ closed: false }),
-    });
-    if (!res.ok) {
-      toast.error("Failed to reopen thread");
-      return;
-    }
-    refreshThreads();
-  };
-
-  const openArchivedThread = (id: string) => {
-    setArchivedOpen(false);
-    setSelectedThreadId(id);
-  };
-
-  const selectedThread =
-    threads?.find((t) => t.id === selectedThreadId) ??
-    closedThreads?.find((t) => t.id === selectedThreadId) ??
-    null;
 
   const load = useCallback(async (y: number) => {
     const res = await fetch(`/api/simulation?year=${y}`);
@@ -1165,40 +675,9 @@ export default function SimulationPage() {
 
   return (
     <div>
-      <div className="mt-8 mb-5 flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <Select value={String(year)} onValueChange={(v) => setYear(parseInt(v, 10))}>
-            <SelectTrigger
-              className="w-fit h-auto rounded-[10px] py-2.5 px-4 text-sm font-semibold gap-2 [&>svg]:hidden transition-colors hover:bg-muted/40 active:bg-muted/60"
-              style={{ borderColor: "var(--color-border-default)", color: "var(--color-text-primary)" }}
-            >
-              <SelectValue />
-              <ChevronDown size={15} style={{ color: "var(--color-text-subtle)" }} />
-            </SelectTrigger>
-            <SelectContent>
-              {YEAR_OPTIONS.map((y) => (
-                <SelectItem key={y} value={String(y)}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
-        </div>
-        <div className="flex items-center flex-wrap justify-end gap-2">
-          <ThreadChips threads={threads} onOpen={setSelectedThreadId} onDelete={handleDeleteThread} />
-          <NewThreadButton onCreated={refreshThreads} />
-          {closedThreads && closedThreads.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setArchivedOpen(true)}
-              className="text-xs font-medium cursor-pointer transition-opacity hover:opacity-70"
-              style={{ color: "var(--color-text-subtle)" }}
-            >
-              Archived ({closedThreads.length})
-            </button>
-          )}
-        </div>
+      <div className="mt-8 mb-5 flex items-center justify-end gap-2">
+        <NotesPopover />
+        <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
       </div>
 
       <Card
@@ -1208,46 +687,31 @@ export default function SimulationPage() {
         {!data ? (
           <Skeleton className="h-16 w-full rounded-lg" />
         ) : (
-          <>
-            <div className="flex items-end justify-between flex-wrap gap-4">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.06em] mb-1" style={{ color: "var(--color-text-subtle)" }}>
-                  {data.year} projected cumulative balance
-                </p>
-                <p className="font-display text-[32px] font-bold leading-none" style={{ color: "var(--color-text-primary)" }}>
-                  {formatAmount(data.yearEndProjection)}
-                </p>
-              </div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <span className="flex items-center gap-1 font-num font-bold text-[15px]" style={{ color: "var(--color-success)" }}>
-                  <TrendingUp size={14} />
-                  {formatAmount(data.annualIncome)}
-                </span>
-                <span className="text-[15px] font-semibold" style={{ color: "var(--color-text-subtle)" }}>−</span>
-                <span className="flex items-center gap-1 font-num font-bold text-[15px]" style={{ color: "var(--color-text-secondary)" }}>
-                  <TrendingDown size={14} />
-                  {formatAmount(data.annualExpense + data.annualSpecialExpense)}
-                </span>
-                <span className="text-[15px] font-semibold" style={{ color: "var(--color-text-subtle)" }}>=</span>
-                <span className="font-num font-bold text-[16px]" style={{ color: "var(--color-text-primary)" }}>
-                  {formatAmount(data.annualRemaining)}
-                </span>
-              </div>
+          <div className="flex flex-col gap-2.5">
+            <p className="font-display text-[32px] font-bold leading-none" style={{ color: "var(--color-text-primary)" }}>
+              {formatAmount(data.yearEndProjection)}
+            </p>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="flex items-center gap-1 font-num font-bold text-[15px]" style={{ color: "var(--color-success)" }}>
+                <TrendingUp size={14} />
+                {formatAmount(data.annualIncome)}
+              </span>
+              <span className="text-[15px] font-semibold" style={{ color: "var(--color-text-subtle)" }}>−</span>
+              <span className="flex items-center gap-1 font-num font-bold text-[15px]" style={{ color: "var(--color-text-secondary)" }}>
+                <TrendingDown size={14} />
+                {formatAmount(data.annualExpense + data.annualSpecialExpense)}
+              </span>
+              <span className="text-[15px] font-semibold" style={{ color: "var(--color-text-subtle)" }}>=</span>
+              <span className="font-num font-bold text-[16px]" style={{ color: "var(--color-text-primary)" }}>
+                {formatAmount(data.annualRemaining)}
+              </span>
             </div>
             {data.annualIncome > 0 && (
-              <div className="mt-3">
-                <Progress
-                  value={savingsRatePct}
-                  className="h-1.5"
-                  style={{ backgroundColor: "var(--kg-track)" }}
-                  indicatorStyle={{ backgroundColor: "var(--color-primary)" }}
-                />
-                <p className="text-xs font-medium mt-1.5" style={{ color: "var(--color-primary-hover)" }}>
-                  Saving {savingsRatePct}% of income so far this year
-                </p>
-              </div>
+              <p className="text-xs font-medium" style={{ color: "var(--color-primary-hover)" }}>
+                Saving {savingsRatePct}% of income
+              </p>
             )}
-          </>
+          </div>
         )}
       </Card>
 
@@ -1257,15 +721,15 @@ export default function SimulationPage() {
       >
         <div
           className="grid px-7 py-4 border-b"
-          style={{ gridTemplateColumns: GRID_COLS, gap: 8, borderColor: "var(--color-border-default)" }}
+          style={{ gridTemplateColumns: GRID_COLS, gap: GRID_GAP, borderColor: "var(--color-border-default)" }}
         >
           <span className="text-xs font-semibold uppercase tracking-[0.05em]" style={{ color: "var(--color-text-subtle)" }}>Month</span>
-          <span className="text-xs font-semibold uppercase tracking-[0.05em] text-right" style={{ color: "var(--color-text-subtle)" }}>Income</span>
-          <span className="text-xs font-semibold uppercase tracking-[0.05em] text-right" style={{ color: "var(--color-text-subtle)" }}>Special income</span>
-          <span className="text-xs font-semibold uppercase tracking-[0.05em] text-right" style={{ color: "var(--color-text-subtle)" }}>Expense</span>
-          <span className="text-xs font-semibold uppercase tracking-[0.05em] text-right" style={{ color: "var(--color-text-subtle)" }}>Special expense</span>
-          <span className="text-xs font-semibold uppercase tracking-[0.05em] text-right" style={{ color: "var(--color-text-subtle)" }}>Remaining</span>
-          <span className="text-xs font-semibold uppercase tracking-[0.05em] text-right" style={{ color: "var(--color-text-subtle)" }}>Cumulative</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.05em] text-left" style={{ color: "var(--color-text-subtle)" }}>Income</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.05em] text-left" style={{ color: "var(--color-text-subtle)" }}>Special income</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.05em] text-left" style={{ color: "var(--color-text-subtle)" }}>Expense</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.05em] text-left" style={{ color: "var(--color-text-subtle)" }}>Special expense</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.05em] text-left" style={{ color: "var(--color-text-subtle)" }}>Remaining</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.05em] text-left" style={{ color: "var(--color-text-subtle)" }}>Cumulative</span>
         </div>
         {!data ? (
           <div className="p-6 space-y-3">
@@ -1303,25 +767,6 @@ export default function SimulationPage() {
           onChanged={() => load(year)}
         />
       )}
-
-      {selectedThread && (
-        <ThreadDetailDialog
-          threadId={selectedThread.id}
-          threadTitle={selectedThread.title}
-          onOpenChange={(v) => {
-            if (!v) setSelectedThreadId(null);
-          }}
-          onChanged={refreshThreads}
-        />
-      )}
-
-      <ArchivedThreadsDialog
-        open={archivedOpen}
-        onOpenChange={setArchivedOpen}
-        threads={closedThreads ?? []}
-        onOpenThread={openArchivedThread}
-        onReopen={handleReopenThread}
-      />
     </div>
   );
 }

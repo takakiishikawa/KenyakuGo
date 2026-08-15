@@ -16,13 +16,14 @@ export function CurrencySwitch({
           key={c}
           type="button"
           onClick={() => onChange(c)}
-          className="px-3 h-[38px] text-sm font-semibold cursor-pointer transition-all hover:opacity-80 active:scale-95"
+          title={c === "JPY" ? "Japanese Yen" : "Vietnamese Dong"}
+          className="w-10 h-[38px] text-base font-semibold cursor-pointer transition-all hover:opacity-80 active:scale-95"
           style={{
-            backgroundColor: value === c ? "var(--color-primary)" : "transparent",
+            backgroundColor: value === c ? "var(--color-text-primary)" : "transparent",
             color: value === c ? "#fff" : "var(--color-text-secondary)",
           }}
         >
-          {c === "JPY" ? "¥ JPY" : "₫ VND"}
+          {c === "JPY" ? "¥" : "₫"}
         </button>
       ))}
     </div>

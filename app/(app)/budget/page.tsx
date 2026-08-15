@@ -371,8 +371,6 @@ function CategoryCard({
 function SectionGrid({
   title,
   categories,
-  totalBudget,
-  formatAmount,
   displayCurrency,
   overridesByCategory,
   onUpdate,
@@ -382,8 +380,6 @@ function SectionGrid({
 }: {
   title: string;
   categories: Category[];
-  totalBudget: number;
-  formatAmount: (vndAmount: number) => string;
   displayCurrency: DisplayCurrency;
   overridesByCategory: Map<string, CategoryOverride[]>;
   onUpdate: (id: string, patch: Partial<Pick<Category, "name" | "budget" | "is_fixed">>) => Promise<void>;
@@ -411,23 +407,15 @@ function SectionGrid({
             {categories.length} {categories.length === 1 ? "category" : "categories"}
           </span>
         </span>
-        <div className="flex items-center gap-3">
-          {totalBudget > 0 && (
-            <span className="font-num font-bold text-[15px]" style={{ color: "var(--color-text-primary)" }}>
-              {formatAmount(totalBudget)}
-            </span>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 px-3 text-xs font-semibold hover:opacity-80"
-            style={{ borderColor: "var(--color-border-default)", color: "var(--color-text-primary)" }}
-            onClick={onManageClick}
-          >
-            <Settings2 size={13} />
-            Manage
-          </Button>
-        </div>
+        <button
+          type="button"
+          onClick={onManageClick}
+          title="Manage categories"
+          className="p-2 rounded-lg transition-all hover:bg-muted active:scale-90"
+          style={{ color: "var(--color-text-subtle)" }}
+        >
+          <Settings2 size={16} />
+        </button>
       </div>
 
       <div className="grid grid-cols-3 gap-3 p-5">
@@ -447,14 +435,27 @@ function SectionGrid({
   );
 }
 
+const CURRENCY_STORAGE_KEY = "piggybank:displayCurrency";
+
 export default function BudgetPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [overrides, setOverrides] = useState<CategoryOverride[]>([]);
   const [loading, setLoading] = useState(true);
-  const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>("VND");
+  const [displayCurrency, setDisplayCurrencyState] = useState<DisplayCurrency>("VND");
   const [manageOpen, setManageOpen] = useState<"variable" | "fixed" | null>(null);
   const [trendOpen, setTrendOpen] = useState(false);
   const formatAmount = makeFormatAmount(displayCurrency);
+
+  // 通貨切替は最後に選んだ単位を次回訪問時も引き継ぐ。
+  useEffect(() => {
+    const saved = window.localStorage.getItem(CURRENCY_STORAGE_KEY);
+    if (saved === "VND" || saved === "JPY") setDisplayCurrencyState(saved);
+  }, []);
+
+  const setDisplayCurrency = useCallback((v: DisplayCurrency) => {
+    setDisplayCurrencyState(v);
+    window.localStorage.setItem(CURRENCY_STORAGE_KEY, v);
+  }, []);
 
   const load = useCallback(async () => {
     const [catsRes, overridesRes] = await Promise.all([
@@ -594,8 +595,8 @@ export default function BudgetPage() {
             boxShadow: "0 1px 2px rgba(120,72,10,.04), 0 8px 24px rgba(120,72,10,.05)",
           }}
         >
-          <div className="flex items-center justify-between gap-4 flex-wrap mb-1.5">
-            <div className="flex items-baseline gap-2.5 flex-wrap">
+          <div className="flex items-center justify-between gap-x-8 gap-y-3 flex-wrap">
+            <div className="flex items-baseline gap-2.5">
               <span
                 className="text-[11px] font-semibold uppercase tracking-[0.06em]"
                 style={{ color: "var(--color-text-subtle)" }}
@@ -606,12 +607,26 @@ export default function BudgetPage() {
                 {formatAmount(grandTotal)}
               </span>
             </div>
+
+            <div className="flex items-center gap-5 text-[13px]" style={{ color: "var(--color-text-secondary)" }}>
+              <div>
+                Variable{" "}
+                <b className="font-num font-bold" style={{ color: "var(--color-text-primary)" }}>
+                  {formatAmount(variableBudgetTotal)}
+                </b>
+              </div>
+              <div>
+                Fixed{" "}
+                <b className="font-num font-bold" style={{ color: "var(--color-text-primary)" }}>
+                  {formatAmount(fixedBudgetTotal)}
+                </b>
+              </div>
+            </div>
+
             <div className="flex items-center gap-2 shrink-0">
               <Button
-                variant="outline"
                 size="sm"
-                className="rounded-[10px] h-[38px] font-semibold hover:opacity-80"
-                style={{ borderColor: "var(--color-border-default)", color: "var(--color-text-primary)" }}
+                className="rounded-[10px] h-[38px] font-semibold"
                 onClick={() => setTrendOpen(true)}
               >
                 <TrendingUp size={14} />
@@ -620,28 +635,12 @@ export default function BudgetPage() {
               <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
             </div>
           </div>
-          <div className="flex gap-6 text-[13px]" style={{ color: "var(--color-text-secondary)" }}>
-            <div>
-              Variable{" "}
-              <b className="font-num font-bold" style={{ color: "var(--color-text-primary)" }}>
-                {formatAmount(variableBudgetTotal)}
-              </b>
-            </div>
-            <div>
-              Fixed{" "}
-              <b className="font-num font-bold" style={{ color: "var(--color-text-primary)" }}>
-                {formatAmount(fixedBudgetTotal)}
-              </b>
-            </div>
-          </div>
         </Card>
       )}
 
       <SectionGrid
         title="Variable Costs"
         categories={variable}
-        totalBudget={variableBudgetTotal}
-        formatAmount={formatAmount}
         displayCurrency={displayCurrency}
         overridesByCategory={overridesByCategory}
         onUpdate={handleUpdate}
@@ -653,8 +652,6 @@ export default function BudgetPage() {
       <SectionGrid
         title="Fixed Costs"
         categories={fixed}
-        totalBudget={fixedBudgetTotal}
-        formatAmount={formatAmount}
         displayCurrency={displayCurrency}
         overridesByCategory={overridesByCategory}
         onUpdate={handleUpdate}

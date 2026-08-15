@@ -128,8 +128,7 @@ export function BudgetTrendDialog({
         <DialogHeader className="px-7 py-5 border-b" style={{ borderColor: "var(--color-border-default)" }}>
           <DialogTitle>Budget Trend</DialogTitle>
           <DialogDescription>
-            Next {points?.length ?? 6} months, including any scheduled changes. Hover a point for the
-            per-category breakdown.
+            Next {points?.length ?? 6} months, including any scheduled changes.
           </DialogDescription>
         </DialogHeader>
 

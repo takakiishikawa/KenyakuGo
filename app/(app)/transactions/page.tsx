@@ -530,9 +530,9 @@ export default function TransactionsPage() {
       {
         id: "amount",
         accessorKey: "amount",
-        header: () => <div className="text-right pr-4">Amount</div>,
+        header: "Amount",
         cell: ({ row }) => (
-          <div className="text-right font-num text-sm text-foreground pr-4 min-w-[180px]">
+          <div className="text-left font-num text-sm text-foreground min-w-[140px]">
             {formatVND(row.original.amount)}
           </div>
         ),

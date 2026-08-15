@@ -349,20 +349,17 @@ export default function TransactionsPage() {
     fetchCategories();
   };
 
-  const handleSaveCategory = async (tx: Transaction) => {
-    if (!editCategory || editCategory === tx.category) {
-      setEditingId(null);
-      return;
-    }
+  const handleSaveCategory = async (tx: Transaction, category: string) => {
+    setEditingId(null);
+    if (!category || category === tx.category) return;
     setSavingId(tx.id);
     await fetch(`/api/transactions/${tx.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category: editCategory }),
+      body: JSON.stringify({ category }),
     });
     toast.success("Category updated");
     setSavingId(null);
-    setEditingId(null);
     fetchTransactions();
   };
 
@@ -466,34 +463,28 @@ export default function TransactionsPage() {
           const isEditing = editingId === tx.id;
           if (isEditing) {
             return (
-              <div className="flex items-center gap-2">
-                <Select value={editCategory} onValueChange={setEditCategory}>
-                  <SelectTrigger className="w-32 h-8 transition-colors hover:bg-muted/40 active:bg-muted/60">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  size="sm"
-                  onClick={() => handleSaveCategory(tx)}
-                  disabled={savingId === tx.id}
-                >
-                  {savingId === tx.id ? "…" : "Save"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setEditingId(null)}
-                >
-                  ✕
-                </Button>
-              </div>
+              <Select
+                value={editCategory}
+                defaultOpen
+                onValueChange={(v) => {
+                  setEditCategory(v);
+                  handleSaveCategory(tx, v);
+                }}
+                onOpenChange={(open) => {
+                  if (!open) setEditingId(null);
+                }}
+              >
+                <SelectTrigger className="w-32 h-8 transition-colors hover:bg-muted/40 active:bg-muted/60">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             );
           }
           return (

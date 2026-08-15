@@ -369,10 +369,10 @@ function ReportTable({
     <TableCell
       key={i}
       onClick={opts.onClick}
-      className={cn("text-right font-num", opts.bold && "font-bold", opts.onClick && "cursor-pointer hover:underline")}
+      className={cn("text-left font-num", opts.bold && "font-bold", opts.onClick && "cursor-pointer hover:underline")}
       style={{ color: opts.bold || !opts.showDash || v > 0 ? "var(--color-text-primary)" : "var(--color-text-subtle)" }}
     >
-      <span className="inline-flex items-center justify-end gap-1.5">
+      <span className="inline-flex items-center justify-start gap-1.5">
         <span>{opts.showDash && v === 0 ? "–" : formatAmount(v)}</span>
         {delta && <DeltaBadge delta={delta} />}
       </span>
@@ -416,14 +416,16 @@ function ReportTable({
 
   return (
     <div className="overflow-x-auto">
-      <Table>
+      {/* w-auto: 左寄せにした列が w-full の table 幅いっぱいに間延びして
+          列間が空かないよう、テーブル自体は内容幅に収める。 */}
+      <Table className="w-auto">
         <TableHeader>
           <TableRow>
             <TableHead className="whitespace-nowrap">Category</TableHead>
             {periods.map((p) => (
               <TableHead
                 key={p.label}
-                className={cn("text-right whitespace-nowrap", p.isForecast && "italic")}
+                className={cn("text-left whitespace-nowrap", p.isForecast && "italic")}
                 style={p.isForecast ? { color: "var(--color-text-subtle)" } : undefined}
                 title={p.isForecast ? "Projected — this month is still in progress" : undefined}
               >

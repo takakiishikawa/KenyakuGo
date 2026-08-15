@@ -57,6 +57,7 @@ interface PeriodItem {
   byCategory: Record<string, number>;
   start: string;
   end: string;
+  isForecast?: boolean;
 }
 interface TxItem {
   id: string;
@@ -301,8 +302,20 @@ function CategoryChip({
   );
 }
 
-// 期間 x カテゴリの一覧表。Allタブでは固定費/変動費をグループ化して表示する。
-// 直近月の「先月比」を各カテゴリ・合計行の末尾に表示する。
+// 各セルごとに前月比を出すためのdelta配列(先頭列は比較対象が無いのでnull)。
+// 当月・前月どちらも0円の行は「比較するものが無い」として表示しない。
+function deltasFor(values: number[]): (Delta | null)[] {
+  return values.map((v, i) => {
+    if (i === 0) return null;
+    const prev = values[i - 1];
+    if (v === 0 && prev === 0) return null;
+    return computeDelta(v, prev);
+  });
+}
+
+// 期間 x カテゴリの一覧表。Allタブでは固定費/変動費をグループ化し、
+// それぞれの小計行(Variable Total / Fixed Total)と全体のTotal行を出す。
+// 前月比は列ごと(各月それぞれ)に表示する。
 function ReportTable({
   data,
   categoryType,
@@ -315,7 +328,6 @@ function ReportTable({
   onCellClick: (period: PeriodItem, category: string) => void;
 }) {
   const periods = data.periods;
-  const lastIdx = periods.length - 1;
 
   const names = useMemo(() => {
     if (categoryType !== "all") return data.topCategories;
@@ -328,44 +340,71 @@ function ReportTable({
   const rowFor = useCallback(
     (name: string) => {
       const values = periods.map((p) => p.byCategory[name] ?? 0);
-      const latest = values[lastIdx] ?? 0;
-      const prev = lastIdx > 0 ? values[lastIdx - 1] : null;
-      return { name, values, delta: computeDelta(latest, prev) };
+      return { name, values, deltas: deltasFor(values) };
     },
-    [periods, lastIdx],
+    [periods],
   );
 
   const variableRows = (categoryType === "all" ? names.filter((n) => !data.categoryFixed[n]) : names).map(rowFor);
   const fixedRows = categoryType === "all" ? names.filter((n) => data.categoryFixed[n]).map(rowFor) : [];
 
-  const totalsByPeriod = periods.map((p) => names.reduce((s, n) => s + (p.byCategory[n] ?? 0), 0));
-  const totalLatest = totalsByPeriod[lastIdx] ?? 0;
-  const totalPrev = lastIdx > 0 ? totalsByPeriod[lastIdx - 1] : null;
-  const totalDelta = computeDelta(totalLatest, totalPrev);
+  const sumPerPeriod = (rows: { values: number[] }[]) =>
+    periods.map((_, i) => rows.reduce((s, r) => s + r.values[i], 0));
 
-  const renderRow = (row: { name: string; values: number[]; delta: Delta | null }) => (
+  const variableTotals = sumPerPeriod(variableRows);
+  const fixedTotals = sumPerPeriod(fixedRows);
+  const totalsByPeriod = periods.map((_, i) => variableTotals[i] + fixedTotals[i]);
+
+  const variableDeltas = deltasFor(variableTotals);
+  const fixedDeltas = deltasFor(fixedTotals);
+  const totalDeltas = deltasFor(totalsByPeriod);
+
+  const renderCell = (
+    v: number,
+    delta: Delta | null,
+    i: number,
+    opts: { bold?: boolean; showDash?: boolean; onClick?: () => void } = {},
+  ) => (
+    <TableCell
+      key={i}
+      onClick={opts.onClick}
+      className={cn("text-right font-num", opts.bold && "font-bold", opts.onClick && "cursor-pointer hover:underline")}
+      style={{ color: opts.bold || !opts.showDash || v > 0 ? "var(--color-text-primary)" : "var(--color-text-subtle)" }}
+    >
+      <span className="inline-flex items-center justify-end gap-1.5">
+        <span>{opts.showDash && v === 0 ? "–" : formatAmount(v)}</span>
+        {delta && <DeltaBadge delta={delta} />}
+      </span>
+    </TableCell>
+  );
+
+  const renderRow = (row: { name: string; values: number[]; deltas: (Delta | null)[] }) => (
     <TableRow key={row.name}>
       <TableCell className="font-medium whitespace-nowrap" style={{ color: "var(--color-text-primary)" }}>
         {row.name}
       </TableCell>
-      {row.values.map((v, i) => (
-        <TableCell
-          key={i}
-          onClick={() => v > 0 && onCellClick(periods[i], row.name)}
-          className={cn("text-right font-num", v > 0 && "cursor-pointer hover:underline")}
-          style={{ color: v > 0 ? "var(--color-text-primary)" : "var(--color-text-subtle)" }}
-        >
-          {v > 0 ? formatAmount(v) : "–"}
-        </TableCell>
-      ))}
-      <TableCell className="text-right">{row.delta && <DeltaBadge delta={row.delta} />}</TableCell>
+      {row.values.map((v, i) =>
+        renderCell(v, row.deltas[i], i, {
+          showDash: true,
+          onClick: v > 0 ? () => onCellClick(periods[i], row.name) : undefined,
+        }),
+      )}
+    </TableRow>
+  );
+
+  const renderSubtotalRow = (label: string, values: number[], deltas: (Delta | null)[]) => (
+    <TableRow key={`subtotal-${label}`} style={{ backgroundColor: "var(--color-surface-subtle)" }}>
+      <TableCell className="font-semibold whitespace-nowrap" style={{ color: "var(--color-text-primary)" }}>
+        {label}
+      </TableCell>
+      {values.map((v, i) => renderCell(v, deltas[i], i, { bold: true }))}
     </TableRow>
   );
 
   const groupHeader = (label: string) => (
     <TableRow key={`group-${label}`}>
       <TableCell
-        colSpan={periods.length + 2}
+        colSpan={periods.length + 1}
         className="text-[10px] font-semibold uppercase tracking-wide py-1.5"
         style={{ color: "var(--color-text-subtle)", backgroundColor: "var(--color-surface-subtle)" }}
       >
@@ -381,31 +420,34 @@ function ReportTable({
           <TableRow>
             <TableHead className="whitespace-nowrap">Category</TableHead>
             {periods.map((p) => (
-              <TableHead key={p.label} className="text-right whitespace-nowrap">
+              <TableHead
+                key={p.label}
+                className={cn("text-right whitespace-nowrap", p.isForecast && "italic")}
+                style={p.isForecast ? { color: "var(--color-text-subtle)" } : undefined}
+                title={p.isForecast ? "Projected — this month is still in progress" : undefined}
+              >
                 {p.label}
               </TableHead>
             ))}
-            <TableHead className="text-right whitespace-nowrap">MoM</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {categoryType === "all" && variableRows.length > 0 && groupHeader("Variable")}
           {variableRows.map(renderRow)}
+          {categoryType === "all" && variableRows.length > 0 &&
+            renderSubtotalRow("Variable Total", variableTotals, variableDeltas)}
           {categoryType === "all" && fixedRows.length > 0 && groupHeader("Fixed")}
           {fixedRows.map(renderRow)}
+          {categoryType === "all" && fixedRows.length > 0 &&
+            renderSubtotalRow("Fixed Total", fixedTotals, fixedDeltas)}
           <TableRow>
             <TableCell className="font-bold" style={{ color: "var(--color-text-primary)" }}>Total</TableCell>
-            {totalsByPeriod.map((v, i) => (
-              <TableCell
-                key={i}
-                onClick={() => v > 0 && onCellClick(periods[i], "all")}
-                className={cn("text-right font-num font-bold", v > 0 && "cursor-pointer hover:underline")}
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                {formatAmount(v)}
-              </TableCell>
-            ))}
-            <TableCell className="text-right">{totalDelta && <DeltaBadge delta={totalDelta} />}</TableCell>
+            {totalsByPeriod.map((v, i) =>
+              renderCell(v, totalDeltas[i], i, {
+                bold: true,
+                onClick: v > 0 ? () => onCellClick(periods[i], "all") : undefined,
+              }),
+            )}
           </TableRow>
         </TableBody>
       </Table>
@@ -641,12 +683,14 @@ export default function ReportPage() {
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2.5">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <Switch checked={includeSpecial} onCheckedChange={setIncludeSpecial} />
-            <span className="text-sm font-medium" style={{ color: "var(--color-text-secondary)" }}>
-              Special expenses
-            </span>
-          </label>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <label className="flex items-center cursor-pointer select-none">
+                <Switch checked={includeSpecial} onCheckedChange={setIncludeSpecial} />
+              </label>
+            </TooltipTrigger>
+            <TooltipContent>Special expenses</TooltipContent>
+          </Tooltip>
           <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
           <div className="flex rounded-[10px] overflow-hidden border" style={{ borderColor: "var(--color-border-default)" }}>
             {(

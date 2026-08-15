@@ -8,6 +8,9 @@ type PeriodItem = {
   byCategory: Record<string, number>;
   start: string;
   end: string;
+  // 当月分は月の途中までの実績しか無いため、線形予測(残り日数ぶん実績を
+  // 引き伸ばした見込み額)に差し替えたバケットである場合にtrue。
+  isForecast?: boolean;
 };
 
 type BucketDef = { label: string; start: Date; end: Date };
@@ -39,7 +42,7 @@ export async function GET(req: NextRequest) {
   }
 
   const [categoryRows, ...results] = await Promise.all([
-    db.from("categories").select("name, is_fixed").order("created_at"),
+    db.from("categories").select("name, is_fixed, budget").order("created_at"),
     ...bucketDefs.map(({ start, end }) => {
       let q = db
         .from("transactions")
@@ -53,7 +56,7 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
-  const allCategories = (categoryRows.data ?? []) as { name: string; is_fixed: boolean }[];
+  const allCategories = (categoryRows.data ?? []) as { name: string; is_fixed: boolean; budget: number }[];
   const fixedSet = new Set(allCategories.filter((c) => c.is_fixed).map((c) => c.name));
 
   function matchesType(category: string): boolean {
@@ -114,6 +117,46 @@ export async function GET(req: NextRequest) {
   // グループ表示するために使う。
   const categoryFixed: Record<string, boolean> = {};
   for (const name of allCategoryNames) categoryFixed[name] = fixedSet.has(name);
+
+  // 当月(最後のバケット)は月の途中までしか実績が無く、他の月とそのまま
+  // 比べると必ず少なく見えてしまう。残り日数ぶんを線形に引き伸ばした
+  // 着地見込みへ差し替え、ラベルに「(予測)」を付ける。
+  // - 変動費: 実績 ÷ 経過日数 × 月の日数
+  // - 固定費: 実績があればそれをそのまま(既に払い済み)、無ければ予算額を見込みとする
+  const lastIdx = periods.length - 1;
+  const lastBucket = bucketDefs[lastIdx];
+  const daysInMonth = lastBucket.end.getDate();
+  const dayOfMonth = Math.min(now.getDate(), daysInMonth);
+  if (lastIdx >= 0 && dayOfMonth > 0 && dayOfMonth < daysInMonth) {
+    const actual = periods[lastIdx];
+    const forecastByCategory: Record<string, number> = {};
+    let forecastTotal = 0;
+    const known = new Set(allCategories.map((c) => c.name));
+    for (const c of allCategories) {
+      if (!matchesType(c.name)) continue;
+      const spentSoFar = actual.byCategory[c.name] ?? 0;
+      const forecast = c.is_fixed
+        ? (spentSoFar > 0 ? spentSoFar : c.budget)
+        : (spentSoFar > 0 ? Math.round((spentSoFar / dayOfMonth) * daysInMonth) : 0);
+      if (forecast > 0) forecastByCategory[c.name] = forecast;
+      forecastTotal += forecast;
+    }
+    // カテゴリ管理から外れた(リネーム/削除済みの)名前で実績が付いている分は
+    // 見込みを立てようが無いので実績のまま素通しする。
+    for (const [cat, amt] of Object.entries(actual.byCategory)) {
+      if (!known.has(cat)) {
+        forecastByCategory[cat] = amt;
+        forecastTotal += amt;
+      }
+    }
+    periods[lastIdx] = {
+      ...actual,
+      label: `${actual.label}（予測）`,
+      total: forecastTotal,
+      byCategory: forecastByCategory,
+      isForecast: true,
+    };
+  }
 
   return NextResponse.json({
     periods,

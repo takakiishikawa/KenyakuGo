@@ -675,42 +675,53 @@ export default function SimulationPage() {
 
   return (
     <div>
-      <div className="mt-8 mb-5 flex items-center justify-end gap-2">
-        <NotesPopover />
-        <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
-      </div>
-
       <Card
-        className="p-5 rounded-2xl mb-5"
+        className="p-5 rounded-2xl mt-8 mb-5"
         style={{ borderColor: "var(--color-border-default)", boxShadow: CARD_SHADOW }}
       >
+        <div className="flex items-center justify-between gap-4 mb-3">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--color-text-subtle)" }}>
+            Year-end projection
+          </span>
+          <div className="flex items-center gap-2">
+            <NotesPopover />
+            <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
+          </div>
+        </div>
         {!data ? (
           <Skeleton className="h-16 w-full rounded-lg" />
         ) : (
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-2">
             <p className="font-display text-[32px] font-bold leading-none" style={{ color: "var(--color-text-primary)" }}>
               {formatAmount(data.yearEndProjection)}
             </p>
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="flex items-center gap-1 font-num font-bold text-[15px]" style={{ color: "var(--color-success)" }}>
-                <TrendingUp size={14} />
-                {formatAmount(data.annualIncome)}
+            <div className="flex items-center gap-5 flex-wrap text-[13px]" style={{ color: "var(--color-text-secondary)" }}>
+              <span className="flex items-center gap-1.5">
+                <TrendingUp size={13} style={{ color: "var(--color-success)" }} />
+                Income{" "}
+                <b className="font-num font-bold" style={{ color: "var(--color-text-primary)" }}>
+                  {formatAmount(data.annualIncome)}
+                </b>
               </span>
-              <span className="text-[15px] font-semibold" style={{ color: "var(--color-text-subtle)" }}>−</span>
-              <span className="flex items-center gap-1 font-num font-bold text-[15px]" style={{ color: "var(--color-text-secondary)" }}>
-                <TrendingDown size={14} />
-                {formatAmount(data.annualExpense + data.annualSpecialExpense)}
+              <span className="flex items-center gap-1.5">
+                <TrendingDown size={13} style={{ color: "var(--color-text-subtle)" }} />
+                Expenses{" "}
+                <b className="font-num font-bold" style={{ color: "var(--color-text-primary)" }}>
+                  {formatAmount(data.annualExpense + data.annualSpecialExpense)}
+                </b>
               </span>
-              <span className="text-[15px] font-semibold" style={{ color: "var(--color-text-subtle)" }}>=</span>
-              <span className="font-num font-bold text-[16px]" style={{ color: "var(--color-text-primary)" }}>
-                {formatAmount(data.annualRemaining)}
-              </span>
+              {data.annualIncome > 0 && (
+                <span className="flex items-center gap-1.5">
+                  Saving{" "}
+                  <b className="font-num font-bold" style={{ color: "var(--color-primary-hover)" }}>
+                    {savingsRatePct}%
+                  </b>
+                  <span style={{ color: "var(--color-text-subtle)" }}>
+                    ({formatAmount(data.annualRemaining)})
+                  </span>
+                </span>
+              )}
             </div>
-            {data.annualIncome > 0 && (
-              <p className="text-xs font-medium" style={{ color: "var(--color-primary-hover)" }}>
-                Saving {savingsRatePct}% of income
-              </p>
-            )}
           </div>
         )}
       </Card>

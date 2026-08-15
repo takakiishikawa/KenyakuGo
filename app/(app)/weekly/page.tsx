@@ -302,11 +302,12 @@ function CategoryChip({
   );
 }
 
-// 各セルごとに前月比を出すためのdelta配列(先頭列は比較対象が無いのでnull)。
+// 前月比バッジは当月列だけに出す(全列に出すと₫や%が並びすぎて冗長なため)。
 // 当月・前月どちらも0円の行は「比較するものが無い」として表示しない。
 function deltasFor(values: number[]): (Delta | null)[] {
+  const lastIdx = values.length - 1;
   return values.map((v, i) => {
-    if (i === 0) return null;
+    if (i !== lastIdx || i === 0) return null;
     const prev = values[i - 1];
     if (v === 0 && prev === 0) return null;
     return computeDelta(v, prev);

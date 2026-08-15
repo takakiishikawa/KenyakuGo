@@ -19,7 +19,7 @@ export function CurrencySwitch({
           title={c === "JPY" ? "Japanese Yen" : "Vietnamese Dong"}
           className="w-10 h-[38px] text-base font-semibold cursor-pointer transition-all hover:opacity-80 active:scale-95"
           style={{
-            backgroundColor: value === c ? "var(--color-text-primary)" : "transparent",
+            backgroundColor: value === c ? "var(--color-primary)" : "transparent",
             color: value === c ? "#fff" : "var(--color-text-secondary)",
           }}
         >

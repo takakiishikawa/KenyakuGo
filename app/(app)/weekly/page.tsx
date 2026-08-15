@@ -290,7 +290,7 @@ function CategoryChip({
           className="inline-flex items-center justify-center rounded-full border h-9 w-9 transition-all cursor-pointer hover:opacity-80 active:scale-95 active:opacity-70"
           style={
             active
-              ? { backgroundColor: "var(--color-text-primary)", borderColor: "var(--color-text-primary)", color: "#FFFFFF" }
+              ? { backgroundColor: "var(--color-primary)", borderColor: "var(--color-primary)", color: "#FFFFFF" }
               : { backgroundColor: "var(--color-surface)", borderColor: "var(--color-border-default)", color: "#5B5346" }
           }
         >
@@ -709,7 +709,7 @@ export default function ReportPage() {
                     aria-label={m.label}
                     className="flex items-center justify-center h-[38px] w-10 transition-all cursor-pointer hover:opacity-80"
                     style={{
-                      backgroundColor: viewMode === m.key ? "var(--color-text-primary)" : "transparent",
+                      backgroundColor: viewMode === m.key ? "var(--color-primary)" : "transparent",
                       color: viewMode === m.key ? "#fff" : "var(--color-text-secondary)",
                     }}
                   >

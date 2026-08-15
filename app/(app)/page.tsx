@@ -126,42 +126,42 @@ function VariableCategoryCard({
     <button
       type="button"
       onClick={onClick}
-      className="text-left rounded-[13px] border p-[14px_18px] transition-all hover:bg-muted/40 active:scale-[0.98] active:bg-muted/60 cursor-pointer"
+      className="text-left rounded-[13px] border p-[11px_14px] transition-all hover:bg-muted/40 active:scale-[0.98] active:bg-muted/60 cursor-pointer"
       style={{ borderColor: "var(--color-border-default)", backgroundColor: "var(--color-surface-subtle)" }}
     >
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2.5 min-w-0">
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <div className="flex items-center gap-2 min-w-0">
           <div
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px]"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[9px]"
             style={{ backgroundColor: getCategoryColorTint(cat.name) }}
           >
             <CategoryIcon name={cat.name} />
           </div>
-          <span className="text-[14.5px] font-semibold truncate" style={{ color: "var(--color-text-primary)" }}>
+          <span className="text-[13.5px] font-semibold truncate" style={{ color: "var(--color-text-primary)" }}>
             {cat.name}
           </span>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[13px]" style={{ color: "var(--color-text-secondary)" }}>
-            <span className="font-num font-semibold" style={{ color: "var(--color-text-primary)" }}>
-              {formatVND(cat.actual)}
-            </span>
-            {cat.budget > 0 && <span className="font-num"> / {formatVND(cat.budget)}</span>}
+        {pctNum !== null && (
+          <span className="font-num text-[13px] font-bold shrink-0" style={{ color: pctColor }}>
+            {pctNum}%
           </span>
-          {pctNum !== null && (
-            <span className="font-num text-[13px] font-bold" style={{ color: pctColor }}>
-              {pctNum}%
-            </span>
-          )}
-        </div>
+        )}
       </div>
-      <ProgressBar
-        actual={cat.actual}
-        budget={cat.budget}
-        todayPct={todayPct}
-        showToday={false}
-        fillColor={barColor}
-      />
+      <span className="text-[12.5px]" style={{ color: "var(--color-text-secondary)" }}>
+        <span className="font-num font-semibold" style={{ color: "var(--color-text-primary)" }}>
+          {formatVND(cat.actual)}
+        </span>
+        {cat.budget > 0 && <span className="font-num"> / {formatVND(cat.budget)}</span>}
+      </span>
+      <div className="mt-1.5">
+        <ProgressBar
+          actual={cat.actual}
+          budget={cat.budget}
+          todayPct={todayPct}
+          showToday={false}
+          fillColor={barColor}
+        />
+      </div>
     </button>
   );
 }
@@ -177,45 +177,45 @@ function FixedCategoryCard({ cat, onClick }: { cat: CategoryEntry; onClick: () =
     <button
       type="button"
       onClick={onClick}
-      className="text-left rounded-[13px] border p-[14px_18px] transition-all hover:bg-muted/40 active:scale-[0.98] active:bg-muted/60 cursor-pointer"
+      className="text-left rounded-[13px] border p-[11px_14px] transition-all hover:bg-muted/40 active:scale-[0.98] active:bg-muted/60 cursor-pointer"
       style={{ borderColor: "var(--color-border-default)", backgroundColor: "var(--color-surface-subtle)" }}
     >
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2.5 min-w-0">
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <div className="flex items-center gap-2 min-w-0">
           <div
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px]"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[9px]"
             style={{ backgroundColor: "var(--kg-track)" }}
           >
             {(() => {
               const Icon = getCategoryIcon(cat.name);
-              return <Icon size={15} style={{ color: "#6B5D45" }} />;
+              return <Icon size={14} style={{ color: "#6B5D45" }} />;
             })()}
           </div>
-          <span className="text-[14.5px] font-semibold truncate" style={{ color: "var(--color-text-primary)" }}>
+          <span className="text-[13.5px] font-semibold truncate" style={{ color: "var(--color-text-primary)" }}>
             {cat.name}
           </span>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[13px]" style={{ color: "var(--color-text-secondary)" }}>
-            <span className="font-num font-semibold" style={{ color: "var(--color-text-primary)" }}>
-              {formatVND(cat.actual)}
-            </span>
-            {cat.budget > 0 && <span className="font-num"> / {formatVND(cat.budget)}</span>}
+        {pctNum !== null && (
+          <span className="font-num text-[13px] font-bold shrink-0" style={{ color: pctColor }}>
+            {pctNum}%
           </span>
-          {pctNum !== null && (
-            <span className="font-num text-[13px] font-bold" style={{ color: pctColor }}>
-              {pctNum}%
-            </span>
-          )}
-        </div>
+        )}
       </div>
-      <ProgressBar
-        actual={cat.actual}
-        budget={cat.budget}
-        todayPct={0}
-        showToday={false}
-        fillColor={barColor}
-      />
+      <span className="text-[12.5px]" style={{ color: "var(--color-text-secondary)" }}>
+        <span className="font-num font-semibold" style={{ color: "var(--color-text-primary)" }}>
+          {formatVND(cat.actual)}
+        </span>
+        {cat.budget > 0 && <span className="font-num"> / {formatVND(cat.budget)}</span>}
+      </span>
+      <div className="mt-1.5">
+        <ProgressBar
+          actual={cat.actual}
+          budget={cat.budget}
+          todayPct={0}
+          showToday={false}
+          fillColor={barColor}
+        />
+      </div>
     </button>
   );
 }
@@ -311,16 +311,6 @@ export default function Dashboard() {
     ? Math.round((data.dayOfMonth / data.daysInMonth) * 100)
     : 0;
 
-  const totalBudget = data
-    ? data.variableTotalBudget + data.fixedTotalBudget
-    : 0;
-  const totalActual = data
-    ? data.variableTotalActual + data.fixedTotalActual
-    : 0;
-  const usagePct =
-    data && totalBudget > 0 ? Math.round((totalActual / totalBudget) * 100) : null;
-  const usageAlert = usagePct !== null && usagePct > todayPct;
-
   const hasBudgets = data
     ? data.variableTotalBudget > 0 || data.fixedTotalBudget > 0
     : false;
@@ -344,7 +334,7 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="mt-8 flex flex-col gap-6">
+      <div className="mt-6 flex flex-col gap-4">
         {uncategorizedCount > 0 && (
           <div
             className="flex items-center gap-2 rounded-lg px-4 py-3 text-sm"
@@ -368,7 +358,7 @@ export default function Dashboard() {
         )}
 
         <Card
-          className="p-7 rounded-2xl animate-fade-up"
+          className="p-6 rounded-2xl animate-fade-up"
           style={{
             animationDelay: "0ms",
             animationFillMode: "both",
@@ -389,31 +379,18 @@ export default function Dashboard() {
           ) : (
             <div>
               <p
-                className="text-xs font-semibold uppercase tracking-[0.06em] mb-2.5"
+                className="text-xs font-semibold uppercase tracking-[0.06em] mb-2"
                 style={{ color: "var(--color-text-subtle)" }}
               >
                 This month&apos;s forecast
               </p>
-              <div className="flex items-baseline gap-4 flex-wrap">
-                <p
-                  className="font-display text-[52px] font-bold leading-none tracking-[-0.01em]"
-                  style={{ color: "var(--color-text-primary)" }}
-                >
-                  {formatVND(data.forecastVnd)}
-                </p>
-                {usagePct !== null && (
-                  <span
-                    className="font-num text-[13px] font-bold px-3 py-1.5 rounded-full shrink-0"
-                    style={{
-                      backgroundColor: usageAlert ? "var(--color-danger-subtle)" : "var(--color-primary-subtle)",
-                      color: usageAlert ? "var(--color-danger)" : "var(--color-primary-hover)",
-                    }}
-                  >
-                    {usagePct}% of budget
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2 mt-3">
+              <p
+                className="font-display text-[38px] font-bold leading-none tracking-[-0.01em]"
+                style={{ color: "var(--color-text-primary)" }}
+              >
+                {formatVND(data.forecastVnd)}
+              </p>
+              <div className="flex items-center gap-2 mt-2.5">
                 {positive ? (
                   <TrendingDown size={16} style={{ color: "var(--color-success)" }} />
                 ) : (
@@ -433,7 +410,7 @@ export default function Dashboard() {
         </Card>
 
         <Card
-          className="p-7 rounded-2xl overflow-hidden animate-fade-up"
+          className="p-6 rounded-2xl overflow-hidden animate-fade-up"
           style={{
             animationDelay: "80ms",
             animationFillMode: "both",
@@ -441,10 +418,17 @@ export default function Dashboard() {
             boxShadow: CARD_SHADOW,
           }}
         >
-          <div className="flex items-baseline justify-between mb-[18px] flex-wrap gap-2">
-            <span className="font-display text-[19px] font-semibold" style={{ color: "var(--color-text-primary)" }}>
-              Variable Costs
-            </span>
+          <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
+            <div className="flex items-baseline gap-2.5">
+              <span className="font-display text-[19px] font-semibold" style={{ color: "var(--color-text-primary)" }}>
+                Variable Costs
+              </span>
+              {data && data.variableTotalBudget > 0 && (
+                <span className="text-[12px]" style={{ color: "var(--color-text-subtle)" }}>
+                  On-track line {todayPct}% (day {data.dayOfMonth} of {data.daysInMonth})
+                </span>
+              )}
+            </div>
             {data && data.variableTotalBudget > 0 && (
               <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
                 <b className="font-num" style={{ color: "var(--color-text-primary)" }}>
@@ -456,22 +440,19 @@ export default function Dashboard() {
           </div>
 
           {data && data.variableTotalBudget > 0 && (
-            <div className="mb-5">
+            <div className="mb-3">
               <ProgressBar
                 actual={data.variableTotalActual}
                 budget={data.variableTotalBudget}
                 todayPct={todayPct}
                 showToday={true}
               />
-              <p className="text-[12.5px] mt-2" style={{ color: "var(--color-text-subtle)" }}>
-                On-track line {todayPct}% (day {data.dayOfMonth} of {data.daysInMonth})
-              </p>
             </div>
           )}
 
           {!data ? (
-            <div className="grid grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((i) => (
+            <div className="grid grid-cols-3 gap-3">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <Skeleton key={i} className="h-20 rounded-lg" />
               ))}
             </div>
@@ -480,7 +461,7 @@ export default function Dashboard() {
               No variable cost categories yet. Add some from the Budget page.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-3">
               {sortedVariable.map((cat) => (
                 <VariableCategoryCard
                   key={cat.id}
@@ -494,7 +475,7 @@ export default function Dashboard() {
         </Card>
 
         <Card
-          className="p-7 rounded-2xl overflow-hidden animate-fade-up"
+          className="p-6 rounded-2xl overflow-hidden animate-fade-up"
           style={{
             animationDelay: "160ms",
             animationFillMode: "both",
@@ -502,7 +483,7 @@ export default function Dashboard() {
             boxShadow: CARD_SHADOW,
           }}
         >
-          <div className="flex items-baseline justify-between mb-[18px] flex-wrap gap-2">
+          <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
             <span className="font-display text-[19px] font-semibold" style={{ color: "var(--color-text-primary)" }}>
               Fixed Costs
             </span>
@@ -516,8 +497,8 @@ export default function Dashboard() {
             )}
           </div>
           {!data ? (
-            <div className="grid grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((i) => (
+            <div className="grid grid-cols-3 gap-3">
+              {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-16 rounded-lg" />
               ))}
             </div>
@@ -526,7 +507,7 @@ export default function Dashboard() {
               No fixed cost categories yet. Add some from the Budget page.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-3">
               {sortedFixed.map((cat) => (
                 <FixedCategoryCard
                   key={cat.id}

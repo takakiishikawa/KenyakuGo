@@ -398,10 +398,10 @@ function SectionGrid({
       }}
     >
       <div
-        className="flex items-center justify-between px-7 py-5 border-b"
+        className="flex items-center justify-between px-6 py-3 border-b"
         style={{ borderColor: "var(--color-border-default)" }}
       >
-        <span className="font-display text-[17px] font-semibold" style={{ color: "var(--color-text-primary)" }}>
+        <span className="font-display text-[15px] font-semibold" style={{ color: "var(--color-text-primary)" }}>
           {title}{" "}
           <span className="text-[13px] font-normal" style={{ color: "var(--color-text-subtle)" }}>
             {categories.length} {categories.length === 1 ? "category" : "categories"}
@@ -411,10 +411,10 @@ function SectionGrid({
           type="button"
           onClick={onManageClick}
           title="Manage categories"
-          className="p-2 rounded-lg transition-all hover:bg-muted active:scale-90"
-          style={{ color: "var(--color-text-subtle)" }}
+          className="flex items-center justify-center h-8 w-8 rounded-lg border transition-all hover:opacity-80 hover:bg-muted active:scale-90 active:bg-muted/70"
+          style={{ borderColor: "var(--color-border-default)", color: "var(--color-text-primary)" }}
         >
-          <Settings2 size={16} />
+          <Settings2 size={15} />
         </button>
       </div>
 
@@ -595,20 +595,31 @@ export default function BudgetPage() {
             boxShadow: "0 1px 2px rgba(120,72,10,.04), 0 8px 24px rgba(120,72,10,.05)",
           }}
         >
-          <div className="flex items-center justify-between gap-x-8 gap-y-3 flex-wrap">
-            <div className="flex items-baseline gap-2.5">
-              <span
-                className="text-[11px] font-semibold uppercase tracking-[0.06em]"
-                style={{ color: "var(--color-text-subtle)" }}
+          <div className="flex items-center justify-between gap-4 mb-3">
+            <span
+              className="text-[11px] font-semibold uppercase tracking-[0.06em]"
+              style={{ color: "var(--color-text-subtle)" }}
+            >
+              Total Monthly Budget
+            </span>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                className="rounded-[10px] h-[34px] font-semibold"
+                onClick={() => setTrendOpen(true)}
               >
-                Total Monthly Budget
-              </span>
-              <span className="font-display text-[28px] font-bold leading-none" style={{ color: "var(--color-text-primary)" }}>
-                {formatAmount(grandTotal)}
-              </span>
+                <TrendingUp size={14} />
+                Budget Trend
+              </Button>
+              <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
             </div>
+          </div>
 
-            <div className="flex items-center gap-5 text-[13px]" style={{ color: "var(--color-text-secondary)" }}>
+          <div className="flex items-end gap-8 flex-wrap">
+            <span className="font-display text-[32px] font-bold leading-none" style={{ color: "var(--color-text-primary)" }}>
+              {formatAmount(grandTotal)}
+            </span>
+            <div className="flex items-center gap-5 text-[13px] pb-0.5" style={{ color: "var(--color-text-secondary)" }}>
               <div>
                 Variable{" "}
                 <b className="font-num font-bold" style={{ color: "var(--color-text-primary)" }}>
@@ -621,18 +632,6 @@ export default function BudgetPage() {
                   {formatAmount(fixedBudgetTotal)}
                 </b>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <Button
-                size="sm"
-                className="rounded-[10px] h-[38px] font-semibold"
-                onClick={() => setTrendOpen(true)}
-              >
-                <TrendingUp size={14} />
-                Budget Trend
-              </Button>
-              <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
             </div>
           </div>
         </Card>

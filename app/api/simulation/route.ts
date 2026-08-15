@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthDb } from "@/lib/supabase/auth-db";
 import { createDb } from "@/lib/supabase/db";
 import { getJpyToVndRate } from "@/lib/exchange-rate";
-import { computeMonthlyBudget, computeActualSpendByMonth } from "@/lib/monthly-budget";
+import {
+  computeMonthlyBudget,
+  computeActualSpendByMonth,
+  computeLifeBudgetsByMonth,
+} from "@/lib/monthly-budget";
 import {
   buildSimulationYear,
   annualIncome,
@@ -49,16 +53,16 @@ async function getStartingState(
   year: number,
   vndPerJpy: number,
   forecastVnd: number | null,
-  lifeBudgetVnd: number,
   now: Date,
 ): Promise<{ cumulative: number; income: number }> {
   let cumulative = 0;
   let income = 0;
   for (let y = SIMULATION_EPOCH_YEAR; y < year; y++) {
-    const [records, entries, actualByMonth] = await Promise.all([
+    const [records, entries, actualByMonth, lifeBudgetByMonth] = await Promise.all([
       fetchYearRecords(db, y),
       fetchYearSpecialEntries(db, y),
       computeActualSpendByMonth(db, y),
+      computeLifeBudgetsByMonth(db, y),
     ]);
     const months = buildSimulationYear(
       y,
@@ -66,7 +70,7 @@ async function getStartingState(
       entries,
       vndPerJpy,
       forecastVnd,
-      lifeBudgetVnd,
+      lifeBudgetByMonth,
       actualByMonth,
       now,
       cumulative,
@@ -87,21 +91,22 @@ export async function GET(req: NextRequest) {
   const year = yearParam ? parseInt(yearParam, 10) : new Date().getFullYear();
   const now = new Date();
 
-  const [records, specialEntries, vndPerJpy, monthlyBudget, actualByMonth] = await Promise.all([
-    fetchYearRecords(db, year),
-    fetchYearSpecialEntries(db, year),
-    getJpyToVndRate(),
-    computeMonthlyBudget(db, now),
-    computeActualSpendByMonth(db, year),
-  ]);
+  const [records, specialEntries, vndPerJpy, monthlyBudget, actualByMonth, lifeBudgetByMonth] =
+    await Promise.all([
+      fetchYearRecords(db, year),
+      fetchYearSpecialEntries(db, year),
+      getJpyToVndRate(),
+      computeMonthlyBudget(db, now),
+      computeActualSpendByMonth(db, year),
+      computeLifeBudgetsByMonth(db, year),
+    ]);
 
-  const { forecastVnd, lifeBudgetVnd } = monthlyBudget;
+  const { forecastVnd } = monthlyBudget;
   const { cumulative: startingCumulative, income: startingIncome } = await getStartingState(
     db,
     year,
     vndPerJpy,
     forecastVnd,
-    lifeBudgetVnd,
     now,
   );
   const months = buildSimulationYear(
@@ -110,7 +115,7 @@ export async function GET(req: NextRequest) {
     specialEntries,
     vndPerJpy,
     forecastVnd,
-    lifeBudgetVnd,
+    lifeBudgetByMonth,
     actualByMonth,
     now,
     startingCumulative,

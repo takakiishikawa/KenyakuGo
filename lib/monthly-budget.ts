@@ -1,4 +1,6 @@
 import type { createDb } from "@/lib/supabase/db";
+import { monthKey } from "@/lib/budget";
+import { fetchOverridesUpTo, resolveBudgetsForMonth } from "@/lib/category-budget";
 
 type Db = ReturnType<typeof createDb>;
 
@@ -33,7 +35,11 @@ export async function computeMonthlyBudget(db: Db, now: Date = new Date()): Prom
   const dayOfMonth = now.getDate();
   const daysInMonth = monthEnd.getDate();
 
-  const [catsRes, txRes] = await Promise.all([
+  // ダッシュボード表示上の「今月」= monthStart の月キー。オーバーライドは
+  // この月以前で最新のものを実効予算として使う（effective-dated）。
+  const targetMonth = monthKey(now.getFullYear(), now.getMonth());
+
+  const [catsRes, txRes, overrides] = await Promise.all([
     db.from("categories").select("id, name, budget, is_fixed").order("created_at"),
     db
       .from("transactions")
@@ -41,16 +47,22 @@ export async function computeMonthlyBudget(db: Db, now: Date = new Date()): Prom
       .gte("date", monthStart.toISOString())
       .lte("date", monthEnd.toISOString())
       .eq("excluded_from_dashboard", false),
+    fetchOverridesUpTo(db, targetMonth),
   ]);
 
   const categories = (catsRes.data ?? []) as CategoryRow[];
+  const effectiveBudgets = resolveBudgetsForMonth(categories, overrides, targetMonth);
 
   const actualMap: Record<string, number> = {};
   for (const tx of txRes.data ?? []) {
     actualMap[tx.category] = (actualMap[tx.category] ?? 0) + tx.amount;
   }
 
-  const withActual = categories.map((c) => ({ ...c, actual: actualMap[c.name] ?? 0 }));
+  const withActual = categories.map((c) => ({
+    ...c,
+    budget: effectiveBudgets.get(c.id) ?? c.budget,
+    actual: actualMap[c.name] ?? 0,
+  }));
   const variable = withActual.filter((c) => !c.is_fixed);
   const fixed = withActual.filter((c) => c.is_fixed);
 
@@ -114,6 +126,35 @@ export async function computeActualSpendByMonth(
     const d = new Date(tx.date);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     byMonth[key] = (byMonth[key] ?? 0) + tx.amount;
+  }
+  return byMonth;
+}
+
+// Effective "Total Monthly Budget" (lifeBudgetVnd, i.e. sum of every
+// category's budget) for every month of `year`, honoring category budget
+// overrides — same resolution the Dashboard uses, but for all 12 months at
+// once so Simulation can show a planned change (e.g. lower rent from
+// September, groceries back to normal in October) instead of repeating a
+// single flat figure across every future month.
+export async function computeLifeBudgetsByMonth(
+  db: Db,
+  year: number,
+): Promise<Record<string, number>> {
+  const ceilingMonth = monthKey(year, 11); // December of `year`
+
+  const [catsRes, overrides] = await Promise.all([
+    db.from("categories").select("id, budget").order("created_at"),
+    fetchOverridesUpTo(db, ceilingMonth),
+  ]);
+  const categories = (catsRes.data ?? []) as { id: string; budget: number }[];
+
+  const byMonth: Record<string, number> = {};
+  for (let m = 0; m < 12; m++) {
+    const key = monthKey(year, m);
+    const resolved = resolveBudgetsForMonth(categories, overrides, key);
+    let total = 0;
+    for (const v of resolved.values()) total += v;
+    byMonth[key] = total;
   }
   return byMonth;
 }

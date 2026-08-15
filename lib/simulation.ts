@@ -63,7 +63,9 @@ export function buildSimulationYear(
   vndPerJpy: number,
   // VN-side budget figures (VND) from the Dashboard/Budget pages.
   forecastVnd: number | null,
-  lifeBudgetVnd: number,
+  // Total Monthly Budget (VND), keyed 'YYYY-MM', resolving any category
+  // budget overrides in effect for that month (see computeLifeBudgetsByMonth).
+  lifeBudgetByMonth: Record<string, number>,
   // Actual VN spend (VND) already recorded for past months, keyed 'YYYY-MM'.
   actualExpenseByMonth: Record<string, number>,
   now: Date = new Date(),
@@ -114,9 +116,9 @@ export function buildSimulationYear(
 
     let expenseVnd: number;
     if (isCurrentMonth) {
-      expenseVnd = forecastVnd ?? lifeBudgetVnd;
+      expenseVnd = forecastVnd ?? lifeBudgetByMonth[key] ?? 0;
     } else if (isFuture) {
-      expenseVnd = lifeBudgetVnd;
+      expenseVnd = lifeBudgetByMonth[key] ?? 0;
     } else {
       expenseVnd = actualExpenseByMonth[key] ?? 0;
     }

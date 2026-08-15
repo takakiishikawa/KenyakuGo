@@ -393,6 +393,12 @@ export default function ReportPage() {
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2.5">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <Switch checked={includeSpecial} onCheckedChange={setIncludeSpecial} />
+            <span className="text-sm font-medium" style={{ color: "var(--color-text-secondary)" }}>
+              Special expenses
+            </span>
+          </label>
           <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
           <Button
             variant="outline"
@@ -414,35 +420,25 @@ export default function ReportPage() {
           boxShadow: "0 1px 2px rgba(120,72,10,.04), 0 8px 24px rgba(120,72,10,.05)",
         }}
       >
-        <div className="flex items-center justify-end gap-4 mb-6 flex-wrap shrink-0">
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <Switch checked={includeSpecial} onCheckedChange={setIncludeSpecial} />
-              <span className="text-sm font-medium" style={{ color: "var(--color-text-secondary)" }}>
-                Special expenses
-              </span>
-            </label>
-            {data && data.topCategories.length > 0 && (
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <CategoryChip
-                  label="All"
-                  value="all"
-                  active={categoryFilter === "all"}
-                  onSelect={setCategoryFilter}
-                />
-                {data.topCategories.map((cat) => (
-                  <CategoryChip
-                    key={cat}
-                    label={cat}
-                    value={cat}
-                    active={categoryFilter === cat}
-                    onSelect={setCategoryFilter}
-                  />
-                ))}
-              </div>
-            )}
+        {data && data.topCategories.length > 0 && (
+          <div className="flex items-center justify-end gap-2 mb-6 flex-wrap shrink-0">
+            <CategoryChip
+              label="All"
+              value="all"
+              active={categoryFilter === "all"}
+              onSelect={setCategoryFilter}
+            />
+            {data.topCategories.map((cat) => (
+              <CategoryChip
+                key={cat}
+                label={cat}
+                value={cat}
+                active={categoryFilter === cat}
+                onSelect={setCategoryFilter}
+              />
+            ))}
           </div>
-        </div>
+        )}
         {chartData.length > 0 ? (
           <ChartContainer
             config={chartConfig}

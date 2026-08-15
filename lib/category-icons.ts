@@ -7,18 +7,25 @@ import {
   Droplets,
   Package,
   Home,
+  HousePlug,
   Plane,
   Dumbbell,
+  BicepsFlexed,
   Sparkles,
   Wine,
   ShoppingBag,
+  Truck,
   Pill,
+  PillBottle,
   Coffee,
   BookOpen,
+  GraduationCap,
+  Languages,
   Wifi,
   Camera,
   Music,
   Shirt,
+  Gem,
   Car,
   Bike,
   Globe,
@@ -30,6 +37,14 @@ import {
   Briefcase,
   Zap,
   CircleDollarSign,
+  Tv,
+  HandHeart,
+  Boxes,
+  Wallet,
+  Banknote,
+  Tag,
+  Layers,
+  Shapes,
 } from "lucide-react";
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -37,25 +52,36 @@ const ICON_MAP: Record<string, LucideIcon> = {
   "Home Cooking": ChefHat,
   Groceries: ShoppingCart,
   Transport: Train,
+  AI: Bot,
   "AI/SaaS": Bot,
   "Sauna/Spa": Droplets,
   Other: Package,
   Rent: Home,
+  "Rent/Utilities": HousePlug,
   Travel: Plane,
   Sports: Dumbbell,
+  Gym: BicepsFlexed,
   Beauty: Sparkles,
   Drinks: Wine,
   Shopping: ShoppingBag,
+  "Online Shopping": Truck,
   Medical: Stethoscope,
   Health: HeartPulse,
   Medicine: Pill,
+  Supplement: PillBottle,
+  Pharmacy: Pill,
+  Massage: HandHeart,
   Cafe: Coffee,
   Books: BookOpen,
+  Learning: GraduationCap,
+  English: Languages,
   Games: Gamepad2,
   Phone: Wifi,
+  Media: Tv,
   Camera: Camera,
   Music: Music,
   Clothing: Shirt,
+  Fashion: Gem,
   Car: Car,
   Bicycle: Bike,
   Overseas: Globe,
@@ -63,8 +89,23 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Work: Briefcase,
   Electricity: Zap,
   Savings: CircleDollarSign,
+  "Daily Goods": Boxes,
+  Transfer: Wallet,
+  Cash: Banknote,
+  Entertainment: Tv,
 };
 
+// カテゴリ名がマップに無い場合、常に同じアイコン(Package)を出すと
+// 見た目上どのカテゴリも区別が付かなくなるため、名前のハッシュで
+// このプールから選び、未知のカテゴリ同士でも見分けが付くようにする。
+const FALLBACK_ICONS: LucideIcon[] = [Package, Tag, Layers, Shapes, Boxes];
+
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
 export function getCategoryIcon(name: string): LucideIcon {
-  return ICON_MAP[name] ?? Package;
+  return ICON_MAP[name] ?? FALLBACK_ICONS[hashStr(name) % FALLBACK_ICONS.length];
 }

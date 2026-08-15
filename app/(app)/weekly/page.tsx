@@ -15,10 +15,12 @@ import {
   CartesianGrid,
   type MouseHandlerDataParam,
 } from "recharts";
-import { Heart, List, Sparkles } from "lucide-react";
-import { formatVND } from "@/lib/format";
+import { List, Sparkles } from "lucide-react";
+import { formatVND, formatJPY } from "@/lib/format";
 import { getCategoryColors } from "@/lib/category-colors";
 import { getCategoryIcon } from "@/lib/category-icons";
+import { CurrencySwitch, type DisplayCurrency } from "@/components/currency-switch";
+import { makeFormatAmount, VND_PER_JPY } from "@/lib/currency";
 import { NoteTag } from "@/components/note-tag";
 import { SpecialExpenseToggle } from "@/components/special-expense-toggle";
 import {
@@ -35,11 +37,13 @@ import {
   TabsTrigger,
   ChartContainer,
   ChartTooltip,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
   cn,
   type ChartConfig,
 } from "@takaki/go-design-system";
-
-import { WishlistDialog } from "@/components/wishlist-dialog";
 
 interface PeriodItem {
   label: string;
@@ -79,10 +83,12 @@ function ChartTooltipContent({
   active,
   payload,
   filter,
+  formatAmount,
 }: {
   active?: boolean;
   payload?: { payload: ChartRow }[];
   filter: string;
+  formatAmount: (amount: number) => string;
 }) {
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
@@ -114,7 +120,7 @@ function ChartTooltipContent({
               <div key={cat} className="flex items-center justify-between gap-3">
                 <span className="truncate" style={{ color: "var(--color-text-secondary)" }}>{cat}</span>
                 <span className="font-num font-medium shrink-0" style={{ color: "var(--color-text-primary)" }}>
-                  {formatVND(amt)}
+                  {formatAmount(amt)}
                 </span>
               </div>
             ))}
@@ -123,7 +129,7 @@ function ChartTooltipContent({
         <div className="mt-2 pt-2 border-t flex items-center justify-between gap-3" style={{ borderColor: "var(--color-border-default)" }}>
           <span style={{ color: "var(--color-text-secondary)" }}>Total</span>
           <span className="font-num font-semibold" style={{ color: "var(--color-text-primary)" }}>
-            {formatVND(row.total)}
+            {formatAmount(row.total)}
           </span>
         </div>
       </div>
@@ -141,7 +147,7 @@ function ChartTooltipContent({
       <div className="flex items-center justify-between gap-3">
         <span className="truncate" style={{ color: "var(--color-text-secondary)" }}>{filter}</span>
         <span className="font-num font-medium shrink-0" style={{ color: "var(--color-text-primary)" }}>
-          {formatVND(amount)}
+          {formatAmount(amount)}
         </span>
       </div>
       <div className="mt-2 pt-2 border-t flex items-center justify-between gap-3" style={{ borderColor: "var(--color-border-default)" }}>
@@ -165,20 +171,25 @@ function CategoryChip({
 }) {
   const Icon = value !== "all" ? getCategoryIcon(value) : Sparkles;
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(value)}
-      aria-pressed={active}
-      className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-all cursor-pointer hover:opacity-80 active:scale-95 active:opacity-70"
-      style={
-        active
-          ? { backgroundColor: "var(--color-text-primary)", borderColor: "var(--color-text-primary)", color: "#FFFFFF" }
-          : { backgroundColor: "var(--color-surface)", borderColor: "var(--color-border-default)", color: "#5B5346" }
-      }
-    >
-      <Icon size={13} />
-      {label}
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={() => onSelect(value)}
+          aria-pressed={active}
+          aria-label={label}
+          className="inline-flex items-center justify-center rounded-full border h-9 w-9 transition-all cursor-pointer hover:opacity-80 active:scale-95 active:opacity-70"
+          style={
+            active
+              ? { backgroundColor: "var(--color-text-primary)", borderColor: "var(--color-text-primary)", color: "#FFFFFF" }
+              : { backgroundColor: "var(--color-surface)", borderColor: "var(--color-border-default)", color: "#5B5346" }
+          }
+        >
+          <Icon size={15} />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -188,7 +199,7 @@ export default function ReportPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [includeSpecial, setIncludeSpecial] = useState(false);
   const [data, setData] = useState<ReportData | null>(null);
-  const [wishlistOpen, setWishlistOpen] = useState(false);
+  const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>("VND");
   const [detail, setDetail] = useState<{
     label: string;
     category: string;
@@ -217,18 +228,39 @@ export default function ReportPage() {
     }
   }, [data, categoryFilter]);
 
+  // API はすべて VND で返してくる。表示通貨が JPY のときはグラフに渡す
+  // 数値そのものを換算しておかないと、軸・面グラフのスケールが実際の
+  // 金額と一致しない（フォーマット関数だけ差し替えても数値がVNDのまま）。
+  const toDisplayScale = useCallback(
+    (vnd: number) => (displayCurrency === "VND" ? vnd : vnd / VND_PER_JPY),
+    [displayCurrency],
+  );
+
   const chartData: ChartRow[] =
     data?.periods.map((p) => ({
       label: p.label,
-      total: p.total,
-      value:
+      total: toDisplayScale(p.total),
+      value: toDisplayScale(
         categoryFilter === "all"
           ? p.total
           : (p.byCategory?.[categoryFilter] ?? 0),
-      byCategory: p.byCategory ?? {},
+      ),
+      byCategory: Object.fromEntries(
+        Object.entries(p.byCategory ?? {}).map(([cat, amt]) => [cat, toDisplayScale(amt)]),
+      ),
       start: p.start,
       end: p.end,
     })) ?? [];
+
+  // detail ダイアログの取引一覧は /api/transactions から生の VND 金額を
+  // 都度取得するので、こちらは makeFormatAmount で表示時に換算する。
+  const formatAmount = useMemo(() => makeFormatAmount(displayCurrency), [displayCurrency]);
+  // グラフのツールチップ・軸ラベルは chartData 側で既に換算済みの数値を
+  // 扱うので、ここでは単位変換をせずフォーマットだけ行う。
+  const formatChartAmount = useCallback(
+    (amount: number) => (displayCurrency === "VND" ? formatVND(amount) : formatJPY(amount)),
+    [displayCurrency],
+  );
 
   const openDetail = useCallback(
     async (row: ChartRow) => {
@@ -326,9 +358,8 @@ export default function ReportPage() {
   );
 
   return (
-    <div>
-      <WishlistDialog open={wishlistOpen} onOpenChange={setWishlistOpen} />
-
+    <TooltipProvider delayDuration={200}>
+      <div className="flex flex-col h-full min-h-0">
       <div className="mt-8 mb-6 flex items-center justify-between gap-4">
         <Tabs
           value={categoryType}
@@ -362,6 +393,7 @@ export default function ReportPage() {
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2.5">
+          <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
           <Button
             variant="outline"
             size="sm"
@@ -372,30 +404,17 @@ export default function ReportPage() {
             <List size={16} />
             Transactions
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-[10px] h-auto py-2.5 px-4 font-semibold hover:opacity-80"
-            style={{ borderColor: "var(--color-border-default)", color: "var(--color-text-primary)" }}
-            onClick={() => setWishlistOpen(true)}
-          >
-            <Heart size={16} />
-            Wishlist
-          </Button>
         </div>
       </div>
 
       <Card
-        className="p-7 rounded-2xl"
+        className="p-7 rounded-2xl flex-1 flex flex-col min-h-0"
         style={{
           borderColor: "var(--color-border-default)",
           boxShadow: "0 1px 2px rgba(120,72,10,.04), 0 8px 24px rgba(120,72,10,.05)",
         }}
       >
-        <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
-          <p className="text-xs font-semibold uppercase tracking-[0.06em]" style={{ color: "var(--color-text-subtle)" }}>
-            Spending Trend (Last 9 Months)
-          </p>
+        <div className="flex items-center justify-end gap-4 mb-6 flex-wrap shrink-0">
           <div className="flex flex-wrap items-center justify-end gap-3">
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <Switch checked={includeSpecial} onCheckedChange={setIncludeSpecial} />
@@ -427,7 +446,7 @@ export default function ReportPage() {
         {chartData.length > 0 ? (
           <ChartContainer
             config={chartConfig}
-            className="aspect-auto h-[420px] w-full"
+            className="aspect-auto flex-1 min-h-0 w-full"
           >
             <AreaChart
               data={chartData}
@@ -458,7 +477,7 @@ export default function ReportPage() {
               <ChartTooltip
                 cursor={false}
                 allowEscapeViewBox={{ x: false, y: true }}
-                content={<ChartTooltipContent filter={categoryFilter} />}
+                content={<ChartTooltipContent filter={categoryFilter} formatAmount={formatChartAmount} />}
               />
               <Area
                 dataKey="value"
@@ -470,7 +489,7 @@ export default function ReportPage() {
             </AreaChart>
           </ChartContainer>
         ) : (
-          <div className="flex items-center justify-center h-64">
+          <div className="flex flex-1 min-h-0 items-center justify-center">
             {data === null ? (
               <Skeleton className="h-48 w-full rounded" />
             ) : (
@@ -534,7 +553,7 @@ export default function ReportPage() {
                         onToggle={(v) => handleToggleSpecialExpense(t.id, v)}
                       />
                       <span className="font-num text-sm shrink-0" style={{ color: "var(--color-text-primary)" }}>
-                        {formatVND(t.amount)}
+                        {formatAmount(t.amount)}
                       </span>
                     </li>
                   ))}
@@ -543,7 +562,7 @@ export default function ReportPage() {
                   <div className="mt-3 pt-3 border-t flex items-center justify-between" style={{ borderColor: "var(--color-border-default)" }}>
                     <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>Total</span>
                     <span className="font-num font-semibold" style={{ color: "var(--color-text-primary)" }}>
-                      {formatVND(
+                      {formatAmount(
                         detail.txs.reduce((sum, t) => sum + t.amount, 0),
                       )}
                     </span>
@@ -555,5 +574,6 @@ export default function ReportPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </TooltipProvider>
   );
 }

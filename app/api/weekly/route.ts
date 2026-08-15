@@ -151,7 +151,7 @@ export async function GET(req: NextRequest) {
     }
     periods[lastIdx] = {
       ...actual,
-      label: `${actual.label}（予測）`,
+      label: `${actual.label} (Forecast)`,
       total: forecastTotal,
       byCategory: forecastByCategory,
       isForecast: true,

@@ -15,9 +15,9 @@ import {
   CartesianGrid,
   type MouseHandlerDataParam,
 } from "recharts";
-import { List, Sparkles } from "lucide-react";
+import { List, Sparkles, LineChart as LineChartIcon, Table as TableIcon, TrendingUp, TrendingDown } from "lucide-react";
 import { formatVND, formatJPY } from "@/lib/format";
-import { getCategoryColors } from "@/lib/category-colors";
+import { getCategoryColors, getCategoryHex } from "@/lib/category-colors";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { CurrencySwitch, type DisplayCurrency } from "@/components/currency-switch";
 import { makeFormatAmount, VND_PER_JPY } from "@/lib/currency";
@@ -35,6 +35,12 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   ChartContainer,
   ChartTooltip,
   Tooltip,
@@ -65,65 +71,162 @@ interface TxItem {
 interface ReportData {
   periods: PeriodItem[];
   topCategories: string[];
+  categoryFixed: Record<string, boolean>;
   categoryType: string;
   includeSpecial: boolean;
 }
-type CategoryType = "variable" | "fixed" | "all";
+type CategoryType = "all" | "variable" | "fixed";
+type ViewMode = "chart" | "table";
+
+// 積み上げチャートで個別に表示するカテゴリの上限。超えた分は "Other" にまとめる
+// (このページ内のツールチップも同じ8件しきい値で2カラムに切り替えている)。
+const STACK_LIMIT = 8;
+const OTHER_KEY = "Other";
 
 interface ChartRow {
   label: string;
-  total: number;
-  value: number;
-  byCategory: Record<string, number>;
   start: string;
   end: string;
+  total: number;
+  prevTotal: number | null;
+  value: number; // 単一カテゴリ選択時の面グラフ用(表示通貨換算済み)
+  byCategoryFull: Record<string, number>; // 全カテゴリ、換算済み(ツールチップの単一カテゴリ表示用)
+  prevByCategoryFull: Record<string, number> | null;
+  byCategory: Record<string, number>; // STACK_LIMIT + Other にまとめた版(積み上げ・グループツールチップ用)
+  prevByCategory: Record<string, number> | null;
+}
+
+interface Delta {
+  diff: number;
+  pct: number | null; // null = 前月0円からの新規発生
+}
+
+function computeDelta(current: number, prev: number | null): Delta | null {
+  if (prev === null) return null;
+  const diff = current - prev;
+  if (prev === 0) return { diff, pct: current === 0 ? 0 : null };
+  return { diff, pct: (diff / prev) * 100 };
+}
+
+// 支出が増えた(diff>0)ことを danger 色、減った(diff<0)ことを success 色で示す
+// ± インジケータ。金額ベースの増減が視覚的にすぐ分かるようにするためのもの。
+function DeltaBadge({ delta }: { delta: Delta }) {
+  if (delta.diff === 0) {
+    return (
+      <span className="text-[11px] font-medium" style={{ color: "var(--color-text-subtle)" }}>
+        ±0%
+      </span>
+    );
+  }
+  const up = delta.diff > 0;
+  const color = up ? "var(--color-danger)" : "var(--color-success)";
+  const Icon = up ? TrendingUp : TrendingDown;
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold shrink-0" style={{ color }}>
+      <Icon size={11} />
+      {delta.pct !== null ? `${Math.abs(Math.round(delta.pct))}%` : "new"}
+    </span>
+  );
+}
+
+// STACK_LIMIT を超えるカテゴリを Other にまとめる。
+function collapseByCategory(byCategory: Record<string, number>, order: string[]): Record<string, number> {
+  const known = new Set(order.filter((n) => n !== OTHER_KEY));
+  const result: Record<string, number> = {};
+  let other = 0;
+  for (const [name, amt] of Object.entries(byCategory)) {
+    if (known.has(name)) result[name] = (result[name] ?? 0) + amt;
+    else other += amt;
+  }
+  if (order.includes(OTHER_KEY) && other > 0) result[OTHER_KEY] = other;
+  return result;
 }
 
 function ChartTooltipContent({
   active,
   payload,
   filter,
+  categoryType,
+  categoryFixed,
   formatAmount,
 }: {
   active?: boolean;
   payload?: { payload: ChartRow }[];
   filter: string;
+  categoryType: CategoryType;
+  categoryFixed: Record<string, boolean>;
   formatAmount: (amount: number) => string;
 }) {
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
 
   if (filter === "all") {
-    const allCategories = Object.entries(row.byCategory).sort(
-      ([, a], [, b]) => b - a,
-    );
-    const twoCol = allCategories.length > 8;
-    return (
-      <div
-        className={cn(
-          "rounded-lg border bg-background px-3 py-2 text-xs shadow-sm",
-          twoCol ? "min-w-[24rem]" : "min-w-44",
-        )}
-        style={{ borderColor: "var(--color-border-default)" }}
-      >
-        <p className="font-medium mb-1.5" style={{ color: "var(--color-text-primary)" }}>{row.label}</p>
-        {allCategories.length === 0 ? (
-          <p style={{ color: "var(--color-text-secondary)" }}>No data</p>
-        ) : (
-          <div
-            className={cn(
-              "gap-x-5 gap-y-1",
-              twoCol ? "grid grid-cols-2" : "space-y-1",
-            )}
-          >
-            {allCategories.map(([cat, amt]) => (
-              <div key={cat} className="flex items-center justify-between gap-3">
-                <span className="truncate" style={{ color: "var(--color-text-secondary)" }}>{cat}</span>
-                <span className="font-num font-medium shrink-0" style={{ color: "var(--color-text-primary)" }}>
+    const entries = Object.entries(row.byCategory);
+    const totalDelta = computeDelta(row.total, row.prevTotal);
+    const grouped = categoryType === "all";
+
+    const renderEntries = (items: [string, number][]) =>
+      [...items]
+        .sort(([, a], [, b]) => b - a)
+        .map(([cat, amt]) => {
+          const prevAmt = row.prevByCategory?.[cat] ?? (row.prevByCategory ? 0 : null);
+          const delta = computeDelta(amt, prevAmt);
+          return (
+            <div key={cat} className="flex items-center justify-between gap-3">
+              <span className="truncate" style={{ color: "var(--color-text-secondary)" }}>{cat}</span>
+              <span className="flex items-center gap-1.5 shrink-0">
+                {delta && <DeltaBadge delta={delta} />}
+                <span className="font-num font-medium" style={{ color: "var(--color-text-primary)" }}>
                   {formatAmount(amt)}
                 </span>
+              </span>
+            </div>
+          );
+        });
+
+    const variableEntries = grouped ? entries.filter(([c]) => c !== OTHER_KEY && !categoryFixed[c]) : [];
+    const fixedEntries = grouped ? entries.filter(([c]) => c !== OTHER_KEY && categoryFixed[c]) : [];
+    const otherEntry = entries.filter(([c]) => c === OTHER_KEY);
+    const twoCol = entries.length > 8;
+
+    return (
+      <div
+        className={cn("rounded-lg border bg-background px-3 py-2 text-xs shadow-sm", twoCol ? "min-w-[26rem]" : "min-w-52")}
+        style={{ borderColor: "var(--color-border-default)" }}
+      >
+        <div className="flex items-center justify-between gap-4 mb-1.5">
+          <p className="font-medium" style={{ color: "var(--color-text-primary)" }}>{row.label}</p>
+          {totalDelta && <DeltaBadge delta={totalDelta} />}
+        </div>
+        {entries.length === 0 ? (
+          <p style={{ color: "var(--color-text-secondary)" }}>No data</p>
+        ) : grouped ? (
+          <div className="space-y-2.5">
+            {variableEntries.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide mb-1" style={{ color: "var(--color-text-subtle)" }}>
+                  Variable
+                </p>
+                <div className={cn("gap-x-5 gap-y-1", twoCol ? "grid grid-cols-2" : "space-y-1")}>
+                  {renderEntries(variableEntries)}
+                </div>
               </div>
-            ))}
+            )}
+            {fixedEntries.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide mb-1" style={{ color: "var(--color-text-subtle)" }}>
+                  Fixed
+                </p>
+                <div className={cn("gap-x-5 gap-y-1", twoCol ? "grid grid-cols-2" : "space-y-1")}>
+                  {renderEntries(fixedEntries)}
+                </div>
+              </div>
+            )}
+            {otherEntry.length > 0 && <div className="space-y-1">{renderEntries(otherEntry)}</div>}
+          </div>
+        ) : (
+          <div className={cn("gap-x-5 gap-y-1", twoCol ? "grid grid-cols-2" : "space-y-1")}>
+            {renderEntries(entries)}
           </div>
         )}
         <div className="mt-2 pt-2 border-t flex items-center justify-between gap-3" style={{ borderColor: "var(--color-border-default)" }}>
@@ -136,14 +239,19 @@ function ChartTooltipContent({
     );
   }
 
-  const amount = row.byCategory[filter] ?? 0;
+  const amount = row.byCategoryFull[filter] ?? 0;
+  const prevAmount = row.prevByCategoryFull ? (row.prevByCategoryFull[filter] ?? 0) : null;
+  const delta = computeDelta(amount, prevAmount);
   const pct = row.total > 0 ? Math.round((amount / row.total) * 100) : 0;
   return (
     <div
       className="rounded-lg border bg-background px-3 py-2 text-xs shadow-sm min-w-44"
       style={{ borderColor: "var(--color-border-default)" }}
     >
-      <p className="font-medium mb-1.5" style={{ color: "var(--color-text-primary)" }}>{row.label}</p>
+      <div className="flex items-center justify-between gap-4 mb-1.5">
+        <p className="font-medium" style={{ color: "var(--color-text-primary)" }}>{row.label}</p>
+        {delta && <DeltaBadge delta={delta} />}
+      </div>
       <div className="flex items-center justify-between gap-3">
         <span className="truncate" style={{ color: "var(--color-text-secondary)" }}>{filter}</span>
         <span className="font-num font-medium shrink-0" style={{ color: "var(--color-text-primary)" }}>
@@ -193,10 +301,123 @@ function CategoryChip({
   );
 }
 
+// 期間 x カテゴリの一覧表。Allタブでは固定費/変動費をグループ化して表示する。
+// 直近月の「先月比」を各カテゴリ・合計行の末尾に表示する。
+function ReportTable({
+  data,
+  categoryType,
+  formatAmount,
+  onCellClick,
+}: {
+  data: ReportData;
+  categoryType: CategoryType;
+  formatAmount: (vnd: number) => string;
+  onCellClick: (period: PeriodItem, category: string) => void;
+}) {
+  const periods = data.periods;
+  const lastIdx = periods.length - 1;
+
+  const names = useMemo(() => {
+    if (categoryType !== "all") return data.topCategories;
+    return [
+      ...data.topCategories.filter((n) => !data.categoryFixed[n]),
+      ...data.topCategories.filter((n) => data.categoryFixed[n]),
+    ];
+  }, [data, categoryType]);
+
+  const rowFor = useCallback(
+    (name: string) => {
+      const values = periods.map((p) => p.byCategory[name] ?? 0);
+      const latest = values[lastIdx] ?? 0;
+      const prev = lastIdx > 0 ? values[lastIdx - 1] : null;
+      return { name, values, delta: computeDelta(latest, prev) };
+    },
+    [periods, lastIdx],
+  );
+
+  const variableRows = (categoryType === "all" ? names.filter((n) => !data.categoryFixed[n]) : names).map(rowFor);
+  const fixedRows = categoryType === "all" ? names.filter((n) => data.categoryFixed[n]).map(rowFor) : [];
+
+  const totalsByPeriod = periods.map((p) => names.reduce((s, n) => s + (p.byCategory[n] ?? 0), 0));
+  const totalLatest = totalsByPeriod[lastIdx] ?? 0;
+  const totalPrev = lastIdx > 0 ? totalsByPeriod[lastIdx - 1] : null;
+  const totalDelta = computeDelta(totalLatest, totalPrev);
+
+  const renderRow = (row: { name: string; values: number[]; delta: Delta | null }) => (
+    <TableRow key={row.name}>
+      <TableCell className="font-medium whitespace-nowrap" style={{ color: "var(--color-text-primary)" }}>
+        {row.name}
+      </TableCell>
+      {row.values.map((v, i) => (
+        <TableCell
+          key={i}
+          onClick={() => v > 0 && onCellClick(periods[i], row.name)}
+          className={cn("text-right font-num", v > 0 && "cursor-pointer hover:underline")}
+          style={{ color: v > 0 ? "var(--color-text-primary)" : "var(--color-text-subtle)" }}
+        >
+          {v > 0 ? formatAmount(v) : "–"}
+        </TableCell>
+      ))}
+      <TableCell className="text-right">{row.delta && <DeltaBadge delta={row.delta} />}</TableCell>
+    </TableRow>
+  );
+
+  const groupHeader = (label: string) => (
+    <TableRow key={`group-${label}`}>
+      <TableCell
+        colSpan={periods.length + 2}
+        className="text-[10px] font-semibold uppercase tracking-wide py-1.5"
+        style={{ color: "var(--color-text-subtle)", backgroundColor: "var(--color-surface-subtle)" }}
+      >
+        {label}
+      </TableCell>
+    </TableRow>
+  );
+
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="whitespace-nowrap">Category</TableHead>
+            {periods.map((p) => (
+              <TableHead key={p.label} className="text-right whitespace-nowrap">
+                {p.label}
+              </TableHead>
+            ))}
+            <TableHead className="text-right whitespace-nowrap">MoM</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {categoryType === "all" && variableRows.length > 0 && groupHeader("Variable")}
+          {variableRows.map(renderRow)}
+          {categoryType === "all" && fixedRows.length > 0 && groupHeader("Fixed")}
+          {fixedRows.map(renderRow)}
+          <TableRow>
+            <TableCell className="font-bold" style={{ color: "var(--color-text-primary)" }}>Total</TableCell>
+            {totalsByPeriod.map((v, i) => (
+              <TableCell
+                key={i}
+                onClick={() => v > 0 && onCellClick(periods[i], "all")}
+                className={cn("text-right font-num font-bold", v > 0 && "cursor-pointer hover:underline")}
+                style={{ color: "var(--color-text-primary)" }}
+              >
+                {formatAmount(v)}
+              </TableCell>
+            ))}
+            <TableCell className="text-right">{totalDelta && <DeltaBadge delta={totalDelta} />}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 export default function ReportPage() {
   const router = useRouter();
-  const [categoryType, setCategoryType] = useState<CategoryType>("variable");
+  const [categoryType, setCategoryType] = useState<CategoryType>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("chart");
   const [includeSpecial, setIncludeSpecial] = useState(false);
   const [data, setData] = useState<ReportData | null>(null);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>("VND");
@@ -236,21 +457,49 @@ export default function ReportPage() {
     [displayCurrency],
   );
 
-  const chartData: ChartRow[] =
-    data?.periods.map((p) => ({
+  // 積み上げグラフ・グループツールチップで個別表示するカテゴリの並び順。
+  // Allタブでは変動費→固定費の順に並べ、積み上げの帯がグループごとに
+  // まとまって見えるようにする。上限を超えた分は Other に集約。
+  const seriesOrder = useMemo<string[]>(() => {
+    if (!data) return [];
+    let names = data.topCategories;
+    if (categoryType === "all") {
+      names = [
+        ...names.filter((n) => !data.categoryFixed[n]),
+        ...names.filter((n) => data.categoryFixed[n]),
+      ];
+    }
+    const capped = names.slice(0, STACK_LIMIT);
+    return names.length > STACK_LIMIT ? [...capped, OTHER_KEY] : capped;
+  }, [data, categoryType]);
+
+  const chartData: ChartRow[] = useMemo(() => {
+    if (!data) return [];
+    const scaledRows = data.periods.map((p) => ({
       label: p.label,
-      total: toDisplayScale(p.total),
-      value: toDisplayScale(
-        categoryFilter === "all"
-          ? p.total
-          : (p.byCategory?.[categoryFilter] ?? 0),
-      ),
-      byCategory: Object.fromEntries(
-        Object.entries(p.byCategory ?? {}).map(([cat, amt]) => [cat, toDisplayScale(amt)]),
-      ),
       start: p.start,
       end: p.end,
-    })) ?? [];
+      total: toDisplayScale(p.total),
+      byCategoryFull: Object.fromEntries(
+        Object.entries(p.byCategory ?? {}).map(([cat, amt]) => [cat, toDisplayScale(amt)]),
+      ),
+    }));
+    return scaledRows.map((r, i) => {
+      const prev = i > 0 ? scaledRows[i - 1] : null;
+      return {
+        label: r.label,
+        start: r.start,
+        end: r.end,
+        total: r.total,
+        prevTotal: prev ? prev.total : null,
+        value: categoryFilter === "all" ? r.total : (r.byCategoryFull[categoryFilter] ?? 0),
+        byCategoryFull: r.byCategoryFull,
+        prevByCategoryFull: prev ? prev.byCategoryFull : null,
+        byCategory: collapseByCategory(r.byCategoryFull, seriesOrder),
+        prevByCategory: prev ? collapseByCategory(prev.byCategoryFull, seriesOrder) : null,
+      };
+    });
+  }, [data, categoryFilter, seriesOrder, toDisplayScale]);
 
   // detail ダイアログの取引一覧は /api/transactions から生の VND 金額を
   // 都度取得するので、こちらは makeFormatAmount で表示時に換算する。
@@ -263,29 +512,28 @@ export default function ReportPage() {
   );
 
   const openDetail = useCallback(
-    async (row: ChartRow) => {
-      const category = categoryFilter;
-      setDetail({ label: row.label, category, txs: null });
+    async (period: { label: string; start: string; end: string }, category: string) => {
+      setDetail({ label: period.label, category, txs: null });
       try {
-        const params = new URLSearchParams({ from: row.start, to: row.end });
+        const params = new URLSearchParams({ from: period.start, to: period.end });
         if (category !== "all") params.set("category", category);
         const r = await fetch(`/api/transactions?${params.toString()}`);
         if (!r.ok) throw new Error();
         const txs = (await r.json()) as TxItem[];
         setDetail((d) =>
-          d && d.label === row.label && d.category === category
+          d && d.label === period.label && d.category === category
             ? { ...d, txs }
             : d,
         );
       } catch {
         setDetail((d) =>
-          d && d.label === row.label && d.category === category
+          d && d.label === period.label && d.category === category
             ? { ...d, txs: [] }
             : d,
         );
       }
     },
-    [categoryFilter],
+    [],
   );
 
   const handleSaveNote = useCallback(
@@ -337,9 +585,9 @@ export default function ReportPage() {
   const handleChartClick = useCallback(
     (state: MouseHandlerDataParam) => {
       const row = chartData.find((r) => r.label === state.activeLabel);
-      if (row) openDetail(row);
+      if (row) openDetail(row, categoryFilter);
     },
-    [chartData, openDetail],
+    [chartData, openDetail, categoryFilter],
   );
 
   const chartColor =
@@ -360,7 +608,7 @@ export default function ReportPage() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex flex-col h-full min-h-0">
-      <div className="mt-8 mb-6 flex items-center justify-between gap-4">
+      <div className="mt-8 mb-6 flex items-center justify-between gap-4 flex-wrap">
         <Tabs
           value={categoryType}
           onValueChange={(v) => {
@@ -372,7 +620,7 @@ export default function ReportPage() {
             className="p-1 rounded-[11px] h-auto gap-1 border-b-0"
             style={{ backgroundColor: "var(--kg-track)" }}
           >
-            {(["variable", "fixed", "all"] as const).map((v) => (
+            {(["all", "variable", "fixed"] as const).map((v) => (
               <TabsTrigger
                 key={v}
                 value={v}
@@ -400,6 +648,33 @@ export default function ReportPage() {
             </span>
           </label>
           <CurrencySwitch value={displayCurrency} onChange={setDisplayCurrency} />
+          <div className="flex rounded-[10px] overflow-hidden border" style={{ borderColor: "var(--color-border-default)" }}>
+            {(
+              [
+                { key: "chart", label: "Chart", icon: LineChartIcon },
+                { key: "table", label: "Table", icon: TableIcon },
+              ] as const
+            ).map((m) => (
+              <Tooltip key={m.key}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode(m.key)}
+                    aria-pressed={viewMode === m.key}
+                    aria-label={m.label}
+                    className="flex items-center justify-center h-[38px] w-10 transition-all cursor-pointer hover:opacity-80"
+                    style={{
+                      backgroundColor: viewMode === m.key ? "var(--color-text-primary)" : "transparent",
+                      color: viewMode === m.key ? "#fff" : "var(--color-text-secondary)",
+                    }}
+                  >
+                    <m.icon size={15} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{m.label} view</TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
           <Button
             variant="outline"
             size="sm"
@@ -420,7 +695,7 @@ export default function ReportPage() {
           boxShadow: "0 1px 2px rgba(120,72,10,.04), 0 8px 24px rgba(120,72,10,.05)",
         }}
       >
-        {data && data.topCategories.length > 0 && (
+        {viewMode === "chart" && data && data.topCategories.length > 0 && (
           <div className="flex items-center justify-end gap-2 mb-6 flex-wrap shrink-0">
             <CategoryChip
               label="All"
@@ -439,7 +714,19 @@ export default function ReportPage() {
             ))}
           </div>
         )}
-        {chartData.length > 0 ? (
+
+        {data === null ? (
+          <div className="flex flex-1 min-h-0 items-center justify-center">
+            <Skeleton className="h-48 w-full rounded" />
+          </div>
+        ) : viewMode === "table" ? (
+          <ReportTable
+            data={data}
+            categoryType={categoryType}
+            formatAmount={formatAmount}
+            onCellClick={(period, category) => openDetail(period, category)}
+          />
+        ) : chartData.length > 0 ? (
           <ChartContainer
             config={chartConfig}
             className="aspect-auto flex-1 min-h-0 w-full"
@@ -473,24 +760,43 @@ export default function ReportPage() {
               <ChartTooltip
                 cursor={false}
                 allowEscapeViewBox={{ x: false, y: true }}
-                content={<ChartTooltipContent filter={categoryFilter} formatAmount={formatChartAmount} />}
+                content={
+                  <ChartTooltipContent
+                    filter={categoryFilter}
+                    categoryType={categoryType}
+                    categoryFixed={data.categoryFixed}
+                    formatAmount={formatChartAmount}
+                  />
+                }
               />
-              <Area
-                dataKey="value"
-                type="natural"
-                fill="url(#reportTotalFill)"
-                stroke={chartColor}
-                strokeWidth={3}
-              />
+              {categoryFilter === "all" ? (
+                seriesOrder.map((name) => (
+                  <Area
+                    key={name}
+                    dataKey={(row: ChartRow) => row.byCategory[name] ?? 0}
+                    name={name}
+                    type="natural"
+                    stackId="stack"
+                    stroke={name === OTHER_KEY ? "var(--color-text-subtle)" : getCategoryHex(name)}
+                    fill={name === OTHER_KEY ? "var(--color-text-subtle)" : getCategoryHex(name)}
+                    fillOpacity={0.6}
+                    strokeWidth={1}
+                  />
+                ))
+              ) : (
+                <Area
+                  dataKey="value"
+                  type="natural"
+                  fill="url(#reportTotalFill)"
+                  stroke={chartColor}
+                  strokeWidth={3}
+                />
+              )}
             </AreaChart>
           </ChartContainer>
         ) : (
           <div className="flex flex-1 min-h-0 items-center justify-center">
-            {data === null ? (
-              <Skeleton className="h-48 w-full rounded" />
-            ) : (
-              <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>No data</p>
-            )}
+            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>No data</p>
           </div>
         )}
       </Card>

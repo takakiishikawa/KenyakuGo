@@ -17,9 +17,6 @@ import {
   SidebarRail,
   GO_APPS,
   cn,
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
 } from "@takaki/go-design-system";
 import {
   LayoutDashboard,
@@ -27,6 +24,7 @@ import {
   Wallet,
   Target,
   LogOut,
+  LogIn,
 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
@@ -45,6 +43,9 @@ const supabaseConfigured =
   !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
   !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+// アイコンのみの省略形をデフォルトとするサイドバー(ログラス等の管理画面に近い、
+// コンテンツ領域を最大化する方針)。ユーザー名・メール・アバターは表示せず、
+// ログイン/ログアウトのボタンだけを置く。展開時以外はホバーでtooltip表示。
 export function PiggyBankSidebar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -81,12 +82,9 @@ export function PiggyBankSidebar() {
     return pathname.startsWith(href);
   }
 
-  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
-  const fullName = user?.user_metadata?.full_name as string | undefined;
-  const displayName = fullName || user?.email?.split("@")[0] || "";
-
   return (
     <Sidebar
+      collapsible="icon"
       style={{ backgroundColor: "var(--kg-sidebar-bg)", borderColor: "var(--kg-sidebar-border)" }}
       className="border-r"
     >
@@ -105,6 +103,7 @@ export function PiggyBankSidebar() {
                     <SidebarMenuButton
                       asChild
                       isActive={active}
+                      tooltip={label}
                       className={cn(
                         "h-auto rounded-[9px] py-2.5 px-3 transition-all active:scale-[0.97]",
                         active && "hover:brightness-95 active:brightness-90",
@@ -137,52 +136,33 @@ export function PiggyBankSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
-        {user ? (
-          <div className="flex items-center gap-2.5 px-2 py-2">
-            <Avatar className="h-8 w-8 shrink-0">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
-              <AvatarFallback className="text-xs font-semibold">
-                {(displayName || "?").charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <p
-                className="text-sm font-semibold truncate"
-                style={{ color: "var(--kg-sidebar-text)" }}
-              >
-                {displayName || "—"}
-              </p>
-              {user.email && (
-                <p
-                  className="text-xs truncate"
-                  style={{ color: "var(--kg-sidebar-inactive)" }}
-                >
-                  {user.email}
-                </p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              title="Sign out"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] transition-all hover:bg-muted/60 active:scale-90 active:bg-muted cursor-pointer"
-              style={{ color: "var(--kg-sidebar-inactive)" }}
-            >
-              <LogOut size={16} />
-            </button>
-          </div>
-        ) : (
-          <SidebarMenu>
-            <SidebarMenuItem>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            {user ? (
               <SidebarMenuButton
-                onClick={handleSignIn}
+                onClick={handleSignOut}
+                tooltip="Sign out"
                 className="cursor-pointer"
               >
-                <span className="text-sm">Sign in with Google</span>
+                <LogOut size={17} style={{ color: "var(--kg-sidebar-inactive)" }} />
+                <span className="text-sm" style={{ color: "var(--kg-sidebar-inactive)" }}>
+                  Sign out
+                </span>
               </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        )}
+            ) : (
+              <SidebarMenuButton
+                onClick={handleSignIn}
+                tooltip="Sign in"
+                className="cursor-pointer"
+              >
+                <LogIn size={17} style={{ color: "var(--kg-sidebar-inactive)" }} />
+                <span className="text-sm" style={{ color: "var(--kg-sidebar-inactive)" }}>
+                  Sign in
+                </span>
+              </SidebarMenuButton>
+            )}
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
 
       <SidebarRail />

@@ -19,5 +19,9 @@ export default async function AppGroupLayout({
     } = await supabase.auth.getUser();
     if (!user) redirect("/login");
   }
-  return <AppLayout sidebar={<PiggyBankSidebar />}>{children}</AppLayout>;
+  return (
+    <AppLayout sidebar={<PiggyBankSidebar />} defaultOpen={false}>
+      {children}
+    </AppLayout>
+  );
 }

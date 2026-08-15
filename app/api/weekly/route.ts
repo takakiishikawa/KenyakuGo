@@ -110,9 +110,15 @@ export async function GET(req: NextRequest) {
     return oa - ob;
   });
 
+  // カテゴリ名 → 固定費かどうか。Report の "All" タブで固定費/変動費を
+  // グループ表示するために使う。
+  const categoryFixed: Record<string, boolean> = {};
+  for (const name of allCategoryNames) categoryFixed[name] = fixedSet.has(name);
+
   return NextResponse.json({
     periods,
     topCategories,
+    categoryFixed,
     categoryType,
     includeSpecial,
   });

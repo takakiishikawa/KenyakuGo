@@ -293,13 +293,14 @@ export function ScenarioSettingsDialog({
             <div className="flex flex-col gap-3">
               {(
                 [
-                  { key: "husband" as const, label: "本人年収" },
-                  { key: "wife" as const, label: "配偶者年収" },
+                  { key: "husband" as const, label: "本人年収(額面)" },
+                  { key: "wife" as const, label: "配偶者年収(額面)" },
                 ]
               ).map((row) => (
                 <div key={row.key} className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs w-24" style={{ color: DC.textSecondary }}>
+                  <span className="text-xs w-28 shrink-0 flex items-center gap-1" style={{ color: DC.textSecondary }}>
                     {row.label}
+                    <HelpTip text="税金・社会保険料を引く前の額面金額を入力してください。手取りはこの額面×80%で自動計算されます。" />
                   </span>
                   <Input
                     type="number"
@@ -349,7 +350,7 @@ export function ScenarioSettingsDialog({
                 </span>
               </div>
               <div className="text-xs rounded-lg px-2.5 py-2" style={{ backgroundColor: DC.track, color: DC.textSecondary }}>
-                手取り目安(自動計算): {takeHomePreview}/月 · 児童手当は自動加算されます
+                上記は額面での入力です。手取り目安(額面×80%、自動計算): {takeHomePreview}/月 · 児童手当は自動加算されます
               </div>
             </div>
           )}

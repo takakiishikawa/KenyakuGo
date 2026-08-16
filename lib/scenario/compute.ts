@@ -126,6 +126,14 @@ function renewalFeeYenForYear(
   return monthlyYen * category.renewal_fee_months;
 }
 
+// 同棲前の暮らし項目(シンプルな月額固定リスト)の、その年の月額。
+// 実カテゴリと違って期間別オーバーライドは持たないので、インフレ率だけ
+// 「今年」からの経過年数ぶん複利適用する。
+function preLifeMonthlyYen(item: { monthlyYen: number }, year: number, inflationRatePercent: number, nowYear: number): number {
+  const yearsBeyond = Math.max(0, year - nowYear);
+  return item.monthlyYen * Math.pow(1 + inflationRatePercent / 100, yearsBeyond);
+}
+
 // 児童手当: 0〜2歳 1.5万円/月、3歳〜高校生(18歳)まで 1万円/月。要件5-2。
 function childAllowanceYenForYear(birthYear: number, year: number): number {
   const age = year - birthYear;
@@ -160,52 +168,71 @@ export function computeScenarioYears(
   let investPrincipalCum = 0;
 
   return years.map((year, i) => {
+    // 同棲開始年から: 配偶者の収入・共有カテゴリの暮らしが反映される。
+    // それより前: 配偶者収入は0、暮らしはシナリオ側のpreFixed/preVariableを使う。
+    const cohabiting = year >= config.cohabitation.startYear;
+    const moveInBonusYen = year === config.cohabitation.startYear ? config.cohabitation.moveInBonusYen : 0;
+
     // 入力は手取り(月+ボーナス)。額面年収は設定モーダル側でview-only表示用に
     // 逆算するだけで、ここでの収支計算には使わない。産休・育休期間があれば、
     // その月ぶんの月収だけ incomePercent% に減らす。
     const husbandYen = netAnnualForYear(config.income.husband, year, i);
-    const wifeYen = config.family.spouse ? netAnnualForYear(config.income.wife, year, i) : 0;
+    const wifeYen = config.family.spouse && cohabiting ? netAnnualForYear(config.income.wife, year, i) : 0;
     const sideYen = config.income.side.amountYen * 12;
     const allowanceYen = config.family.kids.reduce(
       (sum, kid) => sum + childAllowanceYenForYear(kid.birthYear, year),
       0,
     );
-    const incomeTotalYen = husbandYen + wifeYen + sideYen + allowanceYen;
+    const incomeTotalYen = husbandYen + wifeYen + sideYen + allowanceYen + moveInBonusYen;
 
-    const fixedByCategory: ScenarioCategoryValue[] = fixedCats.map((c) => {
-      const overridesForCat = overridesByCategory.get(c.id) ?? [];
-      const monthlyYen = projectCategoryMonthlyYen(
-        c,
-        overridesForCat,
-        year,
-        config.inflationRatePercent,
-        vndPerJpy,
-        nowYear,
-      );
-      const renewalYen = renewalFeeYenForYear(
-        c,
-        overridesForCat,
-        year,
-        config.inflationRatePercent,
-        vndPerJpy,
-        nowYear,
-      );
-      return { id: c.id, name: c.name, valueYen: monthlyYen * 12 + renewalYen, color: getCategoryHex(c.name) };
-    });
+    const fixedByCategory: ScenarioCategoryValue[] = cohabiting
+      ? fixedCats.map((c) => {
+          const overridesForCat = overridesByCategory.get(c.id) ?? [];
+          const monthlyYen = projectCategoryMonthlyYen(
+            c,
+            overridesForCat,
+            year,
+            config.inflationRatePercent,
+            vndPerJpy,
+            nowYear,
+          );
+          const renewalYen = renewalFeeYenForYear(
+            c,
+            overridesForCat,
+            year,
+            config.inflationRatePercent,
+            vndPerJpy,
+            nowYear,
+          );
+          return { id: c.id, name: c.name, valueYen: monthlyYen * 12 + renewalYen, color: getCategoryHex(c.name) };
+        })
+      : config.cohabitation.preFixed.map((item) => ({
+          id: `pre-fixed-${item.id}`,
+          name: item.label,
+          valueYen: preLifeMonthlyYen(item, year, config.inflationRatePercent, nowYear) * 12,
+          color: getCategoryHex(item.label),
+        }));
     const fixedTotalYen = fixedByCategory.reduce((s, c) => s + c.valueYen, 0);
 
-    const variableByCategory: ScenarioCategoryValue[] = variableCats.map((c) => {
-      const overridesForCat = overridesByCategory.get(c.id) ?? [];
-      const monthlyYen = projectCategoryMonthlyYen(
-        c,
-        overridesForCat,
-        year,
-        config.inflationRatePercent,
-        vndPerJpy,
-        nowYear,
-      );
-      return { id: c.id, name: c.name, valueYen: monthlyYen * 12, color: getCategoryHex(c.name) };
-    });
+    const variableByCategory: ScenarioCategoryValue[] = cohabiting
+      ? variableCats.map((c) => {
+          const overridesForCat = overridesByCategory.get(c.id) ?? [];
+          const monthlyYen = projectCategoryMonthlyYen(
+            c,
+            overridesForCat,
+            year,
+            config.inflationRatePercent,
+            vndPerJpy,
+            nowYear,
+          );
+          return { id: c.id, name: c.name, valueYen: monthlyYen * 12, color: getCategoryHex(c.name) };
+        })
+      : config.cohabitation.preVariable.map((item) => ({
+          id: `pre-variable-${item.id}`,
+          name: item.label,
+          valueYen: preLifeMonthlyYen(item, year, config.inflationRatePercent, nowYear) * 12,
+          color: getCategoryHex(item.label),
+        }));
     const variableTotalYen = variableByCategory.reduce((s, c) => s + c.valueYen, 0);
 
     const educationTotalYen = config.family.kids.reduce((sum, kid, kidIdx) => {

@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { DesignTokens } from "@takaki/go-design-system";
 import { ClientProviders } from "./client-providers";
+import { PreferencesProvider } from "@/lib/preferences";
 
 const inter = Inter({
   weight: ["400", "500", "600", "700", "800"],
@@ -38,7 +39,7 @@ export default function RootLayout({
         <DesignTokens primaryColor="#BE5B85" primaryColorHover="#8C3A5E" />
       </head>
       <body className="min-h-full">
-        {children}
+        <PreferencesProvider>{children}</PreferencesProvider>
         <ClientProviders />
       </body>
     </html>

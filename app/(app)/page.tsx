@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
-import { formatVND } from "@/lib/format";
 import { getCategoryColors, getCategoryColorTint } from "@/lib/category-colors";
 import { getCategoryIcon } from "@/lib/category-icons";
+import { makeFormatAmount } from "@/lib/currency";
+import { usePreferences } from "@/lib/preferences";
 import { NoteTag } from "@/components/note-tag";
 import { SpecialExpenseToggle } from "@/components/special-expense-toggle";
 import {
@@ -110,10 +111,12 @@ function VariableCategoryCard({
   cat,
   todayPct,
   onClick,
+  formatAmount,
 }: {
   cat: CategoryEntry;
   todayPct: number;
   onClick: () => void;
+  formatAmount: (vnd: number) => string;
 }) {
   const pctNum = cat.budget > 0 ? Math.round((cat.actual / cat.budget) * 100) : null;
   const over = cat.budget > 0 && cat.actual > cat.budget;
@@ -149,9 +152,9 @@ function VariableCategoryCard({
       </div>
       <span className="text-[12.5px]" style={{ color: "var(--color-text-secondary)" }}>
         <span className="font-num font-semibold" style={{ color: "var(--color-text-primary)" }}>
-          {formatVND(cat.actual)}
+          {formatAmount(cat.actual)}
         </span>
-        {cat.budget > 0 && <span className="font-num"> / {formatVND(cat.budget)}</span>}
+        {cat.budget > 0 && <span className="font-num"> / {formatAmount(cat.budget)}</span>}
       </span>
       <div className="mt-1.5">
         <ProgressBar
@@ -166,7 +169,15 @@ function VariableCategoryCard({
   );
 }
 
-function FixedCategoryCard({ cat, onClick }: { cat: CategoryEntry; onClick: () => void }) {
+function FixedCategoryCard({
+  cat,
+  onClick,
+  formatAmount,
+}: {
+  cat: CategoryEntry;
+  onClick: () => void;
+  formatAmount: (vnd: number) => string;
+}) {
   const pctNum = cat.budget > 0 ? Math.round((cat.actual / cat.budget) * 100) : null;
   const over = cat.budget > 0 && cat.actual > cat.budget;
   const near = pctNum !== null && pctNum >= 80 && !over;
@@ -203,9 +214,9 @@ function FixedCategoryCard({ cat, onClick }: { cat: CategoryEntry; onClick: () =
       </div>
       <span className="text-[12.5px]" style={{ color: "var(--color-text-secondary)" }}>
         <span className="font-num font-semibold" style={{ color: "var(--color-text-primary)" }}>
-          {formatVND(cat.actual)}
+          {formatAmount(cat.actual)}
         </span>
-        {cat.budget > 0 && <span className="font-num"> / {formatVND(cat.budget)}</span>}
+        {cat.budget > 0 && <span className="font-num"> / {formatAmount(cat.budget)}</span>}
       </span>
       <div className="mt-1.5">
         <ProgressBar
@@ -221,6 +232,8 @@ function FixedCategoryCard({ cat, onClick }: { cat: CategoryEntry; onClick: () =
 }
 
 export default function Dashboard() {
+  const { currency } = usePreferences();
+  const formatAmount = makeFormatAmount(currency);
   const [data, setData] = useState<DashboardData | null>(null);
   const [uncategorizedCount, setUncategorizedCount] = useState(0);
   const [detail, setDetail] = useState<{
@@ -336,25 +349,18 @@ export default function Dashboard() {
     <div>
       <div className="mt-6 flex flex-col gap-4">
         {uncategorizedCount > 0 && (
-          <div
-            className="flex items-center gap-2 rounded-lg px-4 py-3 text-sm"
+          <a
+            href="/transactions"
+            className="inline-flex w-fit items-center gap-2 rounded-full px-3.5 py-2 text-xs font-medium transition-all hover:brightness-95 active:scale-[0.98]"
             style={{
               backgroundColor: "var(--color-warning-subtle)",
-              borderLeft: "3px solid var(--color-warning)",
+              color: "var(--color-warning)",
             }}
           >
-            <AlertTriangle size={16} className="shrink-0" style={{ color: "var(--color-warning)" }} />
-            <span style={{ color: "var(--color-text-primary)" }}>
-              You have {uncategorizedCount} unreviewed transaction{uncategorizedCount === 1 ? "" : "s"}.
-            </span>
-            <a
-              href="/transactions"
-              className="ml-auto text-xs underline shrink-0 transition-opacity hover:opacity-70 active:opacity-50"
-              style={{ color: "var(--color-warning)" }}
-            >
-              Review them
-            </a>
-          </div>
+            <AlertTriangle size={13} className="shrink-0" />
+            {uncategorizedCount} transaction{uncategorizedCount === 1 ? "" : "s"} need review
+            <span className="underline">Review →</span>
+          </a>
         )}
 
         <Card
@@ -370,7 +376,7 @@ export default function Dashboard() {
             <Skeleton className="h-8 w-64 rounded-lg" />
           ) : !hasBudgets ? (
             <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Set a monthly budget for each category on the Budget page to see this month&apos;s forecast.
+              Set a monthly budget for each category in Simulation settings → Life to see this month&apos;s forecast.
             </p>
           ) : data.forecastVnd === null ? (
             <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
@@ -388,7 +394,7 @@ export default function Dashboard() {
                 className="font-display text-[38px] font-bold leading-none tracking-[-0.01em]"
                 style={{ color: "var(--color-text-primary)" }}
               >
-                {formatVND(data.forecastVnd)}
+                {formatAmount(data.forecastVnd)}
               </p>
               <div className="flex items-center gap-2 mt-2.5">
                 {positive ? (
@@ -401,8 +407,8 @@ export default function Dashboard() {
                   style={{ color: positive ? "var(--color-success)" : "var(--color-danger)" }}
                 >
                   {positive
-                    ? `On pace to come in ${formatVND(data.savingsImpactVnd ?? 0)} under budget`
-                    : `On pace to go ${formatVND(Math.abs(data.savingsImpactVnd ?? 0))} over budget`}
+                    ? `On pace to come in ${formatAmount(data.savingsImpactVnd ?? 0)} under budget`
+                    : `On pace to go ${formatAmount(Math.abs(data.savingsImpactVnd ?? 0))} over budget`}
                 </span>
               </div>
             </div>
@@ -432,9 +438,9 @@ export default function Dashboard() {
             {data && data.variableTotalBudget > 0 && (
               <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
                 <b className="font-num" style={{ color: "var(--color-text-primary)" }}>
-                  {formatVND(data.variableTotalActual)}
+                  {formatAmount(data.variableTotalActual)}
                 </b>{" "}
-                / {formatVND(data.variableTotalBudget)} &middot; {variablePct}%
+                / {formatAmount(data.variableTotalBudget)} &middot; {variablePct}%
               </span>
             )}
           </div>
@@ -451,23 +457,24 @@ export default function Dashboard() {
           )}
 
           {!data ? (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-w-[880px]">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <Skeleton key={i} className="h-20 rounded-lg" />
               ))}
             </div>
           ) : sortedVariable.length === 0 ? (
             <p className="py-6 text-sm text-center" style={{ color: "var(--color-text-secondary)" }}>
-              No variable cost categories yet. Add some from the Budget page.
+              No variable cost categories yet. Add some in Simulation settings → Life.
             </p>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-w-[880px]">
               {sortedVariable.map((cat) => (
                 <VariableCategoryCard
                   key={cat.id}
                   cat={cat}
                   todayPct={todayPct}
                   onClick={() => openCategory(cat.name)}
+                  formatAmount={formatAmount}
                 />
               ))}
             </div>
@@ -490,29 +497,30 @@ export default function Dashboard() {
             {data && data.fixedTotalBudget > 0 && (
               <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
                 <b className="font-num" style={{ color: "var(--color-text-primary)" }}>
-                  {formatVND(data.fixedTotalActual)}
+                  {formatAmount(data.fixedTotalActual)}
                 </b>{" "}
-                / {formatVND(data.fixedTotalBudget)} &middot; {fixedPct}%
+                / {formatAmount(data.fixedTotalBudget)} &middot; {fixedPct}%
               </span>
             )}
           </div>
           {!data ? (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-w-[880px]">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-16 rounded-lg" />
               ))}
             </div>
           ) : sortedFixed.length === 0 ? (
             <p className="py-6 text-sm text-center" style={{ color: "var(--color-text-secondary)" }}>
-              No fixed cost categories yet. Add some from the Budget page.
+              No fixed cost categories yet. Add some in Simulation settings → Life.
             </p>
           ) : (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-w-[880px]">
               {sortedFixed.map((cat) => (
                 <FixedCategoryCard
                   key={cat.id}
                   cat={cat}
                   onClick={() => openCategory(cat.name)}
+                  formatAmount={formatAmount}
                 />
               ))}
             </div>
@@ -569,7 +577,7 @@ export default function Dashboard() {
                         onToggle={(v) => handleToggleSpecialExpense(t.id, v)}
                       />
                       <span className="font-num text-sm shrink-0" style={{ color: "var(--color-text-primary)" }}>
-                        {formatVND(t.amount)}
+                        {formatAmount(t.amount)}
                       </span>
                     </li>
                   ))}
@@ -578,7 +586,7 @@ export default function Dashboard() {
                   <div className="mt-3 pt-3 border-t flex items-center justify-between" style={{ borderColor: "var(--color-border-default)" }}>
                     <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>Total</span>
                     <span className="font-num font-semibold" style={{ color: "var(--color-text-primary)" }}>
-                      {formatVND(
+                      {formatAmount(
                         detail.txs
                           .filter((t) => !t.excluded_from_dashboard)
                           .reduce((sum, t) => sum + t.amount, 0),

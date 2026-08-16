@@ -9,6 +9,10 @@ const patchSchema = z.object({
   name: z.string().min(1).max(50).optional(),
   budget: z.number().int().min(0).optional(),
   is_fixed: z.boolean().optional(),
+  // 固定費カテゴリの賃貸更新料オプション設定(Simulation設定モーダルの「暮らし」
+  // タブから編集する)。null を明示的に渡すと更新料ロジックを解除できる。
+  renewal_cycle_years: z.number().int().min(1).max(20).nullable().optional(),
+  renewal_fee_months: z.number().min(0).max(12).nullable().optional(),
 });
 
 // カテゴリの名前・予算・固定費フラグを変更する。
@@ -26,7 +30,7 @@ export async function PATCH(
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
-  const { name: newNameRaw, budget, is_fixed } = parsed.data;
+  const { name: newNameRaw, budget, is_fixed, renewal_cycle_years, renewal_fee_months } = parsed.data;
   const newName = newNameRaw?.trim();
 
   const { data: cur, error: fetchError } = await db
@@ -51,6 +55,8 @@ export async function PATCH(
     const updatePayload: Record<string, unknown> = { name: newName };
     if (budget !== undefined) updatePayload.budget = budget;
     if (is_fixed !== undefined) updatePayload.is_fixed = is_fixed;
+    if (renewal_cycle_years !== undefined) updatePayload.renewal_cycle_years = renewal_cycle_years;
+    if (renewal_fee_months !== undefined) updatePayload.renewal_fee_months = renewal_fee_months;
 
     const { error: updError } = await db
       .from("categories")
@@ -83,6 +89,8 @@ export async function PATCH(
   const updatePayload: Record<string, unknown> = {};
   if (budget !== undefined) updatePayload.budget = budget;
   if (is_fixed !== undefined) updatePayload.is_fixed = is_fixed;
+  if (renewal_cycle_years !== undefined) updatePayload.renewal_cycle_years = renewal_cycle_years;
+  if (renewal_fee_months !== undefined) updatePayload.renewal_fee_months = renewal_fee_months;
 
   if (Object.keys(updatePayload).length === 0) {
     return NextResponse.json({ ok: true });

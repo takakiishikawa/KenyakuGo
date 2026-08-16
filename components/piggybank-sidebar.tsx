@@ -3,53 +3,33 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import dynamic from "next/dynamic";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-  GO_APPS,
-  cn,
-} from "@takaki/go-design-system";
-import {
-  LayoutDashboard,
-  BarChart2,
-  Wallet,
-  Target,
-  LogOut,
-  LogIn,
-} from "lucide-react";
+import { PiggyBank, LayoutGrid, Target, LogOut, LogIn } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
+import { usePreferences } from "@/lib/preferences";
 
-const AppSwitcher = dynamic(() =>
-  import("@takaki/go-design-system").then((m) => ({ default: m.AppSwitcher })),
-);
-
-const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/budget", label: "Budget", icon: Wallet },
+// Claude Design (PiggyBank.dc.html)のサイドバーを1:1で再現した、常時アイコンのみの
+// 固定76px幅レール。go-design-systemのSidebar/SidebarProvider(展開/省略の
+// 切り替え機構)はあえて使わず、デザイン通りの見た目に最適化したプレーンな実装にする。
+const NAV_ITEMS = [
+  { href: "/", label: "Dashboard", icon: LayoutGrid },
   { href: "/simulation", label: "Simulation", icon: Target },
-  { href: "/weekly", label: "Report", icon: BarChart2 },
 ];
+
+const DARK_BG = "#20242A";
+const DARK_ACCENT_BG = "#2C3038";
+const ACCENT = "#BE5B85";
+const INACTIVE = "#9B9587";
+const MUTED_TEXT = "#C7C2B7";
 
 const supabaseConfigured =
   !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
   !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// アイコンのみの省略形をデフォルトとするサイドバー(ログラス等の管理画面に近い、
-// コンテンツ領域を最大化する方針)。ユーザー名・メール・アバターは表示せず、
-// ログイン/ログアウトのボタンだけを置く。展開時以外はホバーでtooltip表示。
 export function PiggyBankSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const { currency, lang, toggleCurrency, toggleLang } = usePreferences();
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -68,7 +48,6 @@ export function PiggyBankSidebar() {
   }, []);
 
   const handleSignIn = () => router.push("/login");
-
   const handleSignOut = async () => {
     if (!supabaseConfigured) return;
     const { createClient } = await import("@/lib/supabase/client");
@@ -83,89 +62,74 @@ export function PiggyBankSidebar() {
   }
 
   return (
-    <Sidebar
-      collapsible="icon"
-      style={{ backgroundColor: "var(--kg-sidebar-bg)", borderColor: "var(--kg-sidebar-border)" }}
-      className="border-r"
+    <div
+      className="w-[76px] shrink-0 flex flex-col items-center py-[18px]"
+      style={{ backgroundColor: DARK_BG }}
     >
-      <SidebarHeader>
-        <AppSwitcher currentApp="PiggyBank" apps={GO_APPS} placement="bottom" />
-      </SidebarHeader>
+      <div
+        className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center mb-[22px] shrink-0"
+        style={{ backgroundColor: ACCENT }}
+      >
+        <PiggyBank size={18} color="#ffffff" />
+      </div>
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-0.5">
-              {navItems.map(({ href, label, icon: Icon }) => {
-                const active = isActive(href);
-                return (
-                  <SidebarMenuItem key={href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={active}
-                      tooltip={label}
-                      className={cn(
-                        "h-auto rounded-[9px] py-2.5 px-3 transition-all active:scale-[0.97]",
-                        active && "hover:brightness-95 active:brightness-90",
-                      )}
-                      style={active ? { backgroundColor: "var(--kg-sidebar-accent-bg)" } : undefined}
-                    >
-                      <Link href={href} className="gap-2.5">
-                        <Icon
-                          size={17}
-                          className="shrink-0"
-                          style={{ color: active ? "var(--kg-sidebar-active-icon)" : "var(--kg-sidebar-inactive)" }}
-                        />
-                        <span
-                          className="text-sm"
-                          style={{
-                            fontWeight: active ? 600 : 500,
-                            color: active ? "var(--kg-sidebar-text)" : "var(--kg-sidebar-inactive)",
-                          }}
-                        >
-                          {label}
-                        </span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+      <div className="flex flex-col gap-1.5 flex-1">
+        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          const active = isActive(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              title={label}
+              className="w-12 h-[42px] rounded-[10px] flex items-center justify-center cursor-pointer transition-all hover:brightness-110 active:scale-95"
+              style={{ backgroundColor: active ? ACCENT : "transparent" }}
+            >
+              <Icon size={18} color={active ? "#ffffff" : INACTIVE} />
+            </Link>
+          );
+        })}
+      </div>
 
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            {user ? (
-              <SidebarMenuButton
-                onClick={handleSignOut}
-                tooltip="Sign out"
-                className="cursor-pointer"
-              >
-                <LogOut size={17} style={{ color: "var(--kg-sidebar-inactive)" }} />
-                <span className="text-sm" style={{ color: "var(--kg-sidebar-inactive)" }}>
-                  Sign out
-                </span>
-              </SidebarMenuButton>
-            ) : (
-              <SidebarMenuButton
-                onClick={handleSignIn}
-                tooltip="Sign in"
-                className="cursor-pointer"
-              >
-                <LogIn size={17} style={{ color: "var(--kg-sidebar-inactive)" }} />
-                <span className="text-sm" style={{ color: "var(--kg-sidebar-inactive)" }}>
-                  Sign in
-                </span>
-              </SidebarMenuButton>
-            )}
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+      <button
+        type="button"
+        onClick={toggleLang}
+        title="Language"
+        className="w-[34px] h-7 rounded-lg flex items-center justify-center cursor-pointer mb-2 transition-all hover:brightness-110 active:scale-95 shrink-0"
+        style={{ backgroundColor: DARK_ACCENT_BG, color: MUTED_TEXT, fontSize: 10.5, fontWeight: 700 }}
+      >
+        {lang.toUpperCase()}
+      </button>
+      <button
+        type="button"
+        onClick={toggleCurrency}
+        title={currency === "JPY" ? "Japanese Yen" : "Vietnamese Dong"}
+        className="w-[34px] h-7 rounded-lg flex items-center justify-center cursor-pointer mb-2 transition-all hover:brightness-110 active:scale-95 shrink-0"
+        style={{ backgroundColor: DARK_ACCENT_BG, color: "#F5F1EA", fontSize: 13, fontWeight: 700 }}
+      >
+        {currency === "JPY" ? "¥" : "₫"}
+      </button>
 
-      <SidebarRail />
-    </Sidebar>
+      {user ? (
+        <button
+          type="button"
+          onClick={handleSignOut}
+          title="Log out"
+          className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center cursor-pointer transition-all hover:brightness-110 active:scale-95 shrink-0"
+          style={{ backgroundColor: DARK_ACCENT_BG }}
+        >
+          <LogOut size={15} color={MUTED_TEXT} />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={handleSignIn}
+          title="Sign in"
+          className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center cursor-pointer transition-all hover:brightness-110 active:scale-95 shrink-0"
+          style={{ backgroundColor: DARK_ACCENT_BG }}
+        >
+          <LogIn size={15} color={MUTED_TEXT} />
+        </button>
+      )}
+    </div>
   );
 }

@@ -7,7 +7,10 @@ export async function GET() {
   const { db } = result;
 
   const [catsRes, txRes] = await Promise.all([
-    db.from("categories").select("id, name, budget, is_fixed").order("created_at"),
+    db
+      .from("categories")
+      .select("id, name, budget, is_fixed, renewal_cycle_years, renewal_fee_months")
+      .order("created_at"),
     db.from("transactions").select("category, amount").limit(100000),
   ]);
 

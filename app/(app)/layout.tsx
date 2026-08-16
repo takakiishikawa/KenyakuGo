@@ -23,9 +23,12 @@ export default async function AppGroupLayout({
     if (!user) redirect("/login");
   }
   return (
-    <div className="flex w-full min-h-screen" style={{ backgroundColor: "#FAF5EE" }}>
+    // h-screen + overflow-hidden をここで固定し、スクロールはコンテンツ領域だけに
+    // 閉じ込める(サイドバーの高さがコンテンツの高さに引っ張られてログアウトボタンが
+    // 画面外に出てしまわないように)。
+    <div className="flex w-full h-screen overflow-hidden" style={{ backgroundColor: "#FAF5EE" }}>
       <PiggyBankSidebar />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-full">
         <div className="flex-1 overflow-y-auto px-8 py-6 pb-12">{children}</div>
       </div>
     </div>

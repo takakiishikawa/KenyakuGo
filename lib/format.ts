@@ -1,7 +1,16 @@
+// VNDは桁数が多くなりがちなので(0が並びすぎて読みにくい)、千・百万単位の
+// コンパクト表記(例: 1.235.678 ₫ → 1,2M ₫)にする。日本円(formatJPY)は
+// これまで通り実額をそのまま表示する。
 export function formatVND(amount: number): string {
-  return Math.round(amount)
-    .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ".") + " ₫";
+  const rounded = Math.round(amount);
+  const sign = rounded < 0 ? "-" : "";
+  const abs = Math.abs(rounded);
+  // "en-US" だとK/M/Bのアルファベット表記になる("de-DE"だとTsd./Mio.になってしまう)。
+  const compact = new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(abs);
+  return `${sign}${compact} ₫`;
 }
 
 export function formatJPY(amount: number): string {

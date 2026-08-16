@@ -1,9 +1,113 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@takaki/go-design-system";
+import { useState } from "react";
+import { Check, Pencil, Trash2, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, Input } from "@takaki/go-design-system";
 import type { Scenario } from "@/lib/scenario/types";
 import { t, type Lang } from "@/lib/scenario/dictionary";
+import { DC } from "@/lib/scenario/design-colors";
+
+function ScenarioRow({
+  scenario,
+  canDelete,
+  onSelect,
+  onDelete,
+  onRename,
+}: {
+  scenario: Scenario;
+  canDelete: boolean;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
+  onRename: (id: string, name: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [nameInput, setNameInput] = useState(scenario.name);
+
+  const commit = () => {
+    const trimmed = nameInput.trim();
+    if (trimmed && trimmed !== scenario.name) onRename(scenario.id, trimmed);
+    else setNameInput(scenario.name);
+    setEditing(false);
+  };
+
+  return (
+    <div
+      className="flex items-center gap-2 py-2.5 border-b last:border-b-0"
+      style={{ borderColor: DC.trackAlt }}
+    >
+      {editing ? (
+        <>
+          <Input
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit();
+              if (e.key === "Escape") {
+                setNameInput(scenario.name);
+                setEditing(false);
+              }
+            }}
+            className="h-7 text-sm flex-1 min-w-0"
+            autoFocus
+          />
+          <button type="button" onClick={commit} className="p-1 rounded transition-all hover:bg-muted" style={{ color: DC.textFaint }}>
+            <Check size={13} />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setNameInput(scenario.name);
+              setEditing(false);
+            }}
+            className="p-1 rounded transition-all hover:bg-muted"
+            style={{ color: DC.textFaint }}
+          >
+            <X size={13} />
+          </button>
+        </>
+      ) : (
+        <>
+          <span className="flex-1 text-sm font-semibold truncate" style={{ color: DC.textPrimary }}>
+            {scenario.name}
+          </span>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            title="名前を変更"
+            className="p-1 rounded transition-all hover:bg-muted"
+            style={{ color: DC.textFaint }}
+          >
+            <Pencil size={12} />
+          </button>
+          {scenario.is_primary ? (
+            <span className="text-[10.5px] font-bold" style={{ color: DC.primary }}>
+              選択中
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onSelect(scenario.id)}
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-md cursor-pointer transition-all hover:brightness-95"
+              style={{ backgroundColor: DC.track, color: DC.textSecondary }}
+            >
+              選択
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onDelete(scenario.id)}
+            disabled={!canDelete}
+            title={!canDelete ? "最後の1件は削除できません" : "削除"}
+            className="p-1 rounded transition-all hover:bg-muted active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
+            style={{ color: DC.textFaint }}
+          >
+            <Trash2 size={13} />
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function ScenarioListDialog({
   open,
@@ -11,6 +115,7 @@ export function ScenarioListDialog({
   scenarios,
   onSelect,
   onDelete,
+  onRename,
   lang,
 }: {
   open: boolean;
@@ -18,52 +123,25 @@ export function ScenarioListDialog({
   scenarios: Scenario[];
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onRename: (id: string, name: string) => void;
   lang: Lang;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0 overflow-hidden">
-        <DialogHeader className="px-5 py-4 border-b" style={{ borderColor: "var(--color-border-default)" }}>
+        <DialogHeader className="px-5 py-4 border-b" style={{ borderColor: DC.cardBorder }}>
           <DialogTitle>{t(lang, "scenarios")}</DialogTitle>
         </DialogHeader>
         <div className="px-5 py-2 max-h-[60vh] overflow-y-auto">
           {scenarios.map((s) => (
-            <div
+            <ScenarioRow
               key={s.id}
-              className="flex items-center gap-2 py-2.5 border-b last:border-b-0"
-              style={{ borderColor: "var(--color-border-subtle)" }}
-            >
-              <span
-                className="flex-1 text-sm font-semibold truncate"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                {s.name}
-              </span>
-              {s.is_primary ? (
-                <span className="text-[10.5px] font-bold" style={{ color: "var(--color-primary)" }}>
-                  選択中
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => onSelect(s.id)}
-                  className="text-[11px] font-semibold px-2.5 py-1 rounded-md cursor-pointer transition-all hover:brightness-95"
-                  style={{ backgroundColor: "var(--kg-track)", color: "var(--color-text-secondary)" }}
-                >
-                  選択
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => onDelete(s.id)}
-                disabled={scenarios.length <= 1}
-                title={scenarios.length <= 1 ? "最後の1件は削除できません" : "削除"}
-                className="p-1 rounded transition-all hover:bg-muted active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
-                style={{ color: "var(--color-text-subtle)" }}
-              >
-                <Trash2 size={13} />
-              </button>
-            </div>
+              scenario={s}
+              canDelete={scenarios.length > 1}
+              onSelect={onSelect}
+              onDelete={onDelete}
+              onRename={onRename}
+            />
           ))}
         </div>
       </DialogContent>

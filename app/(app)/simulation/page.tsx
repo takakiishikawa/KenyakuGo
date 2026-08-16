@@ -21,6 +21,7 @@ import {
 import { buildChartSeries, buildCompareChartSeries, chartKindLabel, CHART_KINDS, type ChartKind } from "@/lib/scenario/chart";
 import { buildSingleTableRows, buildCompareTableRows } from "@/lib/scenario/table-rows";
 import { t } from "@/lib/scenario/dictionary";
+import { DC } from "@/lib/scenario/design-colors";
 import type { Scenario, ScenarioConfig } from "@/lib/scenario/types";
 import type { DisplayCurrency } from "@/components/currency-switch";
 
@@ -155,6 +156,15 @@ export default function SimulationPage() {
       await fetchScenarios();
       if (editTargetId === id) setEditTargetId(null);
     }
+  };
+
+  const renameScenario = async (id: string, name: string) => {
+    setScenarios((prev) => prev.map((s) => (s.id === id ? { ...s, name } : s)));
+    await fetch(`/api/scenarios/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
   };
 
   const saveConfig = useCallback(async (scenarioId: string, config: ScenarioConfig) => {
@@ -306,21 +316,21 @@ export default function SimulationPage() {
       {isSingle && lastYear && curYearRow && (
         <Card
           className="rounded-2xl px-5 py-4 flex items-center gap-4 flex-wrap"
-          style={{ borderColor: "var(--color-border-default)" }}
+          style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}
         >
-          <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em]" style={{ color: "var(--color-text-subtle)" }}>
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em]" style={{ color: DC.textFaint }}>
             {t(lang, "totalSavings")}
           </span>
-          <span className="font-display text-2xl font-bold" style={{ color: "var(--color-text-primary)" }}>
+          <span className="font-display text-2xl font-bold" style={{ color: DC.textPrimary }}>
             {formatAmount(lastYear.savingsCumTotalYen)}
           </span>
-          <div className="flex-1 min-w-20 h-1.5 rounded-full" style={{ backgroundColor: "var(--kg-track)" }}>
+          <div className="flex-1 min-w-20 h-1.5 rounded-full" style={{ backgroundColor: DC.track }}>
             <div
               className="h-full rounded-full transition-all"
-              style={{ width: `${simTargetPct}%`, backgroundColor: "var(--color-primary)" }}
+              style={{ width: `${simTargetPct}%`, backgroundColor: DC.primary }}
             />
           </div>
-          <span className="text-xs font-medium" style={{ color: "var(--color-primary)" }}>
+          <span className="text-xs font-medium" style={{ color: DC.primaryHover }}>
             {CUR_YEAR}年時点 {formatAmount(curYearRow.savingsCumTotalYen)} / {YEAR_OPTIONS[YEAR_OPTIONS.length - 1]}年見込み{" "}
             {formatAmount(lastYear.savingsCumTotalYen)}
           </span>
@@ -348,9 +358,9 @@ export default function SimulationPage() {
                   onClick={() => setChartKind(k)}
                   className="px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer border transition-all"
                   style={{
-                    backgroundColor: chartKind === k ? "var(--color-text-primary)" : "var(--color-surface-default)",
-                    color: chartKind === k ? "#fff" : "var(--color-text-secondary)",
-                    borderColor: "var(--color-border-default)",
+                    backgroundColor: chartKind === k ? DC.textPrimary : DC.cardBg,
+                    color: chartKind === k ? "#fff" : DC.textSecondary,
+                    borderColor: DC.cardBorder,
                   }}
                 >
                   {chartKindLabel(lang, k)}
@@ -358,7 +368,7 @@ export default function SimulationPage() {
               ))}
             </div>
           )}
-          <Card className="rounded-2xl p-5" style={{ borderColor: "var(--color-border-default)" }}>
+          <Card className="rounded-2xl p-5" style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}>
             <ScenarioChart bundle={chartBundle} formatAmount={formatAmount} />
           </Card>
         </div>
@@ -391,6 +401,7 @@ export default function SimulationPage() {
         scenarios={scenarios}
         onSelect={setPrimaryScenario}
         onDelete={deleteScenario}
+        onRename={renameScenario}
         lang={lang}
       />
     </div>
@@ -407,7 +418,7 @@ function SegmentedControl({
   options: { value: string; label: string }[];
 }) {
   return (
-    <div className="flex gap-0.5 p-0.5 rounded-lg" style={{ backgroundColor: "var(--kg-track)" }}>
+    <div className="flex gap-0.5 p-0.5 rounded-lg" style={{ backgroundColor: DC.track }}>
       {options.map((o) => (
         <button
           key={o.value}
@@ -415,8 +426,9 @@ function SegmentedControl({
           onClick={() => onChange(o.value)}
           className="px-3.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all"
           style={{
-            backgroundColor: value === o.value ? "var(--color-surface-default)" : "transparent",
-            color: "var(--color-text-primary)",
+            backgroundColor: value === o.value ? DC.cardBg : "transparent",
+            color: DC.textPrimary,
+            boxShadow: value === o.value ? "0 1px 2px rgba(43,38,32,.08)" : undefined,
           }}
         >
           {o.label}
@@ -444,8 +456,8 @@ function IconButton({
       title={title}
       className="flex items-center justify-center h-8 w-8 rounded-lg cursor-pointer transition-all hover:brightness-95 active:scale-95"
       style={{
-        backgroundColor: accent ? "var(--color-primary)" : "var(--kg-track)",
-        color: accent ? "#fff" : "var(--color-text-secondary)",
+        backgroundColor: accent ? DC.primary : DC.track,
+        color: accent ? "#fff" : DC.textSecondary,
       }}
     >
       {children}

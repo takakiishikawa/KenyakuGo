@@ -21,6 +21,7 @@ import type { CategoryBudgetOverride } from "@/lib/category-budget";
 import { CategoryBudgetCard, type CategoryForCard } from "@/components/category-budget-card";
 import { EDU_STAGES } from "@/lib/scenario/education-costs";
 import { t, type Lang } from "@/lib/scenario/dictionary";
+import { DC } from "@/lib/scenario/design-colors";
 import type { Scenario, ScenarioConfig } from "@/lib/scenario/types";
 import { HelpTip } from "./help-tip";
 
@@ -122,7 +123,7 @@ export function ScenarioSettingsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0 overflow-hidden">
-        <DialogHeader className="px-5 py-4 border-b flex-row items-center justify-between" style={{ borderColor: "var(--color-border-default)" }}>
+        <DialogHeader className="px-5 py-4 border-b flex-row items-center justify-between" style={{ borderColor: DC.cardBorder }}>
           <DialogTitle>
             {t(lang, "settingsBtn")} — {scenario.name}
           </DialogTitle>
@@ -131,7 +132,7 @@ export function ScenarioSettingsDialog({
         <div className="px-5 py-4 max-h-[76vh] overflow-y-auto flex flex-col gap-3.5">
           {isCompare && (
             <div className="flex items-center gap-2">
-              <span className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+              <span className="text-xs" style={{ color: DC.textSecondary }}>
                 編集対象:
               </span>
               <Select value={editTargetId} onValueChange={onEditTargetChange}>
@@ -149,7 +150,7 @@ export function ScenarioSettingsDialog({
             </div>
           )}
 
-          <div className="flex gap-1 p-1 rounded-lg w-fit" style={{ backgroundColor: "var(--kg-track)" }}>
+          <div className="flex gap-1 p-1 rounded-lg w-fit" style={{ backgroundColor: DC.track }}>
             {tabs.map((tab) => (
               <button
                 key={tab.key}
@@ -157,8 +158,8 @@ export function ScenarioSettingsDialog({
                 onClick={() => setConfigTab(tab.key)}
                 className="px-3.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all"
                 style={{
-                  backgroundColor: configTab === tab.key ? "var(--color-text-primary)" : "transparent",
-                  color: configTab === tab.key ? "#fff" : "var(--color-text-secondary)",
+                  backgroundColor: configTab === tab.key ? DC.textPrimary : "transparent",
+                  color: configTab === tab.key ? "#fff" : DC.textSecondary,
                 }}
               >
                 {tab.label}
@@ -169,10 +170,10 @@ export function ScenarioSettingsDialog({
           {configTab === "family" && (
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2.5">
-                <span className="text-xs w-24" style={{ color: "var(--color-text-secondary)" }}>
+                <span className="text-xs w-24" style={{ color: DC.textSecondary }}>
                   配偶者
                 </span>
-                <div className="flex gap-0.5 p-0.5 rounded-lg" style={{ backgroundColor: "var(--kg-track)" }}>
+                <div className="flex gap-0.5 p-0.5 rounded-lg" style={{ backgroundColor: DC.track }}>
                   {[
                     { v: true, l: "あり" },
                     { v: false, l: "なし" },
@@ -183,8 +184,8 @@ export function ScenarioSettingsDialog({
                       onClick={() => commit({ ...draft, family: { ...draft.family, spouse: o.v } })}
                       className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all"
                       style={{
-                        backgroundColor: draft.family.spouse === o.v ? "var(--color-primary)" : "transparent",
-                        color: draft.family.spouse === o.v ? "#fff" : "var(--color-text-secondary)",
+                        backgroundColor: draft.family.spouse === o.v ? DC.primary : "transparent",
+                        color: draft.family.spouse === o.v ? "#fff" : DC.textSecondary,
                       }}
                     >
                       {o.l}
@@ -194,7 +195,7 @@ export function ScenarioSettingsDialog({
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold" style={{ color: "var(--color-text-secondary)" }}>
+                <span className="text-xs font-semibold" style={{ color: DC.textSecondary }}>
                   子ども
                 </span>
                 <button
@@ -206,16 +207,16 @@ export function ScenarioSettingsDialog({
                     })
                   }
                   className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold cursor-pointer transition-all hover:brightness-95"
-                  style={{ backgroundColor: "var(--kg-track)", color: "var(--color-text-secondary)" }}
+                  style={{ backgroundColor: DC.track, color: DC.textSecondary }}
                 >
                   <Plus size={12} /> 子どもを追加
                 </button>
               </div>
 
               {draft.family.kids.map((kid, kidIdx) => (
-                <div key={kidIdx} className="rounded-lg border p-3 flex flex-col gap-2" style={{ borderColor: "var(--color-border-subtle)" }}>
+                <div key={kidIdx} className="rounded-lg border p-3 flex flex-col gap-2" style={{ borderColor: DC.trackAlt }}>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs" style={{ color: "var(--color-text-subtle)" }}>
+                    <span className="text-xs" style={{ color: DC.textFaint }}>
                       生まれ年
                     </span>
                     <Input
@@ -228,7 +229,7 @@ export function ScenarioSettingsDialog({
                       }}
                       className="h-7 w-20 text-xs font-num"
                     />
-                    <span className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
+                    <span className="text-[11px]" style={{ color: DC.textFaint }}>
                       (今年{CUR_YEAR - kid.birthYear}歳)
                     </span>
                     <button
@@ -240,7 +241,7 @@ export function ScenarioSettingsDialog({
                         })
                       }
                       className="ml-auto p-1 rounded transition-all hover:bg-muted"
-                      style={{ color: "var(--color-text-subtle)" }}
+                      style={{ color: DC.textFaint }}
                     >
                       <Trash2 size={13} />
                     </button>
@@ -253,7 +254,7 @@ export function ScenarioSettingsDialog({
                         <div key={stage.key} className="flex items-center gap-2 flex-wrap">
                           <span
                             className="text-[11px] w-24 shrink-0 flex items-center gap-1"
-                            style={{ color: "var(--color-text-secondary)" }}
+                            style={{ color: DC.textSecondary }}
                           >
                             {lang === "ja" ? stage.labelJa : stage.labelEn}
                             <HelpTip text={lang === "ja" ? stage.tipJa : stage.tipEn} />
@@ -270,9 +271,9 @@ export function ScenarioSettingsDialog({
                                 }}
                                 className="px-2.5 py-1 rounded-full text-[10.5px] font-semibold cursor-pointer transition-all border"
                                 style={{
-                                  backgroundColor: sel === opt.key ? "var(--color-primary)" : "var(--color-surface-default)",
-                                  color: sel === opt.key ? "#fff" : "var(--color-text-secondary)",
-                                  borderColor: sel === opt.key ? "var(--color-primary)" : "var(--color-border-default)",
+                                  backgroundColor: sel === opt.key ? DC.primary : DC.cardBg,
+                                  color: sel === opt.key ? "#fff" : DC.textSecondary,
+                                  borderColor: sel === opt.key ? DC.primary : DC.cardBorder,
                                 }}
                               >
                                 {lang === "ja" ? opt.labelJa : opt.labelEn}
@@ -297,7 +298,7 @@ export function ScenarioSettingsDialog({
                 ]
               ).map((row) => (
                 <div key={row.key} className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs w-24" style={{ color: "var(--color-text-secondary)" }}>
+                  <span className="text-xs w-24" style={{ color: DC.textSecondary }}>
                     {row.label}
                   </span>
                   <Input
@@ -312,7 +313,7 @@ export function ScenarioSettingsDialog({
                     onBlur={() => commit(draft)}
                     className="h-8 w-28 text-xs text-right font-num"
                   />
-                  <span className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
+                  <span className="text-[11px]" style={{ color: DC.textFaint }}>
                     円/月
                   </span>
                   <Input
@@ -327,13 +328,13 @@ export function ScenarioSettingsDialog({
                     onBlur={() => commit(draft)}
                     className="h-8 w-16 text-xs text-right font-num"
                   />
-                  <span className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
+                  <span className="text-[11px]" style={{ color: DC.textFaint }}>
                     %/年 昇給
                   </span>
                 </div>
               ))}
               <div className="flex items-center gap-2">
-                <span className="text-xs w-24" style={{ color: "var(--color-text-secondary)" }}>
+                <span className="text-xs w-24" style={{ color: DC.textSecondary }}>
                   副業収入
                 </span>
                 <Input
@@ -343,11 +344,11 @@ export function ScenarioSettingsDialog({
                   onBlur={() => commit(draft)}
                   className="h-8 w-28 text-xs text-right font-num"
                 />
-                <span className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
+                <span className="text-[11px]" style={{ color: DC.textFaint }}>
                   円/月
                 </span>
               </div>
-              <div className="text-xs rounded-lg px-2.5 py-2" style={{ backgroundColor: "var(--kg-track)", color: "var(--color-text-secondary)" }}>
+              <div className="text-xs rounded-lg px-2.5 py-2" style={{ backgroundColor: DC.track, color: DC.textSecondary }}>
                 手取り目安(自動計算): {takeHomePreview}/月 · 児童手当は自動加算されます
               </div>
             </div>
@@ -355,7 +356,7 @@ export function ScenarioSettingsDialog({
 
           {configTab === "spending" && (
             <div className="flex flex-col gap-2.5">
-              <div className="flex gap-0.5 p-0.5 rounded-lg w-fit" style={{ backgroundColor: "var(--kg-track)" }}>
+              <div className="flex gap-0.5 p-0.5 rounded-lg w-fit" style={{ backgroundColor: DC.track }}>
                 {(
                   [
                     { k: "life" as const, l: t(lang, "life") },
@@ -369,8 +370,8 @@ export function ScenarioSettingsDialog({
                     onClick={() => setSpendingSub(s.k)}
                     className="px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer"
                     style={{
-                      backgroundColor: spendingSub === s.k ? "var(--color-surface-default)" : "transparent",
-                      color: "var(--color-text-primary)",
+                      backgroundColor: spendingSub === s.k ? DC.cardBg : "transparent",
+                      color: DC.textPrimary,
                     }}
                   >
                     {s.l}
@@ -380,7 +381,7 @@ export function ScenarioSettingsDialog({
 
               {spendingSub === "life" && (
                 <div className="flex flex-col gap-2.5">
-                  <div className="flex gap-0.5 p-0.5 rounded-lg w-fit" style={{ backgroundColor: "var(--kg-track)" }}>
+                  <div className="flex gap-0.5 p-0.5 rounded-lg w-fit" style={{ backgroundColor: DC.track }}>
                     {(
                       [
                         { k: "fixed" as const, l: t(lang, "fixed") },
@@ -393,8 +394,8 @@ export function ScenarioSettingsDialog({
                         onClick={() => setLifeSub(s.k)}
                         className="px-3 py-1 rounded-md text-[11.5px] font-semibold cursor-pointer"
                         style={{
-                          backgroundColor: lifeSub === s.k ? "var(--color-primary)" : "transparent",
-                          color: lifeSub === s.k ? "#fff" : "var(--color-text-secondary)",
+                          backgroundColor: lifeSub === s.k ? DC.primary : "transparent",
+                          color: lifeSub === s.k ? "#fff" : DC.textSecondary,
                         }}
                       >
                         {s.l}
@@ -405,7 +406,7 @@ export function ScenarioSettingsDialog({
                   <div className="flex items-center gap-2">
                     <span
                       className="text-xs w-24 flex items-center gap-1"
-                      style={{ color: "var(--color-text-secondary)" }}
+                      style={{ color: DC.textSecondary }}
                     >
                       インフレ率
                       <HelpTip text="家賃分の目安: 過去30年平均 約0.5%/年、都心部は1〜2%の上昇も。生活費分の目安: 過去30年平均 約0.5%/年、長期は1〜2%で設計するのが無難。" />
@@ -417,7 +418,7 @@ export function ScenarioSettingsDialog({
                       onBlur={() => commit(draft)}
                       className="h-8 w-16 text-xs text-right font-num"
                     />
-                    <span className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
+                    <span className="text-[11px]" style={{ color: DC.textFaint }}>
                       %/年(暮らし全体)
                     </span>
                   </div>
@@ -435,7 +436,7 @@ export function ScenarioSettingsDialog({
                     />
                   ))}
 
-                  <div className="flex items-center gap-2 rounded-lg border border-dashed p-2" style={{ borderColor: "var(--color-border-default)" }}>
+                  <div className="flex items-center gap-2 rounded-lg border border-dashed p-2" style={{ borderColor: DC.cardBorder }}>
                     <Input
                       value={addCatName}
                       onChange={(e) => setAddCatName(e.target.value)}
@@ -467,7 +468,7 @@ export function ScenarioSettingsDialog({
               )}
 
               {spendingSub === "education" && (
-                <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
+                <p className="text-xs" style={{ color: DC.textSecondary }}>
                   教育費は「家族」タブで子どもごとに進路を選ぶと自動計算されます。
                 </p>
               )}
@@ -475,7 +476,7 @@ export function ScenarioSettingsDialog({
               {spendingSub === "events" && (
                 <div className="flex flex-col gap-2">
                   {draft.events.map((ev, i) => (
-                    <div key={ev.id} className="flex items-center gap-1.5 flex-wrap rounded-lg border p-2" style={{ borderColor: "var(--color-border-subtle)" }}>
+                    <div key={ev.id} className="flex items-center gap-1.5 flex-wrap rounded-lg border p-2" style={{ borderColor: DC.trackAlt }}>
                       <Input
                         value={ev.label}
                         onChange={(e) => {
@@ -539,7 +540,7 @@ export function ScenarioSettingsDialog({
                         type="button"
                         onClick={() => commit({ ...draft, events: draft.events.filter((_, ix) => ix !== i) })}
                         className="p-1 rounded transition-all hover:bg-muted"
-                        style={{ color: "var(--color-text-subtle)" }}
+                        style={{ color: DC.textFaint }}
                       >
                         <X size={13} />
                       </button>
@@ -554,7 +555,7 @@ export function ScenarioSettingsDialog({
                       })
                     }
                     className="flex items-center gap-1.5 justify-center px-3 py-2 rounded-lg border border-dashed text-xs font-semibold cursor-pointer"
-                    style={{ borderColor: "var(--color-border-default)", color: "var(--color-text-subtle)" }}
+                    style={{ borderColor: DC.cardBorder, color: DC.textFaint }}
                   >
                     <Plus size={13} /> イベントを追加
                   </button>
@@ -566,7 +567,7 @@ export function ScenarioSettingsDialog({
           {configTab === "savingsTab" && (
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-xs w-28 flex items-center gap-1" style={{ color: "var(--color-text-secondary)" }}>
+                <span className="text-xs w-28 flex items-center gap-1" style={{ color: DC.textSecondary }}>
                   想定利率
                   <HelpTip text="世界株式インデックス長期平均: 5〜7%。国内株式: 3〜5%。債券: 1〜3%。保守的には2〜3%。非課税枠(NISA等)を活かすなら株式型(4〜7%)、生涯投資枠1,800万円を長期で埋めていく戦略が有効。" />
                 </span>
@@ -577,12 +578,12 @@ export function ScenarioSettingsDialog({
                   onBlur={() => commit(draft)}
                   className="h-8 w-20 text-xs text-right font-num"
                 />
-                <span className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
+                <span className="text-[11px]" style={{ color: DC.textFaint }}>
                   %/年
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs w-28" style={{ color: "var(--color-text-secondary)" }}>
+                <span className="text-xs w-28" style={{ color: DC.textSecondary }}>
                   投資に回す比率
                 </span>
                 <Input
@@ -592,14 +593,14 @@ export function ScenarioSettingsDialog({
                   onBlur={() => commit(draft)}
                   className="h-8 w-20 text-xs text-right font-num"
                 />
-                <span className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
+                <span className="text-[11px]" style={{ color: DC.textFaint }}>
                   % (毎月の黒字額に対して)
                 </span>
               </div>
             </div>
           )}
 
-          <div className="mt-1 pt-3 border-t" style={{ borderColor: "var(--color-border-subtle)" }}>
+          <div className="mt-1 pt-3 border-t" style={{ borderColor: DC.trackAlt }}>
             {savePromptOpen ? (
               <div className="flex items-center gap-2">
                 <Input
@@ -626,7 +627,7 @@ export function ScenarioSettingsDialog({
               </div>
             ) : (
               <div className="flex items-center justify-end gap-2">
-                <span className="text-[11px] flex-1" style={{ color: "var(--color-text-subtle)" }}>
+                <span className="text-[11px] flex-1" style={{ color: DC.textFaint }}>
                   この条件のまま確認するだけなら閉じるでOK。別条件として残したい場合は保存。
                 </span>
                 <Button size="sm" onClick={() => setSavePromptOpen(true)}>

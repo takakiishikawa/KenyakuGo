@@ -6,6 +6,7 @@ import { getCategoryColors, getCategoryColorTint } from "@/lib/category-colors";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { makeFormatAmount } from "@/lib/currency";
 import { usePreferences } from "@/lib/preferences";
+import { catLabel, type Lang } from "@/lib/scenario/dictionary";
 import { NoteTag } from "@/components/note-tag";
 import { SpecialExpenseToggle } from "@/components/special-expense-toggle";
 import {
@@ -112,11 +113,13 @@ function VariableCategoryCard({
   todayPct,
   onClick,
   formatAmount,
+  lang,
 }: {
   cat: CategoryEntry;
   todayPct: number;
   onClick: () => void;
   formatAmount: (vnd: number) => string;
+  lang: Lang;
 }) {
   const pctNum = cat.budget > 0 ? Math.round((cat.actual / cat.budget) * 100) : null;
   const over = cat.budget > 0 && cat.actual > cat.budget;
@@ -141,7 +144,7 @@ function VariableCategoryCard({
             <CategoryIcon name={cat.name} />
           </div>
           <span className="text-[13.5px] font-semibold truncate" style={{ color: "var(--color-text-primary)" }}>
-            {cat.name}
+            {catLabel(lang, cat.name)}
           </span>
         </div>
         {pctNum !== null && (
@@ -173,10 +176,12 @@ function FixedCategoryCard({
   cat,
   onClick,
   formatAmount,
+  lang,
 }: {
   cat: CategoryEntry;
   onClick: () => void;
   formatAmount: (vnd: number) => string;
+  lang: Lang;
 }) {
   const pctNum = cat.budget > 0 ? Math.round((cat.actual / cat.budget) * 100) : null;
   const over = cat.budget > 0 && cat.actual > cat.budget;
@@ -203,7 +208,7 @@ function FixedCategoryCard({
             })()}
           </div>
           <span className="text-[13.5px] font-semibold truncate" style={{ color: "var(--color-text-primary)" }}>
-            {cat.name}
+            {catLabel(lang, cat.name)}
           </span>
         </div>
         {pctNum !== null && (
@@ -232,7 +237,7 @@ function FixedCategoryCard({
 }
 
 export default function Dashboard() {
-  const { currency } = usePreferences();
+  const { currency, lang } = usePreferences();
   const formatAmount = makeFormatAmount(currency);
   const [data, setData] = useState<DashboardData | null>(null);
   const [uncategorizedCount, setUncategorizedCount] = useState(0);
@@ -424,19 +429,29 @@ export default function Dashboard() {
             boxShadow: CARD_SHADOW,
           }}
         >
-          <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
-            <div className="flex items-baseline gap-2.5">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <div className="flex flex-col gap-0.5 shrink-0">
               <span className="font-display text-[19px] font-semibold" style={{ color: "var(--color-text-primary)" }}>
                 Variable Costs
               </span>
               {data && data.variableTotalBudget > 0 && (
-                <span className="text-[12px]" style={{ color: "var(--color-text-subtle)" }}>
-                  On-track line {todayPct}% (day {data.dayOfMonth} of {data.daysInMonth})
+                <span className="text-[11.5px]" style={{ color: "var(--color-text-subtle)" }}>
+                  On-track {todayPct}% (day {data.dayOfMonth}/{data.daysInMonth})
                 </span>
               )}
             </div>
             {data && data.variableTotalBudget > 0 && (
-              <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+              <div className="flex-1 min-w-24 max-w-md">
+                <ProgressBar
+                  actual={data.variableTotalActual}
+                  budget={data.variableTotalBudget}
+                  todayPct={todayPct}
+                  showToday={true}
+                />
+              </div>
+            )}
+            {data && data.variableTotalBudget > 0 && (
+              <span className="text-sm shrink-0" style={{ color: "var(--color-text-secondary)" }}>
                 <b className="font-num" style={{ color: "var(--color-text-primary)" }}>
                   {formatAmount(data.variableTotalActual)}
                 </b>{" "}
@@ -444,17 +459,6 @@ export default function Dashboard() {
               </span>
             )}
           </div>
-
-          {data && data.variableTotalBudget > 0 && (
-            <div className="mb-3">
-              <ProgressBar
-                actual={data.variableTotalActual}
-                budget={data.variableTotalBudget}
-                todayPct={todayPct}
-                showToday={true}
-              />
-            </div>
-          )}
 
           {!data ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-w-[880px]">
@@ -475,6 +479,7 @@ export default function Dashboard() {
                   todayPct={todayPct}
                   onClick={() => openCategory(cat.name)}
                   formatAmount={formatAmount}
+                  lang={lang}
                 />
               ))}
             </div>
@@ -521,6 +526,7 @@ export default function Dashboard() {
                   cat={cat}
                   onClick={() => openCategory(cat.name)}
                   formatAmount={formatAmount}
+                  lang={lang}
                 />
               ))}
             </div>
@@ -537,7 +543,7 @@ export default function Dashboard() {
         <DialogContent className="max-w-lg p-0 overflow-hidden">
           <DialogHeader className="px-7 py-5 border-b" style={{ borderColor: "var(--color-border-default)" }}>
             <DialogTitle className="flex items-center gap-2">
-              {detail?.categoryName}
+              {detail?.categoryName && catLabel(lang, detail.categoryName)}
               <span className="text-sm font-normal" style={{ color: "var(--color-text-secondary)" }}>
                 This month
               </span>

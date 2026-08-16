@@ -20,7 +20,7 @@ const PreferencesContext = createContext<PreferencesValue | null>(null);
 // 個人アプリなのでDBには保存せずlocalStorageのみ(サイドバーのトグルから変更)。
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
   const [currency, setCurrency] = useState<DisplayCurrency>("VND");
-  const [lang, setLang] = useState<Lang>("ja");
+  const [lang, setLang] = useState<Lang>("en");
 
   useEffect(() => {
     const savedCurrency = window.localStorage.getItem(CURRENCY_KEY);

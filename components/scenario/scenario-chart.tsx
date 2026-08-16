@@ -1,6 +1,7 @@
 "use client";
 
 import type { ChartBundle } from "@/lib/scenario/chart";
+import { DC } from "@/lib/scenario/design-colors";
 
 function hexToRgba(hex: string, alpha: number): string {
   const h = hex.replace("#", "");
@@ -83,7 +84,7 @@ export function ScenarioChart({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-3.5">
         {series.map((s) => (
-          <div key={s.label} className="flex items-center gap-1.5 text-[11.5px]" style={{ color: "var(--color-text-secondary)" }}>
+          <div key={s.label} className="flex items-center gap-1.5 text-[11.5px]" style={{ color: DC.textSecondary }}>
             <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.color }} />
             {s.label}
           </div>
@@ -92,8 +93,8 @@ export function ScenarioChart({
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full block" style={{ height: "min(60vh, 420px)", minHeight: 280 }}>
         {gridLines.map((gl, i) => (
           <g key={i}>
-            <line x1={padL} y1={gl.y} x2={W - padR} y2={gl.y} stroke="var(--color-border-default)" strokeWidth={1} />
-            <text x={padL - 10} y={gl.y} textAnchor="end" dominantBaseline="middle" fontSize={11} fill="var(--color-text-subtle)">
+            <line x1={padL} y1={gl.y} x2={W - padR} y2={gl.y} stroke={DC.cardBorder} strokeWidth={1} />
+            <text x={padL - 10} y={gl.y} textAnchor="end" dominantBaseline="middle" fontSize={11} fill={DC.textFaint}>
               {gl.label}
             </text>
           </g>
@@ -108,7 +109,7 @@ export function ScenarioChart({
         {xTicks
           .filter((_, i) => i % showEveryNthTick === 0)
           .map((xt) => (
-            <text key={xt.x} x={xt.x} y={H - 6} textAnchor="middle" fontSize={10.5} fill="var(--color-text-subtle)">
+            <text key={xt.x} x={xt.x} y={H - 6} textAnchor="middle" fontSize={10.5} fill={DC.textFaint}>
               {xt.label}
             </text>
           ))}

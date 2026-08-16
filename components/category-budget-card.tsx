@@ -6,6 +6,7 @@ import { getCategoryColors, getCategoryColorTint } from "@/lib/category-colors";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { findEffectiveOverride, type CategoryBudgetOverride } from "@/lib/category-budget";
 import { makeFormatAmount, toDisplayAmount, toVndAmount, withThousands } from "@/lib/currency";
+import { DC } from "@/lib/scenario/design-colors";
 import type { DisplayCurrency } from "@/components/currency-switch";
 import {
   Button,
@@ -107,17 +108,17 @@ function ScheduleOverridePopover({
           type="button"
           title="Schedule a future change"
           className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 shrink-0"
-          style={{ color: "var(--color-text-subtle)" }}
+          style={{ color: DC.textFaint }}
         >
           <CalendarClock size={14} />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-3 flex flex-col gap-2.5" align="end">
-        <p className="text-xs font-semibold" style={{ color: "var(--color-text-primary)" }}>
+        <p className="text-xs font-semibold" style={{ color: DC.textPrimary }}>
           Schedule a change for {cat.name}
         </p>
 
-        <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: "var(--color-border-default)" }}>
+        <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: DC.cardBorder }}>
           {(
             [
               { key: "persistent", label: "From this month" },
@@ -130,8 +131,8 @@ function ScheduleOverridePopover({
               onClick={() => setMode(m.key)}
               className="flex-1 h-7 text-[11px] font-semibold transition-all"
               style={{
-                backgroundColor: mode === m.key ? "var(--color-primary)" : "transparent",
-                color: mode === m.key ? "#fff" : "var(--color-text-secondary)",
+                backgroundColor: mode === m.key ? DC.primary : "transparent",
+                color: mode === m.key ? "#fff" : DC.textSecondary,
               }}
             >
               {m.label}
@@ -154,7 +155,7 @@ function ScheduleOverridePopover({
           </Select>
           {mode === "period" && (
             <>
-              <span className="text-xs shrink-0" style={{ color: "var(--color-text-subtle)" }}>
+              <span className="text-xs shrink-0" style={{ color: DC.textFaint }}>
                 to
               </span>
               <Select value={endMonth} onValueChange={setEndMonth}>
@@ -184,7 +185,7 @@ function ScheduleOverridePopover({
           placeholder={`New budget (${displayCurrency})`}
           className="h-8 text-xs font-num"
         />
-        <p className="text-[11px] leading-snug" style={{ color: "var(--color-text-subtle)" }}>
+        <p className="text-[11px] leading-snug" style={{ color: DC.textFaint }}>
           {mode === "persistent"
             ? "Applies from that month onward, until you schedule another change."
             : "Applies only for that month/period, then reverts automatically."}
@@ -269,12 +270,12 @@ export function CategoryBudgetCard({
   return (
     <div
       className="flex flex-col gap-2 rounded-xl border py-3 px-3.5"
-      style={{ borderColor: "var(--color-border-default)", backgroundColor: "var(--color-surface-subtle)" }}
+      style={{ borderColor: DC.cardBorder, backgroundColor: DC.rowAltBg }}
     >
       <div className="flex items-center gap-2.5">
         <div
           className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg"
-          style={{ backgroundColor: cat.is_fixed ? "var(--kg-track)" : getCategoryColorTint(cat.name) }}
+          style={{ backgroundColor: cat.is_fixed ? DC.track : getCategoryColorTint(cat.name) }}
         >
           <CategoryIcon name={cat.name} fixed={cat.is_fixed} />
         </div>
@@ -298,7 +299,7 @@ export function CategoryBudgetCard({
               onClick={saveName}
               disabled={saving}
               className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 disabled:pointer-events-none disabled:opacity-50 shrink-0"
-              style={{ color: "var(--color-text-subtle)" }}
+              style={{ color: DC.textFaint }}
             >
               <Check size={13} />
             </button>
@@ -309,7 +310,7 @@ export function CategoryBudgetCard({
                 setNameInput(cat.name);
               }}
               className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 disabled:pointer-events-none disabled:opacity-50 shrink-0"
-              style={{ color: "var(--color-text-subtle)" }}
+              style={{ color: DC.textFaint }}
             >
               <X size={13} />
             </button>
@@ -321,7 +322,7 @@ export function CategoryBudgetCard({
               onClick={() => setEditingName(true)}
               title="Click to rename"
               className="text-[13.5px] font-semibold truncate min-w-0 flex-1 text-left cursor-pointer hover:underline decoration-dotted underline-offset-2"
-              style={{ color: "var(--color-text-primary)" }}
+              style={{ color: DC.textPrimary }}
             >
               {cat.name}
             </button>
@@ -335,7 +336,7 @@ export function CategoryBudgetCard({
                 if (e.key === "Enter") (e.target as HTMLInputElement).blur();
               }}
               className="h-8 text-[12.5px] text-right w-24 shrink-0 font-num rounded-lg"
-              style={{ borderColor: "var(--color-border-default)" }}
+              style={{ borderColor: DC.cardBorder }}
               placeholder="0"
             />
             <ScheduleOverridePopover cat={cat} displayCurrency={displayCurrency} onSchedule={onScheduleOverride} />
@@ -345,7 +346,7 @@ export function CategoryBudgetCard({
                 onClick={() => onDelete(cat.id)}
                 title="Delete category"
                 className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 shrink-0"
-                style={{ color: "var(--color-text-subtle)" }}
+                style={{ color: DC.textFaint }}
               >
                 <X size={13} />
               </button>
@@ -362,9 +363,9 @@ export function CategoryBudgetCard({
                 key={o.id}
                 className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
                 style={{
-                  backgroundColor: isActive ? "var(--kg-track)" : "var(--color-surface-default)",
-                  color: isActive ? "var(--color-text-primary)" : "var(--color-text-secondary)",
-                  border: "1px solid var(--color-border-default)",
+                  backgroundColor: isActive ? DC.track : DC.cardBg,
+                  color: isActive ? DC.textPrimary : DC.textSecondary,
+                  border: `1px solid ${DC.cardBorder}`,
                 }}
               >
                 {overrideLabel(o, isActive)} · {formatAmount(o.budget)}
@@ -383,7 +384,7 @@ export function CategoryBudgetCard({
       {/* 更新料(周期性のある賃貸更新料など)。固定費カテゴリのみ対象。 */}
       {cat.is_fixed && (
         <div className="flex items-center gap-2 pl-10 flex-wrap">
-          <span className="text-[11px]" style={{ color: "var(--color-text-subtle)" }}>
+          <span className="text-[11px]" style={{ color: DC.textFaint }}>
             Renewal:
           </span>
           <Input
@@ -394,7 +395,7 @@ export function CategoryBudgetCard({
             placeholder="years"
             className="h-7 text-[11px] w-16 font-num"
           />
-          <span className="text-[10.5px]" style={{ color: "var(--color-text-subtle)" }}>
+          <span className="text-[10.5px]" style={{ color: DC.textFaint }}>
             yr cycle ·
           </span>
           <Input
@@ -405,7 +406,7 @@ export function CategoryBudgetCard({
             placeholder="months"
             className="h-7 text-[11px] w-16 font-num"
           />
-          <span className="text-[10.5px]" style={{ color: "var(--color-text-subtle)" }}>
+          <span className="text-[10.5px]" style={{ color: DC.textFaint }}>
             mo. fee
           </span>
         </div>

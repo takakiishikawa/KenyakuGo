@@ -45,9 +45,29 @@ const eventSchema = z.object({
   amountYen: z.number(),
 });
 
+// 同棲前の暮らし(固定費/変動費)。同棲後は既存の categories /
+// category_budget_overrides をそのまま使うが、同棲前はDashboardと共有する実データが
+// 無い(別居中の想定支出のため)ので、シナリオ側にシンプルな一覧として持つ。
+const lifeItemSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  monthlyYen: z.number().min(0),
+});
+
+// startYear年から「同棲後」の暮らし(共有categories)・配偶者の収入が反映される。
+// それより前の年は preFixed/preVariable を使い、配偶者の収入は0として扱う。
+// moveInBonusYen: 同棲開始年に一度だけ加算される一時収入(例: 相手が共通口座に
+// 入れる資金)。
+const cohabitationSchema = z.object({
+  startYear: z.number().int(),
+  moveInBonusYen: z.number(),
+  preFixed: z.array(lifeItemSchema),
+  preVariable: z.array(lifeItemSchema),
+});
+
 // シナリオが持つ、カテゴリ(piggybank.categories)では表現できない前提のみ。
 // 「暮らし」(固定費/変動費)の実額は categories / category_budget_overrides を
-// 共有で参照するため、ここには含まない。
+// 共有で参照するため、ここには含まない(同棲前を除く。上記参照)。
 export const scenarioConfigSchema = z.object({
   family: z.object({
     spouse: z.boolean(),
@@ -58,6 +78,7 @@ export const scenarioConfigSchema = z.object({
     wife: incomeEntrySchema,
     side: z.object({ amountYen: z.number().min(0) }),
   }),
+  cohabitation: cohabitationSchema,
   // キー: kids配列のindex(文字列)。値: ステージキー -> 選択した進路キー。
   education: z.record(z.string(), z.record(z.string(), z.string())),
   events: z.array(eventSchema),
@@ -86,6 +107,7 @@ export const DEFAULT_SCENARIO_CONFIG: ScenarioConfig = {
     wife: { netMonthlyYen: 180000, netBonusYen: 300000, raisePercent: 1.5, leavePeriods: [] },
     side: { amountYen: 0 },
   },
+  cohabitation: { startYear: new Date().getFullYear(), moveInBonusYen: 0, preFixed: [], preVariable: [] },
   education: {},
   events: [],
   savings: { returnRatePercent: 5, investRatioPercent: 60 },

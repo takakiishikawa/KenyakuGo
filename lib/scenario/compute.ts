@@ -3,6 +3,29 @@ import { getCategoryHex } from "@/lib/category-colors";
 import { eduCostForAge } from "./education-costs";
 import type { ScenarioConfig } from "./types";
 
+type IncomeEntry = ScenarioConfig["income"]["husband"];
+
+// 産休・育休期間中は、その月の月収を incomePercent% に減らす(ボーナスは対象外)。
+function leaveMultiplier(leavePeriods: IncomeEntry["leavePeriods"], year: number, month: number): number {
+  const cur = year * 12 + (month - 1);
+  for (const lp of leavePeriods) {
+    const start = lp.fromYear * 12 + (lp.fromMonth - 1);
+    const end = lp.toYear * 12 + (lp.toMonth - 1);
+    if (cur >= start && cur <= end) return lp.incomePercent / 100;
+  }
+  return 1;
+}
+
+function netAnnualForYear(entry: IncomeEntry, year: number, yearsFromStart: number): number {
+  const monthlyNet = entry.netMonthlyYen * Math.pow(1 + entry.raisePercent / 100, yearsFromStart);
+  const bonusNet = entry.netBonusYen * Math.pow(1 + entry.raisePercent / 100, yearsFromStart);
+  let monthsSum = 0;
+  for (let m = 1; m <= 12; m++) {
+    monthsSum += monthlyNet * leaveMultiplier(entry.leavePeriods, year, m);
+  }
+  return monthsSum + bonusNet;
+}
+
 export const SIMULATION_YEARS_AHEAD = 15;
 
 export interface CategoryForScenario {
@@ -137,15 +160,11 @@ export function computeScenarioYears(
   let investPrincipalCum = 0;
 
   return years.map((year, i) => {
-    const husbandBase =
-      config.income.husband.amountYen * 12 * Math.pow(1 + config.income.husband.raisePercent / 100, i);
-    const wifeBase = config.family.spouse
-      ? config.income.wife.amountYen * 12 * Math.pow(1 + config.income.wife.raisePercent / 100, i)
-      : 0;
-    const takeHome = (husbandBase + wifeBase) * 0.8;
-    const combinedBase = husbandBase + wifeBase || 1;
-    const husbandYen = takeHome * (husbandBase / combinedBase);
-    const wifeYen = takeHome * (wifeBase / combinedBase);
+    // 入力は手取り(月+ボーナス)。額面年収は設定モーダル側でview-only表示用に
+    // 逆算するだけで、ここでの収支計算には使わない。産休・育休期間があれば、
+    // その月ぶんの月収だけ incomePercent% に減らす。
+    const husbandYen = netAnnualForYear(config.income.husband, year, i);
+    const wifeYen = config.family.spouse ? netAnnualForYear(config.income.wife, year, i) : 0;
     const sideYen = config.income.side.amountYen * 12;
     const allowanceYen = config.family.kids.reduce(
       (sum, kid) => sum + childAllowanceYenForYear(kid.birthYear, year),

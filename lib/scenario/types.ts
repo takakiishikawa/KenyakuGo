@@ -15,9 +15,26 @@ const kidSchema = z.object({
   birthYear: z.number().int(),
 });
 
+// 産休・育休: 指定期間だけ月収を通常の incomePercent% に減らす(0=無収入)。
+// 要件5-2「支出>イベントの出産イベントと連動する」は、期間を出産予定に合わせて
+// 手動で入力する運用とする(自動連動はしない)。
+const leavePeriodSchema = z.object({
+  id: z.string(),
+  fromYear: z.number().int(),
+  fromMonth: z.number().int().min(1).max(12),
+  toYear: z.number().int(),
+  toMonth: z.number().int().min(1).max(12),
+  incomePercent: z.number().min(0).max(100),
+});
+
+// 手取り(税・社会保険料控除後)で入力してもらう。額面年収は
+// (netMonthlyYen*12 + netBonusYen) / 0.8 として設定モーダル側で参照用に逆算表示する
+// (view-onlyであり、この構成には保存しない)。
 const incomeEntrySchema = z.object({
-  amountYen: z.number().min(0),
+  netMonthlyYen: z.number().min(0),
+  netBonusYen: z.number().min(0),
   raisePercent: z.number(),
+  leavePeriods: z.array(leavePeriodSchema),
 });
 
 const eventSchema = z.object({
@@ -65,8 +82,8 @@ export interface Scenario {
 export const DEFAULT_SCENARIO_CONFIG: ScenarioConfig = {
   family: { spouse: true, kids: [] },
   income: {
-    husband: { amountYen: 450000, raisePercent: 2 },
-    wife: { amountYen: 250000, raisePercent: 1.5 },
+    husband: { netMonthlyYen: 300000, netBonusYen: 600000, raisePercent: 2, leavePeriods: [] },
+    wife: { netMonthlyYen: 180000, netBonusYen: 300000, raisePercent: 1.5, leavePeriods: [] },
     side: { amountYen: 0 },
   },
   education: {},

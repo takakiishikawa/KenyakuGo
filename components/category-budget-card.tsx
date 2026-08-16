@@ -7,6 +7,7 @@ import { getCategoryIcon } from "@/lib/category-icons";
 import { findEffectiveOverride, type CategoryBudgetOverride } from "@/lib/category-budget";
 import { makeFormatAmount, toDisplayAmount, toVndAmount, withThousands } from "@/lib/currency";
 import { DC } from "@/lib/scenario/design-colors";
+import { t, tf, catLabel, type Lang } from "@/lib/scenario/dictionary";
 import type { DisplayCurrency } from "@/components/currency-switch";
 import {
   Button,
@@ -39,27 +40,32 @@ function monthKeyLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function monthShortLabel(month: string): string {
-  return new Date(`${month}-01T00:00:00`).toLocaleDateString("en-US", { month: "short" });
+function monthShortLabel(month: string, lang: Lang): string {
+  return new Date(`${month}-01T00:00:00`).toLocaleDateString(lang === "ja" ? "ja-JP" : "en-US", { month: "short" });
 }
 
-function getUpcomingMonths(count: number): { key: string; label: string }[] {
+function getUpcomingMonths(count: number, lang: Lang): { key: string; label: string }[] {
   const now = new Date();
   return Array.from({ length: count }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    return { key: monthKeyLocal(d), label: d.toLocaleDateString("en-US", { month: "short", year: "numeric" }) };
+    return {
+      key: monthKeyLocal(d),
+      label: d.toLocaleDateString(lang === "ja" ? "ja-JP" : "en-US", { month: "short", year: "numeric" }),
+    };
   });
 }
 
-function overrideLabel(o: CategoryBudgetOverride, isActive: boolean): string {
+function overrideLabel(o: CategoryBudgetOverride, isActive: boolean, lang: Lang): string {
   if (o.end_month === null) {
-    return isActive ? `Since ${monthShortLabel(o.month)}` : `From ${monthShortLabel(o.month)}`;
+    return isActive
+      ? tf(lang, "since", { month: monthShortLabel(o.month, lang) })
+      : tf(lang, "from", { month: monthShortLabel(o.month, lang) });
   }
   const range =
     o.end_month === o.month
-      ? monthShortLabel(o.month)
-      : `${monthShortLabel(o.month)}–${monthShortLabel(o.end_month)}`;
-  return isActive ? `Now: ${range}` : range;
+      ? monthShortLabel(o.month, lang)
+      : `${monthShortLabel(o.month, lang)}–${monthShortLabel(o.end_month, lang)}`;
+  return isActive ? `${t(lang, "now")}: ${range}` : range;
 }
 
 function CategoryIcon({ name, fixed }: { name: string; fixed?: boolean }) {
@@ -72,12 +78,14 @@ function ScheduleOverridePopover({
   cat,
   displayCurrency,
   onSchedule,
+  lang,
 }: {
   cat: CategoryForCard;
   displayCurrency: DisplayCurrency;
   onSchedule: (categoryId: string, month: string, endMonth: string | null, budget: number) => Promise<void>;
+  lang: Lang;
 }) {
-  const monthOptions = getUpcomingMonths(12);
+  const monthOptions = getUpcomingMonths(12, lang);
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"persistent" | "period">("persistent");
   const [month, setMonth] = useState(monthOptions[1]?.key ?? monthOptions[0].key);
@@ -106,7 +114,7 @@ function ScheduleOverridePopover({
       <PopoverTrigger asChild>
         <button
           type="button"
-          title="Schedule a future change"
+          title={t(lang, "renewal")}
           className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 shrink-0"
           style={{ color: DC.textFaint }}
         >
@@ -115,15 +123,15 @@ function ScheduleOverridePopover({
       </PopoverTrigger>
       <PopoverContent className="w-72 p-3 flex flex-col gap-2.5" align="end">
         <p className="text-xs font-semibold" style={{ color: DC.textPrimary }}>
-          Schedule a change for {cat.name}
+          {tf(lang, "scheduleChangeFor", { name: catLabel(lang, cat.name) })}
         </p>
 
         <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: DC.cardBorder }}>
           {(
             [
-              { key: "persistent", label: "From this month" },
-              { key: "period", label: "Just a period" },
-            ] as const
+              { key: "persistent" as const, label: t(lang, "fromThisMonth") },
+              { key: "period" as const, label: t(lang, "justAPeriod") },
+            ]
           ).map((m) => (
             <button
               key={m.key}
@@ -156,7 +164,7 @@ function ScheduleOverridePopover({
           {mode === "period" && (
             <>
               <span className="text-xs shrink-0" style={{ color: DC.textFaint }}>
-                to
+                {t(lang, "to")}
               </span>
               <Select value={endMonth} onValueChange={setEndMonth}>
                 <SelectTrigger className="h-8 text-xs flex-1">
@@ -182,16 +190,14 @@ function ScheduleOverridePopover({
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSave();
           }}
-          placeholder={`New budget (${displayCurrency})`}
+          placeholder={`${t(lang, "newBudgetPlaceholder")} (${displayCurrency})`}
           className="h-8 text-xs font-num"
         />
         <p className="text-[11px] leading-snug" style={{ color: DC.textFaint }}>
-          {mode === "persistent"
-            ? "Applies from that month onward, until you schedule another change."
-            : "Applies only for that month/period, then reverts automatically."}
+          {mode === "persistent" ? t(lang, "scheduleHelpPersistent") : t(lang, "scheduleHelpPeriod")}
         </p>
         <Button size="sm" onClick={handleSave} disabled={saving || !amountInput}>
-          Schedule
+          {t(lang, "scheduleBtn")}
         </Button>
       </PopoverContent>
     </Popover>
@@ -206,6 +212,7 @@ export function CategoryBudgetCard({
   onScheduleOverride,
   onDeleteOverride,
   onDelete,
+  lang,
 }: {
   cat: CategoryForCard;
   displayCurrency: DisplayCurrency;
@@ -219,6 +226,7 @@ export function CategoryBudgetCard({
   onScheduleOverride: (categoryId: string, month: string, endMonth: string | null, budget: number) => Promise<void>;
   onDeleteOverride: (categoryId: string, overrideId: string) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
+  lang: Lang;
 }) {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(cat.name);
@@ -320,11 +328,11 @@ export function CategoryBudgetCard({
             <button
               type="button"
               onClick={() => setEditingName(true)}
-              title="Click to rename"
+              title={t(lang, "clickToRename")}
               className="text-[13.5px] font-semibold truncate min-w-0 flex-1 text-left cursor-pointer hover:underline decoration-dotted underline-offset-2"
               style={{ color: DC.textPrimary }}
             >
-              {cat.name}
+              {catLabel(lang, cat.name)}
             </button>
             <Input
               type="text"
@@ -339,12 +347,12 @@ export function CategoryBudgetCard({
               style={{ borderColor: DC.cardBorder }}
               placeholder="0"
             />
-            <ScheduleOverridePopover cat={cat} displayCurrency={displayCurrency} onSchedule={onScheduleOverride} />
+            <ScheduleOverridePopover cat={cat} displayCurrency={displayCurrency} onSchedule={onScheduleOverride} lang={lang} />
             {onDelete && (
               <button
                 type="button"
                 onClick={() => onDelete(cat.id)}
-                title="Delete category"
+                title={t(lang, "delete")}
                 className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 shrink-0"
                 style={{ color: DC.textFaint }}
               >
@@ -368,7 +376,7 @@ export function CategoryBudgetCard({
                   border: `1px solid ${DC.cardBorder}`,
                 }}
               >
-                {overrideLabel(o, isActive)} · {formatAmount(o.budget)}
+                {overrideLabel(o, isActive, lang)} · {formatAmount(o.budget)}
                 <button
                   type="button"
                   onClick={() => onDeleteOverride(cat.id, o.id)}
@@ -385,29 +393,27 @@ export function CategoryBudgetCard({
       {cat.is_fixed && (
         <div className="flex items-center gap-2 pl-10 flex-wrap">
           <span className="text-[11px]" style={{ color: DC.textFaint }}>
-            Renewal:
+            {t(lang, "renewal")}:
           </span>
           <Input
             type="number"
             value={renewalCycleInput}
             onChange={(e) => setRenewalCycleInput(e.target.value)}
             onBlur={saveRenewal}
-            placeholder="years"
             className="h-7 text-[11px] w-16 font-num"
           />
           <span className="text-[10.5px]" style={{ color: DC.textFaint }}>
-            yr cycle ·
+            {t(lang, "renewalCycle")} ·
           </span>
           <Input
             type="number"
             value={renewalFeeInput}
             onChange={(e) => setRenewalFeeInput(e.target.value)}
             onBlur={saveRenewal}
-            placeholder="months"
             className="h-7 text-[11px] w-16 font-num"
           />
           <span className="text-[10.5px]" style={{ color: DC.textFaint }}>
-            mo. fee
+            {t(lang, "renewalFee")}
           </span>
         </div>
       )}

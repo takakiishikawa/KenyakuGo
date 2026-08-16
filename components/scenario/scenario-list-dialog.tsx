@@ -13,12 +13,14 @@ function ScenarioRow({
   onSelect,
   onDelete,
   onRename,
+  lang,
 }: {
   scenario: Scenario;
   canDelete: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onRename: (id: string, name: string) => void;
+  lang: Lang;
 }) {
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(scenario.name);
@@ -73,7 +75,7 @@ function ScenarioRow({
           <button
             type="button"
             onClick={() => setEditing(true)}
-            title="名前を変更"
+            title={t(lang, "rename")}
             className="p-1 rounded transition-all hover:bg-muted"
             style={{ color: DC.textFaint }}
           >
@@ -81,7 +83,7 @@ function ScenarioRow({
           </button>
           {scenario.is_primary ? (
             <span className="text-[10.5px] font-bold" style={{ color: DC.primary }}>
-              選択中
+              {t(lang, "selected")}
             </span>
           ) : (
             <button
@@ -90,14 +92,14 @@ function ScenarioRow({
               className="text-[11px] font-semibold px-2.5 py-1 rounded-md cursor-pointer transition-all hover:brightness-95"
               style={{ backgroundColor: DC.track, color: DC.textSecondary }}
             >
-              選択
+              {t(lang, "select")}
             </button>
           )}
           <button
             type="button"
             onClick={() => onDelete(scenario.id)}
             disabled={!canDelete}
-            title={!canDelete ? "最後の1件は削除できません" : "削除"}
+            title={!canDelete ? t(lang, "deleteLastError") : t(lang, "delete")}
             className="p-1 rounded transition-all hover:bg-muted active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
             style={{ color: DC.textFaint }}
           >
@@ -141,6 +143,7 @@ export function ScenarioListDialog({
               onSelect={onSelect}
               onDelete={onDelete}
               onRename={onRename}
+              lang={lang}
             />
           ))}
         </div>

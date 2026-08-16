@@ -20,13 +20,15 @@ import { makeFormatAmount } from "@/lib/currency";
 import type { CategoryBudgetOverride } from "@/lib/category-budget";
 import { CategoryBudgetCard, type CategoryForCard } from "@/components/category-budget-card";
 import { EDU_STAGES } from "@/lib/scenario/education-costs";
-import { t, type Lang } from "@/lib/scenario/dictionary";
+import { t, tf, type Lang } from "@/lib/scenario/dictionary";
 import { DC } from "@/lib/scenario/design-colors";
 import type { Scenario, ScenarioConfig } from "@/lib/scenario/types";
 import { HelpTip } from "./help-tip";
 
 const CUR_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 16 }, (_, i) => CUR_YEAR + i);
+const MONTH_LABELS_JA = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
+const MONTH_LABELS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 type ConfigTab = "family" | "income" | "spending" | "savingsTab";
 type SpendingSub = "life" | "education" | "events";
@@ -34,6 +36,45 @@ type LifeSub = "fixed" | "variable";
 
 function cloneConfig(config: ScenarioConfig): ScenarioConfig {
   return JSON.parse(JSON.stringify(config));
+}
+
+// 千区切りカンマを表示しながら、値自体は数値で保持するyen入力。
+function YenInput({
+  value,
+  onChange,
+  onCommit,
+  className,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  onCommit?: () => void;
+  className?: string;
+}) {
+  const digitsOnly = (s: string) => s.replace(/[^0-9]/g, "");
+  const withCommas = (s: string) => s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const [text, setText] = useState(digitsOnly(String(value)));
+
+  useEffect(() => {
+    setText(digitsOnly(String(value)));
+  }, [value]);
+
+  return (
+    <Input
+      type="text"
+      inputMode="numeric"
+      value={withCommas(text)}
+      onChange={(e) => {
+        const digits = digitsOnly(e.target.value);
+        setText(digits);
+        onChange(digits === "" ? 0 : Number(digits));
+      }}
+      onBlur={onCommit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+      }}
+      className={className}
+    />
+  );
 }
 
 export function ScenarioSettingsDialog({
@@ -109,9 +150,14 @@ export function ScenarioSettingsDialog({
     onConfigChange(scenario.id, next);
   };
 
-  const takeHomePreview = formatAmount(
-    ((draft.income.husband.amountYen + (draft.family.spouse ? draft.income.wife.amountYen : 0)) * 0.8) / 1,
-  );
+  // 額面年収 = (月額手取り×12 + ボーナス手取り) ÷ 0.8 (参考表示のみ、入力不可)
+  const grossAnnualYen =
+    ((draft.income.husband.netMonthlyYen * 12 + draft.income.husband.netBonusYen) +
+      (draft.family.spouse ? draft.income.wife.netMonthlyYen * 12 + draft.income.wife.netBonusYen : 0)) /
+    0.8;
+  const grossAnnualPreview = formatAmount(grossAnnualYen);
+
+  const monthLabels = lang === "ja" ? MONTH_LABELS_JA : MONTH_LABELS_EN;
 
   const tabs: { key: ConfigTab; label: string }[] = [
     { key: "family", label: t(lang, "family") },
@@ -119,6 +165,64 @@ export function ScenarioSettingsDialog({
     { key: "spending", label: t(lang, "spending") },
     { key: "savingsTab", label: t(lang, "savingsTab") },
   ];
+
+  // 「家族」タブと「支出→教育」タブの両方から同じ子ども×ステージのマトリクスを
+  // 参照できるようにする(教育タブを押しても何も出ない、という問題への対応)。
+  const kidEducationMatrix = (
+    <div className="flex flex-col gap-2.5">
+      {draft.family.kids.length === 0 ? (
+        <p className="text-xs" style={{ color: DC.textFaint }}>
+          {t(lang, "children")}: 0
+        </p>
+      ) : (
+        draft.family.kids.map((kid, kidIdx) => (
+          <div key={kidIdx} className="rounded-lg border p-3 flex flex-col gap-2" style={{ borderColor: DC.trackAlt }}>
+            <div className="text-xs font-semibold" style={{ color: DC.textPrimary }}>
+              {t(lang, "children")} {kidIdx + 1}{" "}
+              <span className="font-normal" style={{ color: DC.textFaint }}>
+                ({kid.birthYear} · {tf(lang, "ageThisYear", { age: CUR_YEAR - kid.birthYear })})
+              </span>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {EDU_STAGES.map((stage) => {
+                const kidEdu = draft.education[String(kidIdx)] ?? {};
+                const sel = kidEdu[stage.key] ?? "public";
+                return (
+                  <div key={stage.key} className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] w-24 shrink-0 flex items-center gap-1" style={{ color: DC.textSecondary }}>
+                      {lang === "ja" ? stage.labelJa : stage.labelEn}
+                      <HelpTip text={lang === "ja" ? stage.tipJa : stage.tipEn} />
+                    </span>
+                    <div className="flex gap-1 flex-wrap">
+                      {stage.options.map((opt) => (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => {
+                            const education = { ...draft.education };
+                            education[String(kidIdx)] = { ...(education[String(kidIdx)] ?? {}), [stage.key]: opt.key };
+                            commit({ ...draft, education });
+                          }}
+                          className="px-2.5 py-1 rounded-full text-[10.5px] font-semibold cursor-pointer transition-all border"
+                          style={{
+                            backgroundColor: sel === opt.key ? DC.primary : DC.cardBg,
+                            color: sel === opt.key ? "#fff" : DC.textSecondary,
+                            borderColor: sel === opt.key ? DC.primary : DC.cardBorder,
+                          }}
+                        >
+                          {lang === "ja" ? opt.labelJa : opt.labelEn}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -133,7 +237,7 @@ export function ScenarioSettingsDialog({
           {isCompare && (
             <div className="flex items-center gap-2">
               <span className="text-xs" style={{ color: DC.textSecondary }}>
-                編集対象:
+                {t(lang, "editTarget")}
               </span>
               <Select value={editTargetId} onValueChange={onEditTargetChange}>
                 <SelectTrigger className="h-8 text-xs w-48">
@@ -171,12 +275,12 @@ export function ScenarioSettingsDialog({
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2.5">
                 <span className="text-xs w-24" style={{ color: DC.textSecondary }}>
-                  配偶者
+                  {t(lang, "spouse")}
                 </span>
                 <div className="flex gap-0.5 p-0.5 rounded-lg" style={{ backgroundColor: DC.track }}>
                   {[
-                    { v: true, l: "あり" },
-                    { v: false, l: "なし" },
+                    { v: true, l: t(lang, "spouseYes") },
+                    { v: false, l: t(lang, "spouseNo") },
                   ].map((o) => (
                     <button
                       key={String(o.v)}
@@ -196,7 +300,7 @@ export function ScenarioSettingsDialog({
 
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold" style={{ color: DC.textSecondary }}>
-                  子ども
+                  {t(lang, "children")}
                 </span>
                 <button
                   type="button"
@@ -209,7 +313,7 @@ export function ScenarioSettingsDialog({
                   className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold cursor-pointer transition-all hover:brightness-95"
                   style={{ backgroundColor: DC.track, color: DC.textSecondary }}
                 >
-                  <Plus size={12} /> 子どもを追加
+                  <Plus size={12} /> {t(lang, "addChild")}
                 </button>
               </div>
 
@@ -217,7 +321,7 @@ export function ScenarioSettingsDialog({
                 <div key={kidIdx} className="rounded-lg border p-3 flex flex-col gap-2" style={{ borderColor: DC.trackAlt }}>
                   <div className="flex items-center gap-2">
                     <span className="text-xs" style={{ color: DC.textFaint }}>
-                      生まれ年
+                      {t(lang, "birthYear")}
                     </span>
                     <Input
                       type="number"
@@ -230,7 +334,7 @@ export function ScenarioSettingsDialog({
                       className="h-7 w-20 text-xs font-num"
                     />
                     <span className="text-[11px]" style={{ color: DC.textFaint }}>
-                      (今年{CUR_YEAR - kid.birthYear}歳)
+                      {tf(lang, "ageThisYear", { age: CUR_YEAR - kid.birthYear })}
                     </span>
                     <button
                       type="button"
@@ -293,64 +397,197 @@ export function ScenarioSettingsDialog({
             <div className="flex flex-col gap-3">
               {(
                 [
-                  { key: "husband" as const, label: "本人年収(額面)" },
-                  { key: "wife" as const, label: "配偶者年収(額面)" },
+                  { key: "husband" as const, label: t(lang, "husbandIncome") },
+                  { key: "wife" as const, label: t(lang, "wifeIncome") },
                 ]
               ).map((row) => (
-                <div key={row.key} className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs w-28 shrink-0 flex items-center gap-1" style={{ color: DC.textSecondary }}>
+                <div key={row.key} className="flex flex-col gap-1.5">
+                  <span className="text-xs font-semibold flex items-center gap-1" style={{ color: DC.textPrimary }}>
                     {row.label}
-                    <HelpTip text="税金・社会保険料を引く前の額面金額を入力してください。手取りはこの額面×80%で自動計算されます。" />
+                    <HelpTip text={t(lang, "netIncomeHelp")} />
                   </span>
-                  <Input
-                    type="number"
-                    value={draft.income[row.key].amountYen}
-                    onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        income: { ...draft.income, [row.key]: { ...draft.income[row.key], amountYen: Number(e.target.value) } },
-                      })
-                    }
-                    onBlur={() => commit(draft)}
-                    className="h-8 w-28 text-xs text-right font-num"
-                  />
-                  <span className="text-[11px]" style={{ color: DC.textFaint }}>
-                    円/月
-                  </span>
-                  <Input
-                    type="number"
-                    value={draft.income[row.key].raisePercent}
-                    onChange={(e) =>
-                      setDraft({
-                        ...draft,
-                        income: { ...draft.income, [row.key]: { ...draft.income[row.key], raisePercent: Number(e.target.value) } },
-                      })
-                    }
-                    onBlur={() => commit(draft)}
-                    className="h-8 w-16 text-xs text-right font-num"
-                  />
-                  <span className="text-[11px]" style={{ color: DC.textFaint }}>
-                    %/年 昇給
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap pl-1">
+                    <span className="text-[11px] w-14 shrink-0" style={{ color: DC.textFaint }}>
+                      {t(lang, "netMonthly")}
+                    </span>
+                    <YenInput
+                      value={draft.income[row.key].netMonthlyYen}
+                      onChange={(n) =>
+                        setDraft({ ...draft, income: { ...draft.income, [row.key]: { ...draft.income[row.key], netMonthlyYen: n } } })
+                      }
+                      onCommit={() => commit(draft)}
+                      className="h-8 w-28 text-xs text-right font-num"
+                    />
+                    <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                      {t(lang, "yenPerMonth")}
+                    </span>
+                    <Input
+                      type="number"
+                      value={draft.income[row.key].raisePercent}
+                      onChange={(e) =>
+                        setDraft({
+                          ...draft,
+                          income: { ...draft.income, [row.key]: { ...draft.income[row.key], raisePercent: Number(e.target.value) } },
+                        })
+                      }
+                      onBlur={() => commit(draft)}
+                      className="h-8 w-16 text-xs text-right font-num"
+                    />
+                    <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                      {t(lang, "raisePerYear")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap pl-1">
+                    <span className="text-[11px] w-14 shrink-0" style={{ color: DC.textFaint }}>
+                      {t(lang, "netBonus")}
+                    </span>
+                    <YenInput
+                      value={draft.income[row.key].netBonusYen}
+                      onChange={(n) =>
+                        setDraft({ ...draft, income: { ...draft.income, [row.key]: { ...draft.income[row.key], netBonusYen: n } } })
+                      }
+                      onCommit={() => commit(draft)}
+                      className="h-8 w-28 text-xs text-right font-num"
+                    />
+                    <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                      {t(lang, "yenPerYear")}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 pl-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold" style={{ color: DC.textSecondary }}>
+                        {t(lang, "parentalLeave")}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          commit({
+                            ...draft,
+                            income: {
+                              ...draft.income,
+                              [row.key]: {
+                                ...draft.income[row.key],
+                                leavePeriods: [
+                                  ...draft.income[row.key].leavePeriods,
+                                  { id: `lv${Date.now()}`, fromYear: CUR_YEAR, fromMonth: 1, toYear: CUR_YEAR, toMonth: 6, incomePercent: 0 },
+                                ],
+                              },
+                            },
+                          })
+                        }
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold cursor-pointer transition-all hover:brightness-95"
+                        style={{ backgroundColor: DC.track, color: DC.textSecondary }}
+                      >
+                        <Plus size={10} /> {t(lang, "addLeavePeriod")}
+                      </button>
+                    </div>
+                    {draft.income[row.key].leavePeriods.length === 0 ? (
+                      <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                        {t(lang, "leaveNoPeriods")}
+                      </span>
+                    ) : (
+                      draft.income[row.key].leavePeriods.map((lp, lvIdx) => (
+                        <div key={lp.id} className="flex items-center gap-1.5 flex-wrap rounded-lg border p-1.5" style={{ borderColor: DC.trackAlt }}>
+                          {(
+                            [
+                              { field: "fromYear" as const, w: "w-16" },
+                              { field: "fromMonth" as const, w: "w-12" },
+                            ]
+                          ).map(({ field, w }) => (
+                            <Input
+                              key={field}
+                              type="number"
+                              value={lp[field]}
+                              onChange={(e) => {
+                                const leavePeriods = [...draft.income[row.key].leavePeriods];
+                                leavePeriods[lvIdx] = { ...leavePeriods[lvIdx], [field]: Number(e.target.value) };
+                                setDraft({ ...draft, income: { ...draft.income, [row.key]: { ...draft.income[row.key], leavePeriods } } });
+                              }}
+                              onBlur={() => commit(draft)}
+                              className={`h-7 ${w} text-[11px] text-right font-num`}
+                            />
+                          ))}
+                          <span className="text-[10.5px]" style={{ color: DC.textFaint }}>
+                            {t(lang, "to")}
+                          </span>
+                          {(
+                            [
+                              { field: "toYear" as const, w: "w-16" },
+                              { field: "toMonth" as const, w: "w-12" },
+                            ]
+                          ).map(({ field, w }) => (
+                            <Input
+                              key={field}
+                              type="number"
+                              value={lp[field]}
+                              onChange={(e) => {
+                                const leavePeriods = [...draft.income[row.key].leavePeriods];
+                                leavePeriods[lvIdx] = { ...leavePeriods[lvIdx], [field]: Number(e.target.value) };
+                                setDraft({ ...draft, income: { ...draft.income, [row.key]: { ...draft.income[row.key], leavePeriods } } });
+                              }}
+                              onBlur={() => commit(draft)}
+                              className={`h-7 ${w} text-[11px] text-right font-num`}
+                            />
+                          ))}
+                          <span className="text-[10.5px] shrink-0" style={{ color: DC.textFaint }}>
+                            {t(lang, "leaveIncomePercent")}
+                          </span>
+                          <Input
+                            type="number"
+                            value={lp.incomePercent}
+                            onChange={(e) => {
+                              const leavePeriods = [...draft.income[row.key].leavePeriods];
+                              leavePeriods[lvIdx] = { ...leavePeriods[lvIdx], incomePercent: Number(e.target.value) };
+                              setDraft({ ...draft, income: { ...draft.income, [row.key]: { ...draft.income[row.key], leavePeriods } } });
+                            }}
+                            onBlur={() => commit(draft)}
+                            className="h-7 w-14 text-[11px] text-right font-num"
+                          />
+                          <span className="text-[10.5px]" style={{ color: DC.textFaint }}>
+                            %
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              commit({
+                                ...draft,
+                                income: {
+                                  ...draft.income,
+                                  [row.key]: {
+                                    ...draft.income[row.key],
+                                    leavePeriods: draft.income[row.key].leavePeriods.filter((_, ix) => ix !== lvIdx),
+                                  },
+                                },
+                              })
+                            }
+                            className="p-1 rounded transition-all hover:bg-muted ml-auto"
+                            style={{ color: DC.textFaint }}
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               ))}
               <div className="flex items-center gap-2">
                 <span className="text-xs w-24" style={{ color: DC.textSecondary }}>
-                  副業収入
+                  {t(lang, "sideIncome")}
                 </span>
-                <Input
-                  type="number"
+                <YenInput
                   value={draft.income.side.amountYen}
-                  onChange={(e) => setDraft({ ...draft, income: { ...draft.income, side: { amountYen: Number(e.target.value) } } })}
-                  onBlur={() => commit(draft)}
+                  onChange={(n) => setDraft({ ...draft, income: { ...draft.income, side: { amountYen: n } } })}
+                  onCommit={() => commit(draft)}
                   className="h-8 w-28 text-xs text-right font-num"
                 />
                 <span className="text-[11px]" style={{ color: DC.textFaint }}>
-                  円/月
+                  {t(lang, "yenPerMonth")}
                 </span>
               </div>
               <div className="text-xs rounded-lg px-2.5 py-2" style={{ backgroundColor: DC.track, color: DC.textSecondary }}>
-                上記は額面での入力です。手取り目安(額面×80%、自動計算): {takeHomePreview}/月 · 児童手当は自動加算されます
+                {tf(lang, "grossAnnualNote", { amount: grossAnnualPreview })}
               </div>
             </div>
           )}
@@ -369,10 +606,10 @@ export function ScenarioSettingsDialog({
                     key={s.k}
                     type="button"
                     onClick={() => setSpendingSub(s.k)}
-                    className="px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer"
+                    className="px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all"
                     style={{
-                      backgroundColor: spendingSub === s.k ? DC.cardBg : "transparent",
-                      color: DC.textPrimary,
+                      backgroundColor: spendingSub === s.k ? DC.primary : "transparent",
+                      color: spendingSub === s.k ? "#fff" : DC.textPrimary,
                     }}
                   >
                     {s.l}
@@ -405,12 +642,9 @@ export function ScenarioSettingsDialog({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span
-                      className="text-xs w-24 flex items-center gap-1"
-                      style={{ color: DC.textSecondary }}
-                    >
-                      インフレ率
-                      <HelpTip text="家賃分の目安: 過去30年平均 約0.5%/年、都心部は1〜2%の上昇も。生活費分の目安: 過去30年平均 約0.5%/年、長期は1〜2%で設計するのが無難。" />
+                    <span className="text-xs w-24 flex items-center gap-1" style={{ color: DC.textSecondary }}>
+                      {t(lang, "inflationRate")}
+                      <HelpTip text={t(lang, "inflationHelp")} />
                     </span>
                     <Input
                       type="number"
@@ -420,7 +654,7 @@ export function ScenarioSettingsDialog({
                       className="h-8 w-16 text-xs text-right font-num"
                     />
                     <span className="text-[11px]" style={{ color: DC.textFaint }}>
-                      %/年(暮らし全体)
+                      {t(lang, "inflationUnit")}
                     </span>
                   </div>
 
@@ -434,6 +668,7 @@ export function ScenarioSettingsDialog({
                       onScheduleOverride={onScheduleOverride}
                       onDeleteOverride={onDeleteOverride}
                       onDelete={onCategoryDelete}
+                      lang={lang}
                     />
                   ))}
 
@@ -441,15 +676,12 @@ export function ScenarioSettingsDialog({
                     <Input
                       value={addCatName}
                       onChange={(e) => setAddCatName(e.target.value)}
-                      placeholder="New category name"
+                      placeholder={t(lang, "newCategoryName")}
                       className="h-8 text-xs flex-1"
                     />
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={addCatBudget}
-                      onChange={(e) => setAddCatBudget(e.target.value.replace(/[^0-9]/g, ""))}
-                      placeholder={`Budget (${currency})`}
+                    <YenInput
+                      value={addCatBudget === "" ? 0 : Number(addCatBudget)}
+                      onChange={(n) => setAddCatBudget(n === 0 ? "" : String(n))}
                       className="h-8 text-xs w-32 text-right font-num"
                     />
                     <Button
@@ -469,9 +701,12 @@ export function ScenarioSettingsDialog({
               )}
 
               {spendingSub === "education" && (
-                <p className="text-xs" style={{ color: DC.textSecondary }}>
-                  教育費は「家族」タブで子どもごとに進路を選ぶと自動計算されます。
-                </p>
+                <div className="flex flex-col gap-2.5">
+                  <p className="text-xs" style={{ color: DC.textSecondary }}>
+                    {t(lang, "selectEducationHint")}
+                  </p>
+                  {kidEducationMatrix}
+                </div>
               )}
 
               {spendingSub === "events" && (
@@ -488,15 +723,14 @@ export function ScenarioSettingsDialog({
                         onBlur={() => commit(draft)}
                         className="h-8 text-xs flex-1 min-w-24"
                       />
-                      <Input
-                        type="number"
+                      <YenInput
                         value={ev.amountYen}
-                        onChange={(e) => {
+                        onChange={(n) => {
                           const events = [...draft.events];
-                          events[i] = { ...events[i], amountYen: Number(e.target.value) };
+                          events[i] = { ...events[i], amountYen: n };
                           setDraft({ ...draft, events });
                         }}
-                        onBlur={() => commit(draft)}
+                        onCommit={() => commit(draft)}
                         className="h-8 w-28 text-xs text-right font-num"
                       />
                       <Select
@@ -526,13 +760,13 @@ export function ScenarioSettingsDialog({
                           commit({ ...draft, events });
                         }}
                       >
-                        <SelectTrigger className="h-8 text-xs w-16">
+                        <SelectTrigger className="h-8 text-xs w-20">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {Array.from({ length: 12 }, (_, m) => m + 1).map((m) => (
                             <SelectItem key={m} value={String(m)}>
-                              {m}月
+                              {monthLabels[m - 1]}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -552,13 +786,16 @@ export function ScenarioSettingsDialog({
                     onClick={() =>
                       commit({
                         ...draft,
-                        events: [...draft.events, { id: `e${Date.now()}`, label: "新規イベント", year: CUR_YEAR, month: 1, amountYen: 100000 }],
+                        events: [
+                          ...draft.events,
+                          { id: `e${Date.now()}`, label: t(lang, "newEventLabel"), year: CUR_YEAR, month: 1, amountYen: 100000 },
+                        ],
                       })
                     }
                     className="flex items-center gap-1.5 justify-center px-3 py-2 rounded-lg border border-dashed text-xs font-semibold cursor-pointer"
                     style={{ borderColor: DC.cardBorder, color: DC.textFaint }}
                   >
-                    <Plus size={13} /> イベントを追加
+                    <Plus size={13} /> {t(lang, "addEvent")}
                   </button>
                 </div>
               )}
@@ -569,8 +806,8 @@ export function ScenarioSettingsDialog({
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-xs w-28 flex items-center gap-1" style={{ color: DC.textSecondary }}>
-                  想定利率
-                  <HelpTip text="世界株式インデックス長期平均: 5〜7%。国内株式: 3〜5%。債券: 1〜3%。保守的には2〜3%。非課税枠(NISA等)を活かすなら株式型(4〜7%)、生涯投資枠1,800万円を長期で埋めていく戦略が有効。" />
+                  {t(lang, "returnRate")}
+                  <HelpTip text={t(lang, "returnRateHelp")} />
                 </span>
                 <Input
                   type="number"
@@ -580,12 +817,12 @@ export function ScenarioSettingsDialog({
                   className="h-8 w-20 text-xs text-right font-num"
                 />
                 <span className="text-[11px]" style={{ color: DC.textFaint }}>
-                  %/年
+                  {t(lang, "returnRateUnit")}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs w-28" style={{ color: DC.textSecondary }}>
-                  投資に回す比率
+                  {t(lang, "investRatio")}
                 </span>
                 <Input
                   type="number"
@@ -595,7 +832,7 @@ export function ScenarioSettingsDialog({
                   className="h-8 w-20 text-xs text-right font-num"
                 />
                 <span className="text-[11px]" style={{ color: DC.textFaint }}>
-                  % (毎月の黒字額に対して)
+                  {t(lang, "investRatioUnit")}
                 </span>
               </div>
             </div>
@@ -607,7 +844,7 @@ export function ScenarioSettingsDialog({
                 <Input
                   value={newScenarioName}
                   onChange={(e) => setNewScenarioName(e.target.value)}
-                  placeholder="新しいシナリオ名を入力…"
+                  placeholder={t(lang, "newScenarioPlaceholder")}
                   className="flex-1 h-8 text-xs"
                   autoFocus
                 />
@@ -629,7 +866,7 @@ export function ScenarioSettingsDialog({
             ) : (
               <div className="flex items-center justify-end gap-2">
                 <span className="text-[11px] flex-1" style={{ color: DC.textFaint }}>
-                  この条件のまま確認するだけなら閉じるでOK。別条件として残したい場合は保存。
+                  {t(lang, "saveHint")}
                 </span>
                 <Button size="sm" onClick={() => setSavePromptOpen(true)}>
                   {t(lang, "addScenario")}

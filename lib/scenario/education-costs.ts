@@ -90,7 +90,6 @@ export const EDU_STAGES: EduStageDef[] = [
     options: [
       { key: "public", labelJa: "公立", labelEn: "Public", amountYen: 510_000 },
       { key: "private", labelJa: "私立", labelEn: "Private", amountYen: 1_550_000 },
-      { key: "none", labelJa: "進学しない/援助なし", labelEn: "None / no support", amountYen: 0 },
     ],
     tipJa:
       "高校目安(塾込):公立約51万円/年・私立約155万円/年。公立は就学支援金で実質無償化に近い。大学受験塾代が増加。私立は入学金別途20〜40万円。",
@@ -105,15 +104,12 @@ export const EDU_STAGES: EduStageDef[] = [
     ageMax: 21,
     options: [
       { key: "public", labelJa: "公立", labelEn: "Public", amountYen: 540_000 },
-      { key: "private_bunkei", labelJa: "私立(文系)", labelEn: "Private (arts)", amountYen: 1_200_000 },
-      { key: "private_rikei", labelJa: "私立(理系)", labelEn: "Private (science)", amountYen: 1_500_000 },
-      { key: "vocational", labelJa: "専門学校(2年)", labelEn: "Vocational (2yr)", amountYen: 700_000 },
-      { key: "none", labelJa: "進学しない/援助なし", labelEn: "None / no support", amountYen: 0 },
+      { key: "private", labelJa: "私立", labelEn: "Private", amountYen: 1_350_000 },
     ],
     tipJa:
-      "大学目安:国公立約54万円/年(授業料のみ)。私立文系約120万円/年、私立理系約150万円/年、専門学校(2年制)約70万円/年。入学金別途20〜30万円(専門学校は10〜20万円)。",
+      "大学目安:国公立約54万円/年(授業料のみ)。私立は文系・理系の平均で約135万円/年。入学金別途20〜30万円。",
     tipEn:
-      "Approx: national/public ~¥540k/yr (tuition only). Private arts ~¥1.2M/yr, private science ~¥1.5M/yr, vocational (2yr) ~¥700k/yr. Entrance fee ¥200-300k extra (vocational ¥100-200k).",
+      "Approx: national/public ~¥540k/yr (tuition only). Private ~¥1.35M/yr (average of arts/science). Entrance fee ¥200-300k extra.",
   },
 ];
 

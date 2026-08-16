@@ -42,6 +42,81 @@ export const DICT = {
     eventsBreakdown: "イベントの内訳",
     expenseTotal: "支出の合計",
     savingsBreakdown: "貯蓄の内訳",
+
+    // 設定モーダル: 家族タブ
+    spouse: "配偶者",
+    spouseYes: "あり",
+    spouseNo: "なし",
+    children: "子ども",
+    addChild: "子どもを追加",
+    birthYear: "生まれ年",
+    ageThisYear: "今年{age}歳",
+
+    // 設定モーダル: 収入タブ
+    husbandIncome: "本人・手取り",
+    wifeIncome: "配偶者・手取り",
+    netMonthly: "月額",
+    netBonus: "ボーナス(年)",
+    yenPerMonth: "円/月",
+    yenPerYear: "円/年",
+    raisePerYear: "%/年 昇給",
+    sideIncome: "副業収入",
+    grossAnnualNote: "額面年収の目安(自動計算・入力不可): {amount}/年 · 児童手当は自動加算されます",
+    netIncomeHelp:
+      "税金・社会保険料を引いた後の手取り額を入力してください。額面年収は (月額×12+ボーナス)÷0.8 で自動計算され、参考表示のみです。",
+    parentalLeave: "産休・育休",
+    addLeavePeriod: "期間を追加",
+    leaveIncomePercent: "その間の収入(通常の何%か)",
+    leaveNoPeriods: "設定なし",
+
+    // 設定モーダル: 支出タブ
+    inflationRate: "インフレ率",
+    inflationUnit: "%/年(暮らし全体)",
+    inflationHelp:
+      "家賃分の目安: 過去30年平均 約0.5%/年、都心部は1〜2%の上昇も。生活費分の目安: 過去30年平均 約0.5%/年、長期は1〜2%で設計するのが無難。",
+    manageCategory: "カテゴリを管理",
+    newCategoryName: "新しいカテゴリ名",
+    budgetLabel: "予算",
+    selectEducationHint: "子どもごとの進路は下の表から選べます(家族タブと同じ内容です)。",
+    addEvent: "イベントを追加",
+    newEventLabel: "新規イベント",
+
+    // 設定モーダル: 貯蓄タブ
+    returnRate: "想定利率",
+    returnRateUnit: "%/年",
+    returnRateHelp:
+      "世界株式インデックス長期平均: 5〜7%。国内株式: 3〜5%。債券: 1〜3%。保守的には2〜3%。非課税枠(NISA等)を活かすなら株式型(4〜7%)、生涯投資枠1,800万円を長期で埋めていく戦略が有効。",
+    investRatio: "投資に回す比率",
+    investRatioUnit: "% (毎月の黒字額に対して)",
+
+    // フッター
+    newScenarioPlaceholder: "新しいシナリオ名を入力…",
+    saveHint: "この条件のまま確認するだけなら閉じるでOK。別条件として残したい場合は保存。",
+    editTarget: "編集対象:",
+
+    // カテゴリ予算カード(暮らし)
+    scheduleChangeFor: "{name} の変更を予約",
+    fromThisMonth: "今月から",
+    justAPeriod: "期間限定",
+    to: "〜",
+    newBudgetPlaceholder: "新しい予算額",
+    scheduleHelpPersistent: "その月以降、次の変更を予約するまでずっと適用されます。",
+    scheduleHelpPeriod: "その月/期間だけ適用され、過ぎると自動的に元に戻ります。",
+    scheduleBtn: "予約する",
+    clickToRename: "クリックして名前を変更",
+    since: "since {month}",
+    from: "from {month}",
+    now: "now",
+    renewal: "更新料",
+    renewalCycle: "年ごと",
+    renewalFee: "ヶ月分",
+
+    // シナリオ管理
+    selected: "選択中",
+    select: "選択",
+    rename: "名前を変更",
+    deleteLastError: "最後の1件は削除できません",
+    delete: "削除",
   },
   en: {
     dashboard: "Dashboard",
@@ -84,6 +159,74 @@ export const DICT = {
     eventsBreakdown: "Events breakdown",
     expenseTotal: "Total expense",
     savingsBreakdown: "Savings breakdown",
+
+    spouse: "Spouse",
+    spouseYes: "Yes",
+    spouseNo: "No",
+    children: "Children",
+    addChild: "Add a child",
+    birthYear: "Birth year",
+    ageThisYear: "(turns {age} this year)",
+
+    husbandIncome: "Your take-home",
+    wifeIncome: "Spouse take-home",
+    netMonthly: "Monthly",
+    netBonus: "Bonus (annual)",
+    yenPerMonth: "¥/mo",
+    yenPerYear: "¥/yr",
+    raisePerYear: "%/yr raise",
+    sideIncome: "Side income",
+    grossAnnualNote: "Approx. gross annual income (auto-calculated, read-only): {amount}/yr · child allowance added automatically",
+    netIncomeHelp:
+      "Enter your take-home pay after tax/social insurance. Gross annual income is auto-calculated as (monthly×12 + bonus) ÷ 0.8, shown for reference only.",
+    parentalLeave: "Parental leave",
+    addLeavePeriod: "Add a period",
+    leaveIncomePercent: "Income during leave (% of normal)",
+    leaveNoPeriods: "None set",
+
+    inflationRate: "Inflation rate",
+    inflationUnit: "%/yr (whole Life budget)",
+    inflationHelp:
+      "Rent guide: ~0.5%/yr over the last 30 years, up to 1-2%/yr in central areas. Cost-of-living guide: ~0.5%/yr over the last 30 years; 1-2%/yr is a safe long-term assumption.",
+    manageCategory: "Manage categories",
+    newCategoryName: "New category name",
+    budgetLabel: "Budget",
+    selectEducationHint: "Pick each child's education path in the table below (same data as the Family tab).",
+    addEvent: "Add event",
+    newEventLabel: "New event",
+
+    returnRate: "Expected return",
+    returnRateUnit: "%/yr",
+    returnRateHelp:
+      "Global equity index, long-term average: 5-7%. Domestic equities: 3-5%. Bonds: 1-3%. Conservative: 2-3%. To use tax-free allowances (e.g. NISA), an equity-heavy allocation (4-7%) filling the ¥18M lifetime limit over time tends to work well.",
+    investRatio: "Invested share",
+    investRatioUnit: "% (of each month's surplus)",
+
+    newScenarioPlaceholder: "Enter a new scenario name…",
+    saveHint: "Just checking? Close is fine. Want to keep this as a separate plan? Save it.",
+    editTarget: "Editing:",
+
+    scheduleChangeFor: "Schedule a change for {name}",
+    fromThisMonth: "From this month",
+    justAPeriod: "Just a period",
+    to: "to",
+    newBudgetPlaceholder: "New budget",
+    scheduleHelpPersistent: "Applies from that month onward, until you schedule another change.",
+    scheduleHelpPeriod: "Applies only for that month/period, then reverts automatically.",
+    scheduleBtn: "Schedule",
+    clickToRename: "Click to rename",
+    since: "since {month}",
+    from: "from {month}",
+    now: "now",
+    renewal: "Renewal",
+    renewalCycle: "yr cycle",
+    renewalFee: "mo. fee",
+
+    selected: "Selected",
+    select: "Select",
+    rename: "Rename",
+    deleteLastError: "You can't delete the last one",
+    delete: "Delete",
   },
 } as const;
 
@@ -91,6 +234,16 @@ export type DictKey = keyof (typeof DICT)["ja"];
 
 export function t(lang: Lang, key: DictKey): string {
   return DICT[lang][key] ?? key;
+}
+
+// {placeholder} 形式のテンプレートに値を埋め込む(数量・金額など、辞書だけでは
+// 表現できない文言向け)。
+export function tf(lang: Lang, key: DictKey, values: Record<string, string | number>): string {
+  let out = t(lang, key);
+  for (const [k, v] of Object.entries(values)) {
+    out = out.replace(`{${k}}`, String(v));
+  }
+  return out;
 }
 
 // カテゴリ名(英語、piggybank.categories.name)の日本語表示ラベル。

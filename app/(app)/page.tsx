@@ -420,7 +420,7 @@ export default function Dashboard() {
           </div>
 
           {!data ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-w-[880px]">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <Skeleton key={i} className="h-20 rounded-lg" />
               ))}
@@ -430,7 +430,7 @@ export default function Dashboard() {
               No variable cost categories yet. Add some in Simulation settings → Life.
             </p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-w-[880px]">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {sortedVariable.map((cat) => (
                 <VariableCategoryCard
                   key={cat.id}
@@ -468,7 +468,7 @@ export default function Dashboard() {
             )}
           </div>
           {!data ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-w-[880px]">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-16 rounded-lg" />
               ))}
@@ -478,7 +478,7 @@ export default function Dashboard() {
               No fixed cost categories yet. Add some in Simulation settings → Life.
             </p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-w-[880px]">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {sortedFixed.map((cat) => (
                 <FixedCategoryCard
                   key={cat.id}

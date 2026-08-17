@@ -1,26 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthDb } from "@/lib/supabase/auth-db";
 import { getJpyToVndRate } from "@/lib/exchange-rate";
-import { computeActualSpendByCategoryThisYear } from "@/lib/monthly-budget";
+import { computeActualSpendThisYear } from "@/lib/monthly-budget";
 import { scenarioConfigSchema, normalizeScenarioConfig, DEFAULT_SCENARIO_CONFIG } from "@/lib/scenario/types";
 
 // シナリオ一覧 + 為替レート(暮らしのVND予算をJPYへ換算するため)を1回で返す。
 // 「暮らし」の実額自体は /api/categories, /api/categories/overrides を別途叩く
 // (Budgetページと同じ既存エンドポイントをそのまま流用)。今年ぶんは実績
-// (actualByCategoryVnd)も返し、compute.ts側で「今年は予算だけでなく実績も
-// 踏まえたprojection」に使う。
+// (actualByCategoryVnd: 年初来累計、actualByCategoryMonthVnd: 月別)も返し、
+// compute.ts側で「今年は予算だけでなく実績も踏まえたprojection」に使う。
 export async function GET() {
   const result = await getAuthDb();
   if (result instanceof NextResponse) return result;
   const { db } = result;
 
-  const [scenariosRes, vndPerJpy, actualByCategoryVnd] = await Promise.all([
+  const [scenariosRes, vndPerJpy, actualSpend] = await Promise.all([
     db
       .from("scenarios")
       .select("id, name, is_primary, config, created_at, updated_at")
       .order("created_at", { ascending: true }),
     getJpyToVndRate(),
-    computeActualSpendByCategoryThisYear(db),
+    computeActualSpendThisYear(db),
   ]);
 
   if (scenariosRes.error) {
@@ -34,7 +34,12 @@ export async function GET() {
     config: normalizeScenarioConfig(s.config),
   }));
 
-  return NextResponse.json({ scenarios, vndPerJpy, actualByCategoryVnd });
+  return NextResponse.json({
+    scenarios,
+    vndPerJpy,
+    actualByCategoryVnd: actualSpend.byCategory,
+    actualByCategoryMonthVnd: actualSpend.byCategoryMonth,
+  });
 }
 
 export async function POST(req: NextRequest) {

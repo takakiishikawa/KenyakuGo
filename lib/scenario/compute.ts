@@ -67,6 +67,11 @@ export interface ScenarioYearRow {
   fixedTotalYen: number;
   variableByCategory: ScenarioCategoryValue[];
   variableTotalYen: number;
+  // 今年ぶんの月次表示専用。カテゴリid -> 12ヶ月ぶんの円配列(経過月は実績、
+  // 未経過月は予算ベース)。今年以外の年、および同棲前の簡易項目には無い
+  // (undefinedならexpandMonthly側で従来通り年額を均等按分する)。
+  fixedByCategoryMonthly?: Record<string, number[]>;
+  variableByCategoryMonthly?: Record<string, number[]>;
   educationTotalYen: number;
   eventsTotalYen: number;
   expenseTotalYen: number;
@@ -165,6 +170,30 @@ function preLifeMonthlyYen(
   return base * Math.pow(1 + inflationRatePercent / 100, yearsBeyond);
 }
 
+// 今年の月次表示専用: 経過済みの月(今月を含む)はその月の実績、未経過の月は
+// 予算ベースの月額をそのまま使う12ヶ月ぶんの配列を返す(要望: 「今年の月次表示で
+// 過去月にも実績ではなく年換算の平均値が出ていた」への対応)。
+function categoryMonthlyActualOrBudgetYen(
+  category: { id: string; budget: number },
+  overridesForCategory: CategoryBudgetOverride[],
+  monthlyActualVnd: Record<string, number> | undefined,
+  currentMonth: number,
+  inflationRatePercent: number,
+  vndPerJpy: number,
+  nowYear: number,
+): number[] {
+  const budgetMonthlyYen = projectCategoryMonthlyYen(category, overridesForCategory, nowYear, inflationRatePercent, vndPerJpy, nowYear);
+  return Array.from({ length: 12 }, (_, idx) => {
+    const m = idx + 1;
+    if (m <= currentMonth) {
+      const key = `${nowYear}-${String(m).padStart(2, "0")}`;
+      const actualVnd = monthlyActualVnd?.[key];
+      if (typeof actualVnd === "number") return actualVnd / vndPerJpy;
+    }
+    return budgetMonthlyYen;
+  });
+}
+
 // 今年ぶんは、予算projectionだけでなく「今日までの実績を年換算した見込み」も
 // 併せて使う。実績が無いカテゴリ(まだ一度も使っていない等)は従来通り予算ベース。
 function annualCategoryYen(
@@ -203,8 +232,13 @@ export function computeScenarioYears(
   // 「今日までの実績を年換算した見込み」も併せて使う(要望: 既にある今年の実績が
   // Simulationに反映されていない、への対応)。
   actualByCategoryVnd: Record<string, number> = {},
+  // 今年ぶんのカテゴリ別・月別実績(VND、カテゴリ名→"YYYY-MM"→VND)。今年の月次
+  // 表示で、経過済みの月は実績そのものを、未経過の月は予算ベースを使うために使う
+  // (要望: 月次表示で過去月にも年換算の平均値しか出ていなかった、への対応)。
+  actualByCategoryMonthVnd: Record<string, Record<string, number>> = {},
 ): ScenarioYearRow[] {
   const nowYear = new Date().getFullYear();
+  const nowMonth = new Date().getMonth() + 1;
   const dayOfYear = Math.ceil((Date.now() - new Date(nowYear, 0, 1).getTime()) / 86_400_000) || 1;
   const daysInThisYear = 365; // うるう年ぶんの誤差(365/366)は無視できる範囲として扱う
   const years = Array.from({ length: SIMULATION_YEARS_AHEAD + 1 }, (_, i) => startYear + i);
@@ -289,6 +323,26 @@ export function computeScenarioYears(
         }));
     const fixedTotalYen = fixedByCategory.reduce((s, c) => s + c.valueYen, 0);
 
+    // 今年の月次表示専用の内訳(経過月=実績、未経過月=予算)。他の年・
+    // 同棲前フェーズでは作らない(expandMonthly側で従来通り均等按分にfallbackする)。
+    const fixedByCategoryMonthly: Record<string, number[]> | undefined =
+      year === nowYear && useSharedFixed
+        ? Object.fromEntries(
+            fixedCats.map((c) => [
+              c.id,
+              categoryMonthlyActualOrBudgetYen(
+                c,
+                overridesByCategory.get(c.id) ?? [],
+                actualByCategoryMonthVnd[c.name],
+                nowMonth,
+                config.inflationRatePercent,
+                vndPerJpy,
+                nowYear,
+              ),
+            ]),
+          )
+        : undefined;
+
     const variableByCategory: ScenarioCategoryValue[] = useSharedVariable
       ? variableCats.map((c) => {
           const overridesForCat = overridesByCategory.get(c.id) ?? [];
@@ -310,6 +364,24 @@ export function computeScenarioYears(
           color: getCategoryHex(item.label),
         }));
     const variableTotalYen = variableByCategory.reduce((s, c) => s + c.valueYen, 0);
+
+    const variableByCategoryMonthly: Record<string, number[]> | undefined =
+      year === nowYear && useSharedVariable
+        ? Object.fromEntries(
+            variableCats.map((c) => [
+              c.id,
+              categoryMonthlyActualOrBudgetYen(
+                c,
+                overridesByCategory.get(c.id) ?? [],
+                actualByCategoryMonthVnd[c.name],
+                nowMonth,
+                config.inflationRatePercent,
+                vndPerJpy,
+                nowYear,
+              ),
+            ]),
+          )
+        : undefined;
 
     const educationTotalYen = config.family.kids.reduce((sum, kid, kidIdx) => {
       const age = year - kid.birthYear;
@@ -360,8 +432,10 @@ export function computeScenarioYears(
       incomeTotalYen,
       fixedByCategory,
       fixedTotalYen,
+      fixedByCategoryMonthly,
       variableByCategory,
       variableTotalYen,
+      variableByCategoryMonthly,
       educationTotalYen,
       eventsTotalYen,
       expenseTotalYen,
@@ -398,8 +472,22 @@ export function expandMonthly(
       .filter((e) => e.year === focusYear && e.month === m)
       .reduce((s, e) => s + e.amountYen, 0);
     const eventsThisMonth = weddingThisMonth + divide(travelThisYear) + customEventsThisMonth;
-    const nonEventExpense =
-      divide(row.fixedTotalYen) + divide(row.variableTotalYen) + divide(row.educationTotalYen);
+
+    // 今年ぶんは、経過月=実績・未経過月=予算の月次内訳(fixedByCategoryMonthly等)が
+    // あればそれを使う。無ければ(他の年、または同棲前フェーズ)従来通り年額を
+    // 均等按分する。
+    const fixedByCategory = row.fixedByCategory.map((c) => ({
+      ...c,
+      valueYen: row.fixedByCategoryMonthly?.[c.id]?.[m - 1] ?? divide(c.valueYen),
+    }));
+    const fixedTotalYen = fixedByCategory.reduce((s, c) => s + c.valueYen, 0);
+    const variableByCategory = row.variableByCategory.map((c) => ({
+      ...c,
+      valueYen: row.variableByCategoryMonthly?.[c.id]?.[m - 1] ?? divide(c.valueYen),
+    }));
+    const variableTotalYen = variableByCategory.reduce((s, c) => s + c.valueYen, 0);
+
+    const nonEventExpense = fixedTotalYen + variableTotalYen + divide(row.educationTotalYen);
     const expenseTotalYen = nonEventExpense + eventsThisMonth;
     const incomeTotalYen = divide(row.incomeTotalYen);
     const netFlowYen = incomeTotalYen - expenseTotalYen;
@@ -412,10 +500,10 @@ export function expandMonthly(
       allowanceYen: divide(row.allowanceYen),
       investProfitYen: divide(row.investProfitYen),
       incomeTotalYen,
-      fixedByCategory: row.fixedByCategory.map((c) => ({ ...c, valueYen: divide(c.valueYen) })),
-      fixedTotalYen: divide(row.fixedTotalYen),
-      variableByCategory: row.variableByCategory.map((c) => ({ ...c, valueYen: divide(c.valueYen) })),
-      variableTotalYen: divide(row.variableTotalYen),
+      fixedByCategory,
+      fixedTotalYen,
+      variableByCategory,
+      variableTotalYen,
       educationTotalYen: divide(row.educationTotalYen),
       eventsTotalYen: eventsThisMonth,
       expenseTotalYen,

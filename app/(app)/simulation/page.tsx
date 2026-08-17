@@ -38,6 +38,7 @@ export default function SimulationPage() {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [vndPerJpy, setVndPerJpy] = useState(162);
   const [actualByCategoryVnd, setActualByCategoryVnd] = useState<Record<string, number>>({});
+  const [actualByCategoryMonthVnd, setActualByCategoryMonthVnd] = useState<Record<string, Record<string, number>>>({});
   const [categories, setCategories] = useState<CategoryForCard[]>([]);
   const [overrides, setOverrides] = useState<CategoryBudgetOverride[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,14 +57,21 @@ export default function SimulationPage() {
   const fetchScenarios = useCallback(async () => {
     const r = await fetch("/api/scenarios");
     if (!r.ok) return;
-    const { scenarios: list, vndPerJpy: rate, actualByCategoryVnd: actual } = (await r.json()) as {
+    const {
+      scenarios: list,
+      vndPerJpy: rate,
+      actualByCategoryVnd: actual,
+      actualByCategoryMonthVnd: actualByMonth,
+    } = (await r.json()) as {
       scenarios: Scenario[];
       vndPerJpy: number;
       actualByCategoryVnd: Record<string, number>;
+      actualByCategoryMonthVnd: Record<string, Record<string, number>>;
     };
     setScenarios(list);
     setVndPerJpy(rate);
     setActualByCategoryVnd(actual ?? {});
+    setActualByCategoryMonthVnd(actualByMonth ?? {});
   }, []);
 
   const fetchCategories = useCallback(async () => {
@@ -116,9 +124,9 @@ export default function SimulationPage() {
   const primaryYearRows = useMemo(
     () =>
       primary
-        ? computeScenarioYears(primary.config, categories, overrides, vndPerJpy, CUR_YEAR, actualByCategoryVnd)
+        ? computeScenarioYears(primary.config, categories, overrides, vndPerJpy, CUR_YEAR, actualByCategoryVnd, actualByCategoryMonthVnd)
         : [],
-    [primary, categories, overrides, vndPerJpy, actualByCategoryVnd],
+    [primary, categories, overrides, vndPerJpy, actualByCategoryVnd, actualByCategoryMonthVnd],
   );
   const rowsForView: ScenarioRow[] = useMemo(() => {
     if (!primary) return [];
@@ -127,11 +135,19 @@ export default function SimulationPage() {
 
   const compareRows = useMemo(() => {
     return scenarios.map((s) => {
-      const yearRows = computeScenarioYears(s.config, categories, overrides, vndPerJpy, CUR_YEAR, actualByCategoryVnd);
+      const yearRows = computeScenarioYears(
+        s.config,
+        categories,
+        overrides,
+        vndPerJpy,
+        CUR_YEAR,
+        actualByCategoryVnd,
+        actualByCategoryMonthVnd,
+      );
       const rows = timeMode === "yearly" ? toRows(yearRows) : expandMonthly(yearRows, s.config, focusYear);
       return { id: s.id, name: s.name, rows };
     });
-  }, [scenarios, categories, overrides, vndPerJpy, actualByCategoryVnd, timeMode, focusYear]);
+  }, [scenarios, categories, overrides, vndPerJpy, actualByCategoryVnd, actualByCategoryMonthVnd, timeMode, focusYear]);
 
   const formatAmount = useCallback((yen: number) => formatYen(yen, currency, vndPerJpy), [currency, vndPerJpy]);
 

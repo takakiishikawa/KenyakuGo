@@ -130,10 +130,20 @@ export async function computeActualSpendByMonth(
   return byMonth;
 }
 
+export interface ActualSpendThisYear {
+  // 年初来累計(VND、カテゴリ名キー)。Simulationの年次表示で「今日までの実績を
+  // 年換算した見込み」に使う。
+  byCategory: Record<string, number>;
+  // カテゴリ名 → "YYYY-MM" → その月の実績(VND)。Simulationの月次表示で、
+  // 経過済みの月は実績そのものを使うために使う。
+  byCategoryMonth: Record<string, Record<string, number>>;
+}
+
 // 当年(1/1〜今日)のカテゴリ別実績(VND)。Simulationが「今年」の暮らしを
 // 予算だけでなく実績も踏まえて projection するために使う
-// (要望: 「すでにあった今年の固定費・変動費の実際のデータがSimulationに出ていない」)。
-export async function computeActualSpendByCategoryThisYear(db: Db): Promise<Record<string, number>> {
+// (要望: 「すでにあった今年の固定費・変動費の実際のデータがSimulationに出ていない」
+// 「月次表示で過去月にも年換算の平均値しか出ていない」への対応)。
+export async function computeActualSpendThisYear(db: Db): Promise<ActualSpendThisYear> {
   const now = new Date();
   const start = new Date(now.getFullYear(), 0, 1);
 
@@ -145,10 +155,15 @@ export async function computeActualSpendByCategoryThisYear(db: Db): Promise<Reco
     .eq("excluded_from_dashboard", false);
 
   const byCategory: Record<string, number> = {};
+  const byCategoryMonth: Record<string, Record<string, number>> = {};
   for (const tx of data ?? []) {
     byCategory[tx.category] = (byCategory[tx.category] ?? 0) + tx.amount;
+    const d = new Date(tx.date);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const forCategory = byCategoryMonth[tx.category] ?? (byCategoryMonth[tx.category] = {});
+    forCategory[key] = (forCategory[key] ?? 0) + tx.amount;
   }
-  return byCategory;
+  return { byCategory, byCategoryMonth };
 }
 
 // Effective "Total Monthly Budget" (lifeBudgetVnd, i.e. sum of every

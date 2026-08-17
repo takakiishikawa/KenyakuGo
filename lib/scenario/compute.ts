@@ -61,6 +61,7 @@ export interface ScenarioYearRow {
   wifeYen: number;
   sideYen: number;
   allowanceYen: number;
+  investProfitYen: number;
   incomeTotalYen: number;
   fixedByCategory: ScenarioCategoryValue[];
   fixedTotalYen: number;
@@ -228,7 +229,13 @@ export function computeScenarioYears(
       (sum, kid) => sum + childAllowanceYenForYear(kid.birthYear, year),
       0,
     );
-    const incomeTotalYen = husbandYen + wifeYen + sideYen + allowanceYen + moveInBonusYen;
+    // 投資益は前年末時点の運用残高に対して定率(returnRatePercent)で計算し、
+    // 総収入の内訳として計上する(以前は総貯蓄側にだけ黙って積み上がり、
+    // 「収入-支出」と貯蓄の増分が一致しないという指摘があったため)。
+    // 今年の新規積立分(investDelta)自体には今年ぶんの運用益を付けない
+    // (積立配分が投資益にも依存する循環を避けるための簡略化)。
+    const investProfitYen = investBal * (config.savings.returnRatePercent / 100);
+    const incomeTotalYen = husbandYen + wifeYen + sideYen + allowanceYen + moveInBonusYen + investProfitYen;
 
     const fixedByCategory: ScenarioCategoryValue[] = useSharedFixed
       ? fixedCats.map((c) => {
@@ -303,18 +310,22 @@ export function computeScenarioYears(
     const eventsTotalYen = weddingYen + travelYen + customEventsYen;
 
     const expenseTotalYen = fixedTotalYen + variableTotalYen + educationTotalYen + eventsTotalYen;
+    // netFlowYen(表示用)は投資益を含む総収入から計算する。ただし積立配分
+    // (investRatioPercent)は「稼いだ」ぶんの黒字(投資益を除く)にのみ適用し、
+    // 投資益そのものは全額そのまま運用残高に再投資する(積立配分が投資益にも
+    // 依存する循環を避けつつ、収入-支出=貯蓄の増分が一致するようにするため)。
     const netFlowYen = incomeTotalYen - expenseTotalYen;
+    const earnedNetFlowYen = netFlowYen - investProfitYen;
 
     let investDelta = 0;
     let cashDelta = 0;
-    if (netFlowYen >= 0) {
-      investDelta = (netFlowYen * config.savings.investRatioPercent) / 100;
-      cashDelta = netFlowYen - investDelta;
+    if (earnedNetFlowYen >= 0) {
+      investDelta = (earnedNetFlowYen * config.savings.investRatioPercent) / 100;
+      cashDelta = earnedNetFlowYen - investDelta;
     } else {
-      cashDelta = netFlowYen;
+      cashDelta = earnedNetFlowYen;
     }
-    const prevInvestBal = investBal;
-    investBal = (prevInvestBal + investDelta) * (1 + config.savings.returnRatePercent / 100);
+    investBal = investBal + investDelta + investProfitYen;
     investPrincipalCum += investDelta;
     cashCum += cashDelta;
     const profitCumYen = investBal - investPrincipalCum;
@@ -326,6 +337,7 @@ export function computeScenarioYears(
       wifeYen,
       sideYen,
       allowanceYen,
+      investProfitYen,
       incomeTotalYen,
       fixedByCategory,
       fixedTotalYen,
@@ -379,6 +391,7 @@ export function expandMonthly(
       wifeYen: divide(row.wifeYen),
       sideYen: divide(row.sideYen),
       allowanceYen: divide(row.allowanceYen),
+      investProfitYen: divide(row.investProfitYen),
       incomeTotalYen,
       fixedByCategory: row.fixedByCategory.map((c) => ({ ...c, valueYen: divide(c.valueYen) })),
       fixedTotalYen: divide(row.fixedTotalYen),

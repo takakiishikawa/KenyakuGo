@@ -45,6 +45,7 @@ export function buildSingleTableRows(
     push({ key: "income.wife", depth: 1, label: t(lang, "wife"), cells: rows.map((r) => cell(r.wifeYen, fmt)) });
     push({ key: "income.side", depth: 1, label: t(lang, "side"), cells: rows.map((r) => cell(r.sideYen, fmt)) });
     push({ key: "income.allowance", depth: 1, label: t(lang, "childAllowance"), cells: rows.map((r) => cell(r.allowanceYen, fmt)) });
+    push({ key: "income.investProfit", depth: 1, label: t(lang, "investProfit"), cells: rows.map((r) => cell(r.investProfitYen, fmt)) });
   }
 
   push({

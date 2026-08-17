@@ -185,6 +185,18 @@ export function ScenarioTable({
                         }}
                       >
                         {cell.fmt}
+                        {cell.delta && (
+                          <div
+                            style={{
+                              fontSize: 10.5,
+                              fontWeight: 600,
+                              color: cell.delta.positive ? DC.success : DC.danger,
+                              marginTop: 1,
+                            }}
+                          >
+                            ({cell.delta.fmt})
+                          </div>
+                        )}
                       </td>
                     );
                   })}

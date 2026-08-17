@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, X, CalendarClock, Receipt } from "lucide-react";
+import { CalendarClock, X } from "lucide-react";
 import { DC } from "@/lib/scenario/design-colors";
-import { t, tf, type Lang } from "@/lib/scenario/dictionary";
+import { t, tf, catLabel, type Lang } from "@/lib/scenario/dictionary";
+import { getCategoryColorTint, getCategoryHex } from "@/lib/category-colors";
+import { getCategoryIcon } from "@/lib/category-icons";
 import type { ScenarioConfig } from "@/lib/scenario/types";
 import {
   Button,
@@ -18,13 +20,18 @@ import {
   SelectValue,
 } from "@takaki/go-design-system";
 
-// 同棲前の暮らし項目(preFixed/preVariable)向けのカード。同棲後の
-// CategoryBudgetCard と見た目・機能(名前変更・期間別オーバーライドの予約・削除)を
-// 完全に揃えるための対になるコンポーネント。実カテゴリと違ってDB/VND換算を
-// 経由せず、シナリオのJSONB内で完結する(円建てのまま)。
+// 同棲前のカテゴリ月額カード。同棲前後は完全に同じカテゴリ(id・名前・アイコン)を
+// 共有し、ここでは「同棲前だけの月額」を編集する。見た目・機能(期間別
+// オーバーライドの予約)は同棲後の CategoryBudgetCard と揃えてある。カテゴリの
+// 追加・削除・リネームは同棲後側(実カテゴリ)でのみ行う。
 
-export type LifeItem = ScenarioConfig["cohabitation"]["preFixed"][number];
-type LifeItemOverride = LifeItem["overrides"][number];
+export type PreCategoryAmount = ScenarioConfig["cohabitation"]["preAmountByCategory"][string];
+type LifeItemOverride = PreCategoryAmount["overrides"][number];
+
+export interface CategoryForLifeItem {
+  id: string;
+  name: string;
+}
 
 function monthKeyLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -72,12 +79,12 @@ function formatYenPlain(n: number): string {
 }
 
 function ScheduleLifeOverridePopover({
-  item,
+  categoryLabel,
   onSchedule,
   lang,
 }: {
-  item: LifeItem;
-  onSchedule: (itemId: string, month: string, endMonth: string | null, amountYen: number) => void;
+  categoryLabel: string;
+  onSchedule: (month: string, endMonth: string | null, amountYen: number) => void;
   lang: Lang;
 }) {
   const monthOptions = getUpcomingMonths(12, lang);
@@ -93,7 +100,7 @@ function ScheduleLifeOverridePopover({
 
   const handleSave = () => {
     const val = parseInt(amountInput.replace(/[^0-9]/g, ""), 10);
-    onSchedule(item.id, month, mode === "period" ? endMonth : null, isNaN(val) ? 0 : val);
+    onSchedule(month, mode === "period" ? endMonth : null, isNaN(val) ? 0 : val);
     setAmountInput("");
     setOpen(false);
   };
@@ -114,7 +121,7 @@ function ScheduleLifeOverridePopover({
       </PopoverTrigger>
       <PopoverContent className="w-72 p-3 flex flex-col gap-2.5" align="end">
         <p className="text-sm font-semibold" style={{ color: DC.textPrimary }}>
-          {tf(lang, "scheduleChangeFor", { name: item.label })}
+          {tf(lang, "scheduleChangeFor", { name: categoryLabel })}
         </p>
 
         <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: DC.cardBorder }}>
@@ -196,128 +203,69 @@ function ScheduleLifeOverridePopover({
 }
 
 export function LifeItemCard({
-  item,
-  onRename,
+  category,
+  preAmount,
   onAmountChange,
   onSchedule,
   onDeleteOverride,
-  onDelete,
   lang,
 }: {
-  item: LifeItem;
-  onRename: (id: string, label: string) => void;
-  onAmountChange: (id: string, monthlyYen: number) => void;
-  onSchedule: (itemId: string, month: string, endMonth: string | null, amountYen: number) => void;
-  onDeleteOverride: (itemId: string, overrideId: string) => void;
-  onDelete: (id: string) => void;
+  category: CategoryForLifeItem;
+  preAmount: PreCategoryAmount;
+  onAmountChange: (monthlyYen: number) => void;
+  onSchedule: (month: string, endMonth: string | null, amountYen: number) => void;
+  onDeleteOverride: (overrideId: string) => void;
   lang: Lang;
 }) {
-  const [editingName, setEditingName] = useState(false);
-  const [nameInput, setNameInput] = useState(item.label);
-  const [amountText, setAmountText] = useState(String(item.monthlyYen));
+  const [amountText, setAmountText] = useState(String(preAmount.monthlyYen));
+  const Icon = getCategoryIcon(category.name);
+  const hex = getCategoryHex(category.name);
+  const label = catLabel(lang, category.name);
 
   useEffect(() => {
-    setAmountText(String(item.monthlyYen));
-  }, [item.monthlyYen]);
-
-  const saveName = () => {
-    const trimmed = nameInput.trim();
-    if (!trimmed || trimmed === item.label) {
-      setEditingName(false);
-      setNameInput(item.label);
-      return;
-    }
-    onRename(item.id, trimmed);
-    setEditingName(false);
-  };
+    setAmountText(String(preAmount.monthlyYen));
+  }, [preAmount.monthlyYen]);
 
   const saveAmount = () => {
     const digits = amountText.replace(/[^0-9]/g, "");
     const val = digits === "" ? 0 : Number(digits);
-    if (val !== item.monthlyYen) onAmountChange(item.id, val);
+    if (val !== preAmount.monthlyYen) onAmountChange(val);
   };
 
   const currentMonth = monthKeyLocal(new Date());
-  const sortedOverrides = [...item.overrides].sort((a, b) => a.month.localeCompare(b.month));
-  const activeOverride = findEffectiveOverride(item.overrides, currentMonth);
+  const sortedOverrides = [...preAmount.overrides].sort((a, b) => a.month.localeCompare(b.month));
+  const activeOverride = findEffectiveOverride(preAmount.overrides, currentMonth);
 
   return (
     <div className="flex flex-col gap-2 rounded-xl border py-3 px-3.5" style={{ borderColor: DC.cardBorder, backgroundColor: DC.rowAltBg }}>
       <div className="flex items-center gap-2.5">
-        <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: DC.track }}>
-          <Receipt size={14} style={{ color: DC.textSecondary }} />
+        <div
+          className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg"
+          style={{ backgroundColor: getCategoryColorTint(category.name) }}
+        >
+          <Icon size={14} style={{ color: hex }} />
         </div>
-        {editingName ? (
-          <>
-            <Input
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") saveName();
-                if (e.key === "Escape") {
-                  setEditingName(false);
-                  setNameInput(item.label);
-                }
-              }}
-              className="h-7 text-sm flex-1 min-w-0"
-              autoFocus
-            />
-            <button
-              type="button"
-              onClick={saveName}
-              className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 shrink-0"
-              style={{ color: DC.textFaint }}
-            >
-              <Check size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingName(false);
-                setNameInput(item.label);
-              }}
-              className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 shrink-0"
-              style={{ color: DC.textFaint }}
-            >
-              <X size={13} />
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => setEditingName(true)}
-              title={t(lang, "clickToRename")}
-              className="text-[13.5px] font-semibold truncate min-w-0 flex-1 text-left cursor-pointer hover:underline decoration-dotted underline-offset-2"
-              style={{ color: DC.textPrimary }}
-            >
-              {item.label}
-            </button>
-            <Input
-              type="text"
-              inputMode="numeric"
-              value={amountText.replace(/[^0-9]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-              onChange={(e) => setAmountText(e.target.value.replace(/[^0-9]/g, ""))}
-              onBlur={saveAmount}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-              }}
-              className="h-8 text-[12.5px] text-right w-24 shrink-0 font-num rounded-lg"
-              style={{ borderColor: DC.cardBorder }}
-              placeholder="0"
-            />
-            <ScheduleLifeOverridePopover item={item} onSchedule={onSchedule} lang={lang} />
-            <button
-              type="button"
-              onClick={() => onDelete(item.id)}
-              title={t(lang, "delete")}
-              className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 shrink-0"
-              style={{ color: DC.textFaint }}
-            >
-              <X size={13} />
-            </button>
-          </>
-        )}
+        <span className="text-[13.5px] font-semibold truncate min-w-0 flex-1" style={{ color: DC.textPrimary }}>
+          {label}
+        </span>
+        <Input
+          type="text"
+          inputMode="numeric"
+          value={amountText.replace(/[^0-9]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+          onChange={(e) => setAmountText(e.target.value.replace(/[^0-9]/g, ""))}
+          onBlur={saveAmount}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          }}
+          className="h-8 text-[12.5px] text-right w-24 shrink-0 font-num rounded-lg"
+          style={{ borderColor: DC.cardBorder }}
+          placeholder="0"
+        />
+        <ScheduleLifeOverridePopover
+          categoryLabel={label}
+          onSchedule={onSchedule}
+          lang={lang}
+        />
       </div>
       {sortedOverrides.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pl-10">
@@ -334,11 +282,7 @@ export function LifeItemCard({
                 }}
               >
                 {overrideLabel(o, isActive, lang)} · {formatYenPlain(o.amountYen)}
-                <button
-                  type="button"
-                  onClick={() => onDeleteOverride(item.id, o.id)}
-                  className="opacity-60 hover:opacity-100 transition-opacity"
-                >
+                <button type="button" onClick={() => onDeleteOverride(o.id)} className="opacity-60 hover:opacity-100 transition-opacity">
                   <X size={10} />
                 </button>
               </span>

@@ -62,9 +62,14 @@ export const DICT = {
     netBonus: "ボーナス(年)",
     yenPerMonth: "円/月",
     yenPerYear: "円/年",
+    yenUnit: "円",
     raisePerYear: "%/年 昇給",
     sideIncome: "副業収入",
-    grossAnnualNote: "額面年収: {amount}/年",
+    grossAnnualHusband: "本人 額面年収: {amount}/年",
+    grossAnnualWife: "配偶者 額面年収: {amount}/年",
+    grossAnnualHousehold: "世帯 額面年収: {amount}/年",
+    bonusMonth: "月",
+    addBonus: "ボーナスを追加",
     publicAllowance: "公的手当",
     publicAllowanceDetail: "0-2歳: 1.5万円/月、3歳-高校生: 1万円/月(自動計算)",
     netIncomeHelp:
@@ -86,8 +91,6 @@ export const DICT = {
     moveInBonusHelp: "同棲開始年に一度だけ収入として加算されます(例: 相手が共通口座に入れる資金)。",
     preCohabitation: "同棲前",
     postCohabitation: "同棲後",
-    addLifeItem: "項目を追加",
-    newLifeItemLabel: "新しい項目",
 
     // 設定モーダル: 支出タブ
     inflationRate: "インフレ率",
@@ -109,6 +112,9 @@ export const DICT = {
       "世界株式インデックス長期平均: 5〜7%。国内株式: 3〜5%。債券: 1〜3%。保守的には2〜3%。非課税枠(NISA等)を活かすなら株式型(4〜7%)、生涯投資枠1,800万円を長期で埋めていく戦略が有効。",
     investRatio: "投資に回す比率",
     investRatioUnit: "% (毎月の黒字額に対して)",
+    initialBalanceLabel: "{year}年1月時点の残高",
+    initialCash: "現金",
+    initialInvest: "投資",
 
     // フッター
     newScenarioPlaceholder: "新しいシナリオ名を入力…",
@@ -137,6 +143,14 @@ export const DICT = {
     rename: "名前を変更",
     deleteLastError: "最後の1件は削除できません",
     delete: "削除",
+
+    // Transactionsページ
+    txSearchPlaceholder: "店名・カテゴリで検索",
+    txUncategorized: "未分類 ({count})",
+    txAll: "すべて",
+    txChooseCategory: "カテゴリを選択",
+    txNoMatch: "「{query}」に一致する取引がありません",
+    txNoTransactions: "取引がありません",
   },
   en: {
     dashboard: "Dashboard",
@@ -197,9 +211,14 @@ export const DICT = {
     netBonus: "Bonus (annual)",
     yenPerMonth: "¥/mo",
     yenPerYear: "¥/yr",
+    yenUnit: "¥",
     raisePerYear: "%/yr raise",
     sideIncome: "Side income",
-    grossAnnualNote: "Gross annual income: {amount}/yr",
+    grossAnnualHusband: "You, gross annual: {amount}/yr",
+    grossAnnualWife: "Spouse, gross annual: {amount}/yr",
+    grossAnnualHousehold: "Household, gross annual: {amount}/yr",
+    bonusMonth: "Month",
+    addBonus: "Add a bonus",
     publicAllowance: "Public allowance",
     publicAllowanceDetail: "Ages 0-2: ¥15,000/mo, ages 3-high school: ¥10,000/mo (auto-calculated)",
     netIncomeHelp:
@@ -221,8 +240,6 @@ export const DICT = {
     moveInBonusHelp: "Added once, in the cohabitation start year (e.g. funds your partner puts into the joint account).",
     preCohabitation: "Pre-cohabitation",
     postCohabitation: "Post-cohabitation",
-    addLifeItem: "Add item",
-    newLifeItemLabel: "New item",
 
     inflationRate: "Inflation rate",
     inflationUnit: "%/yr (whole Life budget)",
@@ -242,6 +259,9 @@ export const DICT = {
       "Global equity index, long-term average: 5-7%. Domestic equities: 3-5%. Bonds: 1-3%. Conservative: 2-3%. To use tax-free allowances (e.g. NISA), an equity-heavy allocation (4-7%) filling the ¥18M lifetime limit over time tends to work well.",
     investRatio: "Invested share",
     investRatioUnit: "% (of each month's surplus)",
+    initialBalanceLabel: "Balance as of Jan {year}",
+    initialCash: "Cash",
+    initialInvest: "Invested",
 
     newScenarioPlaceholder: "Enter a new scenario name…",
     editTarget: "Editing:",
@@ -267,6 +287,14 @@ export const DICT = {
     rename: "Rename",
     deleteLastError: "You can't delete the last one",
     delete: "Delete",
+
+    // Transactions page
+    txSearchPlaceholder: "Search by name or category",
+    txUncategorized: "Uncategorized ({count})",
+    txAll: "All",
+    txChooseCategory: "Choose category",
+    txNoMatch: 'No transactions match "{query}"',
+    txNoTransactions: "No transactions yet",
   },
 } as const;
 

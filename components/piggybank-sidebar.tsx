@@ -5,7 +5,22 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { PiggyBank, LayoutGrid, Target, LogOut, LogIn } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@takaki/go-design-system";
 import { usePreferences } from "@/lib/preferences";
+
+// hoverしたら各メニュー名・プロダクト名がツールチップで見えるように、
+// レール上の全アイテムを共通のラッパーで包む(既存の title 属性による素の
+// OSツールチップより表示が速く、見た目もアプリの他のツールチップと揃う)。
+function SidebarTooltip({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="right" sideOffset={8} className="text-xs">
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 // Claude Design (PiggyBank.dc.html)のサイドバーを1:1で再現した、常時アイコンのみの
 // 固定76px幅レール。go-design-systemのSidebar/SidebarProvider(展開/省略の
@@ -62,74 +77,82 @@ export function PiggyBankSidebar() {
   }
 
   return (
-    <div
-      className="w-[76px] shrink-0 flex flex-col items-center py-[18px]"
-      style={{ backgroundColor: DARK_BG }}
-    >
+    <TooltipProvider delayDuration={150}>
       <div
-        className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center mb-[22px] shrink-0"
-        style={{ backgroundColor: ACCENT }}
+        className="w-[76px] shrink-0 flex flex-col items-center py-[18px]"
+        style={{ backgroundColor: DARK_BG }}
       >
-        <PiggyBank size={18} color="#ffffff" />
-      </div>
+        <SidebarTooltip label="PiggyBank">
+          <div
+            className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center mb-[22px] shrink-0"
+            style={{ backgroundColor: ACCENT }}
+          >
+            <PiggyBank size={18} color="#ffffff" />
+          </div>
+        </SidebarTooltip>
 
-      <div className="flex flex-col gap-1.5 flex-1">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = isActive(href);
-          return (
-            <Link
-              key={href}
-              href={href}
-              title={label}
-              className="w-12 h-[42px] rounded-[10px] flex items-center justify-center cursor-pointer transition-all hover:brightness-110 active:scale-95"
-              style={{ backgroundColor: active ? ACCENT : "transparent" }}
+        <div className="flex flex-col gap-1.5 flex-1">
+          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+            const active = isActive(href);
+            return (
+              <SidebarTooltip key={href} label={label}>
+                <Link
+                  href={href}
+                  className="w-12 h-[42px] rounded-[10px] flex items-center justify-center cursor-pointer transition-all hover:brightness-110 active:scale-95"
+                  style={{ backgroundColor: active ? ACCENT : "transparent" }}
+                >
+                  <Icon size={18} color={active ? "#ffffff" : INACTIVE} />
+                </Link>
+              </SidebarTooltip>
+            );
+          })}
+        </div>
+
+        <SidebarTooltip label={lang === "ja" ? "言語を切り替え" : "Switch language"}>
+          <button
+            type="button"
+            onClick={toggleLang}
+            className="w-[34px] h-7 rounded-lg flex items-center justify-center cursor-pointer mb-2 transition-all hover:brightness-110 active:scale-95 shrink-0"
+            style={{ backgroundColor: DARK_ACCENT_BG, color: MUTED_TEXT, fontSize: 10.5, fontWeight: 700 }}
+          >
+            {lang.toUpperCase()}
+          </button>
+        </SidebarTooltip>
+        <SidebarTooltip label={currency === "JPY" ? "Japanese Yen" : "Vietnamese Dong"}>
+          <button
+            type="button"
+            onClick={toggleCurrency}
+            className="w-[34px] h-7 rounded-lg flex items-center justify-center cursor-pointer mb-2 transition-all hover:brightness-110 active:scale-95 shrink-0"
+            style={{ backgroundColor: DARK_ACCENT_BG, color: "#F5F1EA", fontSize: 13, fontWeight: 700 }}
+          >
+            {currency === "JPY" ? "¥" : "₫"}
+          </button>
+        </SidebarTooltip>
+
+        {user ? (
+          <SidebarTooltip label="Log out">
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center cursor-pointer transition-all hover:brightness-110 active:scale-95 shrink-0"
+              style={{ backgroundColor: DARK_ACCENT_BG }}
             >
-              <Icon size={18} color={active ? "#ffffff" : INACTIVE} />
-            </Link>
-          );
-        })}
+              <LogOut size={15} color={MUTED_TEXT} />
+            </button>
+          </SidebarTooltip>
+        ) : (
+          <SidebarTooltip label="Sign in">
+            <button
+              type="button"
+              onClick={handleSignIn}
+              className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center cursor-pointer transition-all hover:brightness-110 active:scale-95 shrink-0"
+              style={{ backgroundColor: DARK_ACCENT_BG }}
+            >
+              <LogIn size={15} color={MUTED_TEXT} />
+            </button>
+          </SidebarTooltip>
+        )}
       </div>
-
-      <button
-        type="button"
-        onClick={toggleLang}
-        title="Language"
-        className="w-[34px] h-7 rounded-lg flex items-center justify-center cursor-pointer mb-2 transition-all hover:brightness-110 active:scale-95 shrink-0"
-        style={{ backgroundColor: DARK_ACCENT_BG, color: MUTED_TEXT, fontSize: 10.5, fontWeight: 700 }}
-      >
-        {lang.toUpperCase()}
-      </button>
-      <button
-        type="button"
-        onClick={toggleCurrency}
-        title={currency === "JPY" ? "Japanese Yen" : "Vietnamese Dong"}
-        className="w-[34px] h-7 rounded-lg flex items-center justify-center cursor-pointer mb-2 transition-all hover:brightness-110 active:scale-95 shrink-0"
-        style={{ backgroundColor: DARK_ACCENT_BG, color: "#F5F1EA", fontSize: 13, fontWeight: 700 }}
-      >
-        {currency === "JPY" ? "¥" : "₫"}
-      </button>
-
-      {user ? (
-        <button
-          type="button"
-          onClick={handleSignOut}
-          title="Log out"
-          className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center cursor-pointer transition-all hover:brightness-110 active:scale-95 shrink-0"
-          style={{ backgroundColor: DARK_ACCENT_BG }}
-        >
-          <LogOut size={15} color={MUTED_TEXT} />
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={handleSignIn}
-          title="Sign in"
-          className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center cursor-pointer transition-all hover:brightness-110 active:scale-95 shrink-0"
-          style={{ backgroundColor: DARK_ACCENT_BG }}
-        >
-          <LogIn size={15} color={MUTED_TEXT} />
-        </button>
-      )}
-    </div>
+    </TooltipProvider>
   );
 }

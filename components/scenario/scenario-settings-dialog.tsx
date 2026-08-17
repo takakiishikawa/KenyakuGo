@@ -138,9 +138,7 @@ export function ScenarioSettingsDialog({
   const [configTab, setConfigTab] = useState<ConfigTab>("family");
   const [spendingSub, setSpendingSub] = useState<SpendingSub>("life");
   const [lifeSub, setLifeSub] = useState<LifeSub>("fixed");
-  const [lifePhase, setLifePhase] = useState<"pre" | "post">("post");
-  const [addLifeItemLabel, setAddLifeItemLabel] = useState("");
-  const [addLifeItemAmount, setAddLifeItemAmount] = useState("");
+  const [lifePhase, setLifePhase] = useState<"pre" | "post">("pre");
   const [draft, setDraft] = useState<ScenarioConfig>(() => cloneConfig(scenario.config));
   const [savePromptOpen, setSavePromptOpen] = useState(false);
   const [newScenarioName, setNewScenarioName] = useState("");
@@ -168,15 +166,15 @@ export function ScenarioSettingsDialog({
     onConfigChange(scenario.id, next);
   };
 
-  // 額面年収 = (月額手取り×12 + ボーナス手取り) ÷ 0.8 (参考表示のみ、入力不可)
-  const grossAnnualYen =
-    ((draft.income.husband.netMonthlyYen * 12 + draft.income.husband.netBonusYen) +
-      (draft.family.spouse ? draft.income.wife.netMonthlyYen * 12 + draft.income.wife.netBonusYen : 0)) /
-    0.8;
-  // grossAnnualYen は円建ての値なので、VND-native な formatAmount ではなく
-  // 通貨に応じた円/VNDフォーマッタを直接使う(以前は formatAmount にそのまま渡していて
-  // 162で余計に割られ、額面が桁違いに小さく表示されるバグがあった)。
-  const grossAnnualPreview = currency === "JPY" ? formatJPY(grossAnnualYen) : formatVND(grossAnnualYen * vndPerJpy);
+  // 額面年収 = (月額手取り×12 + ボーナス手取り合計) ÷ 0.8 (参考表示のみ、入力不可)。
+  // 本人・配偶者それぞれと、世帯合計の3つを出す。
+  const formatYenPreview = (yen: number) => (currency === "JPY" ? formatJPY(yen) : formatVND(yen * vndPerJpy));
+  const husbandGrossAnnualYen =
+    (draft.income.husband.netMonthlyYen * 12 + draft.income.husband.netBonuses.reduce((s, b) => s + b.amountYen, 0)) / 0.8;
+  const wifeGrossAnnualYen = draft.family.spouse
+    ? (draft.income.wife.netMonthlyYen * 12 + draft.income.wife.netBonuses.reduce((s, b) => s + b.amountYen, 0)) / 0.8
+    : 0;
+  const householdGrossAnnualYen = husbandGrossAnnualYen + wifeGrossAnnualYen;
 
   const monthLabels = lang === "ja" ? MONTH_LABELS_JA : MONTH_LABELS_EN;
 
@@ -530,21 +528,86 @@ export function ScenarioSettingsDialog({
                       {t(lang, "raisePerYear")}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap pl-1">
-                    <span className="text-sm w-14 shrink-0" style={{ color: DC.textSecondary }}>
-                      {t(lang, "netBonus")}
-                    </span>
-                    <YenInput
-                      value={draft.income[row.key].netBonusYen}
-                      onChange={(n) =>
-                        setDraft({ ...draft, income: { ...draft.income, [row.key]: { ...draft.income[row.key], netBonusYen: n } } })
-                      }
-                      onCommit={() => commit(draft)}
-                      className="h-8 w-28 text-sm text-right font-num"
-                    />
-                    <span className="text-xs" style={{ color: DC.textSecondary }}>
-                      {t(lang, "yenPerYear")}
-                    </span>
+                  <div className="flex flex-col gap-1.5 pl-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm w-14 shrink-0" style={{ color: DC.textSecondary }}>
+                        {t(lang, "netBonus")}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          commit({
+                            ...draft,
+                            income: {
+                              ...draft.income,
+                              [row.key]: {
+                                ...draft.income[row.key],
+                                netBonuses: [...draft.income[row.key].netBonuses, { id: `bn${Date.now()}`, amountYen: 0, month: 6 }],
+                              },
+                            },
+                          })
+                        }
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95"
+                        style={{ backgroundColor: DC.track, color: DC.textSecondary }}
+                      >
+                        <Plus size={11} /> {t(lang, "addBonus")}
+                      </button>
+                    </div>
+                    {draft.income[row.key].netBonuses.map((bonus, bIdx) => (
+                      <div key={bonus.id} className="flex items-center gap-1.5 flex-wrap pl-[68px]">
+                        <YenInput
+                          value={bonus.amountYen}
+                          onChange={(n) => {
+                            const netBonuses = [...draft.income[row.key].netBonuses];
+                            netBonuses[bIdx] = { ...netBonuses[bIdx], amountYen: n };
+                            setDraft({ ...draft, income: { ...draft.income, [row.key]: { ...draft.income[row.key], netBonuses } } });
+                          }}
+                          onCommit={() => commit(draft)}
+                          className="h-8 w-28 text-sm text-right font-num"
+                        />
+                        <span className="text-xs" style={{ color: DC.textSecondary }}>
+                          {t(lang, "yenPerYear")}
+                        </span>
+                        <Select
+                          value={String(bonus.month)}
+                          onValueChange={(v) => {
+                            const netBonuses = [...draft.income[row.key].netBonuses];
+                            netBonuses[bIdx] = { ...netBonuses[bIdx], month: Number(v) };
+                            commit({ ...draft, income: { ...draft.income, [row.key]: { ...draft.income[row.key], netBonuses } } });
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-sm w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 12 }, (_, m) => m + 1).map((m) => (
+                              <SelectItem key={m} value={String(m)}>
+                                {monthLabels[m - 1]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            commit({
+                              ...draft,
+                              income: {
+                                ...draft.income,
+                                [row.key]: {
+                                  ...draft.income[row.key],
+                                  netBonuses: draft.income[row.key].netBonuses.filter((_, ix) => ix !== bIdx),
+                                },
+                              },
+                            })
+                          }
+                          className="p-1 rounded transition-all hover:bg-muted"
+                          style={{ color: DC.textFaint }}
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -624,8 +687,12 @@ export function ScenarioSettingsDialog({
                   {t(lang, "publicAllowanceDetail")}
                 </span>
               </div>
-              <div className="text-sm rounded-lg px-2.5 py-2" style={{ backgroundColor: DC.track, color: DC.textSecondary }}>
-                {tf(lang, "grossAnnualNote", { amount: grossAnnualPreview })}
+              <div className="flex flex-col gap-1 text-sm rounded-lg px-2.5 py-2" style={{ backgroundColor: DC.track, color: DC.textSecondary }}>
+                <span>{tf(lang, "grossAnnualHusband", { amount: formatYenPreview(husbandGrossAnnualYen) })}</span>
+                {draft.family.spouse && <span>{tf(lang, "grossAnnualWife", { amount: formatYenPreview(wifeGrossAnnualYen) })}</span>}
+                <span className="font-semibold" style={{ color: DC.textPrimary }}>
+                  {tf(lang, "grossAnnualHousehold", { amount: formatYenPreview(householdGrossAnnualYen) })}
+                </span>
               </div>
             </div>
           )}
@@ -722,105 +789,59 @@ export function ScenarioSettingsDialog({
 
                   {draft.family.spouse && lifePhase === "pre" ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {(() => {
-                        const listKey = lifeSub === "fixed" ? "preFixed" : "preVariable";
-                        return draft.cohabitation[listKey].map((item) => (
+                      {(lifeSub === "fixed" ? fixedCats : variableCats).map((cat) => {
+                        const preAmount = draft.cohabitation.preAmountByCategory[cat.id] ?? {
+                          monthlyYen: Math.round(cat.budget / vndPerJpy),
+                          overrides: [],
+                        };
+                        return (
                           <LifeItemCard
-                            key={item.id}
-                            item={item}
+                            key={cat.id}
+                            category={cat}
+                            preAmount={preAmount}
                             lang={lang}
-                            onRename={(id, label) =>
+                            onAmountChange={(monthlyYen) =>
                               commit({
                                 ...draft,
                                 cohabitation: {
                                   ...draft.cohabitation,
-                                  [listKey]: draft.cohabitation[listKey].map((it) => (it.id === id ? { ...it, label } : it)),
+                                  preAmountByCategory: {
+                                    ...draft.cohabitation.preAmountByCategory,
+                                    [cat.id]: { ...preAmount, monthlyYen },
+                                  },
                                 },
                               })
                             }
-                            onAmountChange={(id, monthlyYen) =>
+                            onSchedule={(month, endMonth, amountYen) =>
                               commit({
                                 ...draft,
                                 cohabitation: {
                                   ...draft.cohabitation,
-                                  [listKey]: draft.cohabitation[listKey].map((it) => (it.id === id ? { ...it, monthlyYen } : it)),
+                                  preAmountByCategory: {
+                                    ...draft.cohabitation.preAmountByCategory,
+                                    [cat.id]: {
+                                      ...preAmount,
+                                      overrides: [...preAmount.overrides, { id: `ov${Date.now()}`, month, endMonth, amountYen }],
+                                    },
+                                  },
                                 },
                               })
                             }
-                            onSchedule={(itemId, month, endMonth, amountYen) =>
+                            onDeleteOverride={(overrideId) =>
                               commit({
                                 ...draft,
                                 cohabitation: {
                                   ...draft.cohabitation,
-                                  [listKey]: draft.cohabitation[listKey].map((it) =>
-                                    it.id === itemId
-                                      ? { ...it, overrides: [...it.overrides, { id: `ov${Date.now()}`, month, endMonth, amountYen }] }
-                                      : it,
-                                  ),
-                                },
-                              })
-                            }
-                            onDeleteOverride={(itemId, overrideId) =>
-                              commit({
-                                ...draft,
-                                cohabitation: {
-                                  ...draft.cohabitation,
-                                  [listKey]: draft.cohabitation[listKey].map((it) =>
-                                    it.id === itemId ? { ...it, overrides: it.overrides.filter((o) => o.id !== overrideId) } : it,
-                                  ),
-                                },
-                              })
-                            }
-                            onDelete={(id) =>
-                              commit({
-                                ...draft,
-                                cohabitation: {
-                                  ...draft.cohabitation,
-                                  [listKey]: draft.cohabitation[listKey].filter((it) => it.id !== id),
+                                  preAmountByCategory: {
+                                    ...draft.cohabitation.preAmountByCategory,
+                                    [cat.id]: { ...preAmount, overrides: preAmount.overrides.filter((o) => o.id !== overrideId) },
+                                  },
                                 },
                               })
                             }
                           />
-                        ));
-                      })()}
-                      <div
-                        className="flex items-center gap-2 rounded-xl border border-dashed py-3 px-3.5"
-                        style={{ borderColor: DC.cardBorder }}
-                      >
-                        <Input
-                          value={addLifeItemLabel}
-                          onChange={(e) => setAddLifeItemLabel(e.target.value)}
-                          placeholder={t(lang, "newLifeItemLabel")}
-                          className="h-8 text-sm flex-1"
-                        />
-                        <YenInput
-                          value={addLifeItemAmount === "" ? 0 : Number(addLifeItemAmount)}
-                          onChange={(n) => setAddLifeItemAmount(n === 0 ? "" : String(n))}
-                          className="h-8 text-sm w-24 text-right font-num"
-                        />
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            if (!addLifeItemLabel.trim()) return;
-                            const listKey = lifeSub === "fixed" ? "preFixed" : "preVariable";
-                            const val = parseInt(addLifeItemAmount, 10);
-                            commit({
-                              ...draft,
-                              cohabitation: {
-                                ...draft.cohabitation,
-                                [listKey]: [
-                                  ...draft.cohabitation[listKey],
-                                  { id: `li${Date.now()}`, label: addLifeItemLabel.trim(), monthlyYen: isNaN(val) ? 0 : val, overrides: [] },
-                                ],
-                              },
-                            });
-                            setAddLifeItemLabel("");
-                            setAddLifeItemAmount("");
-                          }}
-                        >
-                          <Plus size={13} />
-                        </Button>
-                      </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1002,6 +1023,40 @@ export function ScenarioSettingsDialog({
                 <span className="text-xs" style={{ color: DC.textSecondary }}>
                   {t(lang, "investRatioUnit")}
                 </span>
+              </div>
+
+              <div className="flex flex-col gap-1.5 pt-1 border-t" style={{ borderColor: DC.trackAlt }}>
+                <span className="text-sm font-semibold pt-2" style={{ color: DC.textPrimary }}>
+                  {tf(lang, "initialBalanceLabel", { year: CUR_YEAR })}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm w-28" style={{ color: DC.textSecondary }}>
+                    {t(lang, "initialCash")}
+                  </span>
+                  <YenInput
+                    value={draft.savings.initialCashYen}
+                    onChange={(n) => setDraft({ ...draft, savings: { ...draft.savings, initialCashYen: n } })}
+                    onCommit={() => commit(draft)}
+                    className="h-8 w-32 text-sm text-right font-num"
+                  />
+                  <span className="text-xs" style={{ color: DC.textSecondary }}>
+                    {t(lang, "yenUnit")}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm w-28" style={{ color: DC.textSecondary }}>
+                    {t(lang, "initialInvest")}
+                  </span>
+                  <YenInput
+                    value={draft.savings.initialInvestYen}
+                    onChange={(n) => setDraft({ ...draft, savings: { ...draft.savings, initialInvestYen: n } })}
+                    onCommit={() => commit(draft)}
+                    className="h-8 w-32 text-sm text-right font-num"
+                  />
+                  <span className="text-xs" style={{ color: DC.textSecondary }}>
+                    {t(lang, "yenUnit")}
+                  </span>
+                </div>
               </div>
             </div>
           )}

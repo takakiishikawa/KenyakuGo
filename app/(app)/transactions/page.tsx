@@ -11,13 +11,16 @@ import {
   SelectValue,
   toast,
 } from "@takaki/go-design-system";
-import { formatVND, formatDateShort } from "@/lib/format";
+import { formatDateShort } from "@/lib/format";
+import { makeFormatAmount } from "@/lib/currency";
 import { getCategoryColorTint, getCategoryHex } from "@/lib/category-colors";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { FALLBACK_CATEGORY } from "@/lib/constants";
 import { NoteTag } from "@/components/note-tag";
 import { SpecialExpenseToggle } from "@/components/special-expense-toggle";
 import { DC } from "@/lib/scenario/design-colors";
+import { t, tf, catLabel } from "@/lib/scenario/dictionary";
+import { usePreferences } from "@/lib/preferences";
 
 // claude design の取引ページ(検索バー + カテゴリチップ + フラットなリスト)に
 // 合わせて全面刷新。以前あったストア単位の一括レビューパネル・検索一致の
@@ -48,7 +51,7 @@ function needsCategory(tx: Transaction): boolean {
   return tx.category === FALLBACK_CATEGORY && !tx.reviewed;
 }
 
-function CategoryBadgeInline({ category }: { category: string }) {
+function CategoryBadgeInline({ category, lang }: { category: string; lang: "ja" | "en" }) {
   const Icon = getCategoryIcon(category);
   const hex = getCategoryHex(category);
   return (
@@ -59,7 +62,7 @@ function CategoryBadgeInline({ category }: { category: string }) {
       >
         <Icon size={11} style={{ color: hex }} />
       </span>
-      <span className="truncate">{category}</span>
+      <span className="truncate">{catLabel(lang, category)}</span>
     </span>
   );
 }
@@ -74,6 +77,8 @@ export default function TransactionsPage() {
 
 function TransactionsPageInner() {
   const searchParams = useSearchParams();
+  const { lang, currency } = usePreferences();
+  const formatAmount = makeFormatAmount(currency);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -173,7 +178,7 @@ function TransactionsPageInner() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name or category"
+          placeholder={t(lang, "txSearchPlaceholder")}
           className="flex-1 text-[12.5px] bg-transparent outline-none border-none min-w-0"
           style={{ color: DC.textPrimary }}
         />
@@ -192,7 +197,7 @@ function TransactionsPageInner() {
             }
           >
             <AlertCircle size={11} />
-            Uncategorized ({pendingCount})
+            {tf(lang, "txUncategorized", { count: pendingCount })}
           </button>
         )}
         <button
@@ -206,7 +211,7 @@ function TransactionsPageInner() {
           }
         >
           <Sparkles size={12} />
-          All
+          {t(lang, "txAll")}
         </button>
         {usedCategories.map((cat) => {
           const Icon = getCategoryIcon(cat);
@@ -224,7 +229,7 @@ function TransactionsPageInner() {
               }
             >
               <Icon size={12} style={{ color: active ? "#fff" : getCategoryHex(cat) }} />
-              {cat}
+              {catLabel(lang, cat)}
             </button>
           );
         })}
@@ -233,7 +238,7 @@ function TransactionsPageInner() {
       <div className="rounded-[14px] border overflow-hidden" style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}>
         {filtered.length === 0 ? (
           <p className="text-sm text-center py-10" style={{ color: DC.textSecondary }}>
-            {search.trim() ? `No transactions match "${search}"` : "No transactions yet"}
+            {search.trim() ? tf(lang, "txNoMatch", { query: search }) : t(lang, "txNoTransactions")}
           </p>
         ) : (
           filtered.map((tx) => {
@@ -251,7 +256,7 @@ function TransactionsPageInner() {
                   {tx.store}
                 </span>
                 <span className="w-24 shrink-0 text-right text-[13px] font-bold font-num" style={{ color: DC.textPrimary }}>
-                  {formatVND(tx.amount)}
+                  {formatAmount(tx.amount)}
                 </span>
                 {uncategorized ? (
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -262,19 +267,19 @@ function TransactionsPageInner() {
                       disabled={savingId === tx.id}
                     >
                       <SelectTrigger className="h-7 text-xs w-36" style={{ borderColor: DC.primaryHover, color: DC.primaryHover }}>
-                        <SelectValue placeholder="Choose category" />
+                        <SelectValue placeholder={t(lang, "txChooseCategory")} />
                       </SelectTrigger>
                       <SelectContent>
                         {categories.map((cat) => (
                           <SelectItem key={cat} value={cat}>
-                            {cat}
+                            {catLabel(lang, cat)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                 ) : (
-                  <CategoryBadgeInline category={tx.category} />
+                  <CategoryBadgeInline category={tx.category} lang={lang} />
                 )}
                 <div className="flex items-center gap-1.5 shrink-0">
                   <NoteTag value={tx.note} onSave={(v) => handleSaveNote(tx.id, v)} />

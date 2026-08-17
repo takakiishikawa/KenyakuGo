@@ -29,7 +29,13 @@ export default async function AppGroupLayout({
     <div className="flex w-full h-screen overflow-hidden" style={{ backgroundColor: "#FAF5EE" }}>
       <PiggyBankSidebar />
       <div className="flex-1 flex flex-col min-w-0 h-full">
-        <div className="flex-1 overflow-y-auto px-8 py-6 pb-12">{children}</div>
+        {/* 上部の余白は、スクロールコンテナ自身の padding-top ではなく中の div に
+            付ける。scroll containerのpadding-topはCSS仕様上スクロールしても消えず、
+            position:stickyな子要素(Simulationテーブルのヘッダー等)がその分だけ
+            浮いた位置で貼り付いてしまう(実機で確認済みのバグ)。 */}
+        <div className="flex-1 overflow-y-auto px-8 pb-12">
+          <div className="pt-6">{children}</div>
+        </div>
       </div>
     </div>
   );

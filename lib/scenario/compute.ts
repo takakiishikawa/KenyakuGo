@@ -32,7 +32,8 @@ function netAnnualForYear(
   kids: Kid[],
 ): number {
   const monthlyNet = entry.netMonthlyYen * Math.pow(1 + entry.raisePercent / 100, yearsFromStart);
-  const bonusNet = entry.netBonusYen * Math.pow(1 + entry.raisePercent / 100, yearsFromStart);
+  const bonusTotalYen = entry.netBonuses.reduce((s, b) => s + b.amountYen, 0);
+  const bonusNet = bonusTotalYen * Math.pow(1 + entry.raisePercent / 100, yearsFromStart);
   const multiplier = leaveMultiplierForYear(parentKey, kids, year);
   return monthlyNet * 12 * multiplier + bonusNet;
 }
@@ -143,9 +144,9 @@ function renewalFeeYenForYear(
   return monthlyYen * category.renewal_fee_months;
 }
 
-// 同棲前の暮らし項目の、その年の月額。実カテゴリ(projectCategoryMonthlyYen)と
-// 同じ考え方: 持続的オーバーライド(endMonth===null)があればそれを起点にし、
-// それより先の年数ぶんだけインフレ率を複利適用する。
+// 同棲前のカテゴリごとの月額。実カテゴリ(projectCategoryMonthlyYen)と同じ考え方:
+// 持続的オーバーライド(endMonth===null)があればそれを起点にし、それより先の
+// 年数ぶんだけインフレ率を複利適用する。
 function preLifeMonthlyYen(
   item: { monthlyYen: number; overrides: { month: string; endMonth: string | null; amountYen: number }[] },
   year: number,
@@ -170,19 +171,43 @@ function preLifeMonthlyYen(
   return base * Math.pow(1 + inflationRatePercent / 100, yearsBeyond);
 }
 
+// 同棲前・同棲後を通じて同じカテゴリ(id)を使う。同棲前だけの月額
+// (preAmountByCategory)が設定されていればそれを、無ければ同棲後の実額を
+// そのまま同棲前の値としても使う(「同棲前後で同じ内容」がデフォルト)。
+function preCategoryMonthlyYen(
+  category: { id: string; budget: number },
+  preAmountByCategory: Record<string, { monthlyYen: number; overrides: { month: string; endMonth: string | null; amountYen: number }[] }>,
+  overridesForCategory: CategoryBudgetOverride[],
+  year: number,
+  inflationRatePercent: number,
+  vndPerJpy: number,
+  nowYear: number,
+): number {
+  const preAmt = preAmountByCategory[category.id];
+  if (!preAmt) {
+    return projectCategoryMonthlyYen(category, overridesForCategory, year, inflationRatePercent, vndPerJpy, nowYear);
+  }
+  return preLifeMonthlyYen(preAmt, year, inflationRatePercent, nowYear);
+}
+
 // 今年の月次表示専用: 経過済みの月(今月を含む)はその月の実績、未経過の月は
-// 予算ベースの月額をそのまま使う12ヶ月ぶんの配列を返す(要望: 「今年の月次表示で
-// 過去月にも実績ではなく年換算の平均値が出ていた」への対応)。
+// 予算ベース(同棲前後どちらのフェーズかに応じた月額)の月額をそのまま使う
+// 12ヶ月ぶんの配列を返す(要望: 「今年の月次表示で過去月にも実績ではなく
+// 年換算の平均値が出ていた」への対応)。
 function categoryMonthlyActualOrBudgetYen(
   category: { id: string; budget: number },
   overridesForCategory: CategoryBudgetOverride[],
+  preAmountByCategory: Record<string, { monthlyYen: number; overrides: { month: string; endMonth: string | null; amountYen: number }[] }>,
+  cohabiting: boolean,
   monthlyActualVnd: Record<string, number> | undefined,
   currentMonth: number,
   inflationRatePercent: number,
   vndPerJpy: number,
   nowYear: number,
 ): number[] {
-  const budgetMonthlyYen = projectCategoryMonthlyYen(category, overridesForCategory, nowYear, inflationRatePercent, vndPerJpy, nowYear);
+  const budgetMonthlyYen = cohabiting
+    ? projectCategoryMonthlyYen(category, overridesForCategory, nowYear, inflationRatePercent, vndPerJpy, nowYear)
+    : preCategoryMonthlyYen(category, preAmountByCategory, overridesForCategory, nowYear, inflationRatePercent, vndPerJpy, nowYear);
   return Array.from({ length: 12 }, (_, idx) => {
     const m = idx + 1;
     if (m <= currentMonth) {
@@ -253,20 +278,15 @@ export function computeScenarioYears(
   const fixedCats = categories.filter((c) => c.is_fixed);
   const variableCats = categories.filter((c) => !c.is_fixed);
 
-  let cashCum = 0;
-  let investBal = 0;
-  let investPrincipalCum = 0;
+  // シナリオ開始年の1月時点の現金・投資残高を初期値として積み上げる。
+  let cashCum = config.savings.initialCashYen;
+  let investBal = config.savings.initialInvestYen;
+  let investPrincipalCum = config.savings.initialInvestYen;
 
   return years.map((year, i) => {
-    // 同棲開始年から: 配偶者の収入が反映される。
-    // それより前: 配偶者収入は0。暮らしについては、同棲前用の項目
-    // (preFixed/preVariable)をユーザーが実際に入力している場合だけそちらを使い、
-    // 何も入力していなければ(初期状態)共有categoriesの実額をそのまま使う
-    // (「同棲開始年を先の年に設定したら今年の暮らしが¥0になった」への対応 —
-    // 未入力を「支出0」と解釈するのではなく「まだ同棲後の実額と同じ」とみなす)。
+    // 同棲開始年から: 配偶者の収入・カテゴリの実額(同棲後の値)が反映される。
+    // それより前: 配偶者収入は0、カテゴリは同棲前専用の値(無ければ同棲後と同じ)。
     const cohabiting = year >= config.cohabitation.startYear;
-    const useSharedFixed = cohabiting || config.cohabitation.preFixed.length === 0;
-    const useSharedVariable = cohabiting || config.cohabitation.preVariable.length === 0;
     const moveInBonusYen = year === config.cohabitation.startYear ? config.cohabitation.moveInBonusYen : 0;
 
     // 入力は手取り(月+ボーナス)。額面年収は設定モーダル側でview-only表示用に
@@ -290,49 +310,46 @@ export function computeScenarioYears(
     const investProfitYen = investBal * (config.savings.returnRatePercent / 100);
     const incomeTotalYen = husbandYen + wifeYen + sideYen + allowanceYen + moveInBonusYen + investProfitYen;
 
-    const fixedByCategory: ScenarioCategoryValue[] = useSharedFixed
-      ? fixedCats.map((c) => {
-          const overridesForCat = overridesByCategory.get(c.id) ?? [];
-          const monthlyYen = projectCategoryMonthlyYen(
+    // 固定費・変動費は、同棲前後どちらの年でも同じカテゴリ(piggybank.categories)を
+    // 使う。月額の出どころだけ、同棲後は実カテゴリの予算、同棲前は
+    // preAmountByCategory(無ければ同棲後の実額をそのまま流用)で分岐する
+    // (要望: 「同棲前・同棲後いずれにしても共通のカテゴリを利用」への対応。
+    // 以前はidが同棲前後で食い違い、テーブルのカテゴリ内訳行が同棲後の年で
+    // ¥0になるバグの原因になっていた)。
+    const fixedByCategory: ScenarioCategoryValue[] = fixedCats.map((c) => {
+      const overridesForCat = overridesByCategory.get(c.id) ?? [];
+      const monthlyYen = cohabiting
+        ? projectCategoryMonthlyYen(c, overridesForCat, year, config.inflationRatePercent, vndPerJpy, nowYear)
+        : preCategoryMonthlyYen(
             c,
+            config.cohabitation.preAmountByCategory,
             overridesForCat,
             year,
             config.inflationRatePercent,
             vndPerJpy,
             nowYear,
           );
-          const renewalYen = renewalFeeYenForYear(
-            c,
-            overridesForCat,
-            year,
-            config.inflationRatePercent,
-            vndPerJpy,
-            nowYear,
-          );
-          const budgetAnnualYen = monthlyYen * 12 + renewalYen;
-          const valueYen =
-            annualCategoryYen(c, budgetAnnualYen - renewalYen, year, nowYear, dayOfYear, daysInThisYear, vndPerJpy, actualByCategoryVnd) +
-            renewalYen;
-          return { id: c.id, name: c.name, valueYen, color: getCategoryHex(c.name) };
-        })
-      : config.cohabitation.preFixed.map((item) => ({
-          id: `pre-fixed-${item.id}`,
-          name: item.label,
-          valueYen: preLifeMonthlyYen(item, year, config.inflationRatePercent, nowYear) * 12,
-          color: getCategoryHex(item.label),
-        }));
+      const renewalYen = renewalFeeYenForYear(c, overridesForCat, year, config.inflationRatePercent, vndPerJpy, nowYear);
+      const budgetAnnualYen = monthlyYen * 12 + renewalYen;
+      const valueYen =
+        annualCategoryYen(c, budgetAnnualYen - renewalYen, year, nowYear, dayOfYear, daysInThisYear, vndPerJpy, actualByCategoryVnd) +
+        renewalYen;
+      return { id: c.id, name: c.name, valueYen, color: getCategoryHex(c.name) };
+    });
     const fixedTotalYen = fixedByCategory.reduce((s, c) => s + c.valueYen, 0);
 
-    // 今年の月次表示専用の内訳(経過月=実績、未経過月=予算)。他の年・
-    // 同棲前フェーズでは作らない(expandMonthly側で従来通り均等按分にfallbackする)。
+    // 今年の月次表示専用の内訳(経過月=実績、未経過月=予算)。他の年では作らない
+    // (expandMonthly側で従来通り年額を均等按分にfallbackする)。
     const fixedByCategoryMonthly: Record<string, number[]> | undefined =
-      year === nowYear && useSharedFixed
+      year === nowYear
         ? Object.fromEntries(
             fixedCats.map((c) => [
               c.id,
               categoryMonthlyActualOrBudgetYen(
                 c,
                 overridesByCategory.get(c.id) ?? [],
+                config.cohabitation.preAmountByCategory,
+                cohabiting,
                 actualByCategoryMonthVnd[c.name],
                 nowMonth,
                 config.inflationRatePercent,
@@ -343,36 +360,34 @@ export function computeScenarioYears(
           )
         : undefined;
 
-    const variableByCategory: ScenarioCategoryValue[] = useSharedVariable
-      ? variableCats.map((c) => {
-          const overridesForCat = overridesByCategory.get(c.id) ?? [];
-          const monthlyYen = projectCategoryMonthlyYen(
+    const variableByCategory: ScenarioCategoryValue[] = variableCats.map((c) => {
+      const overridesForCat = overridesByCategory.get(c.id) ?? [];
+      const monthlyYen = cohabiting
+        ? projectCategoryMonthlyYen(c, overridesForCat, year, config.inflationRatePercent, vndPerJpy, nowYear)
+        : preCategoryMonthlyYen(
             c,
+            config.cohabitation.preAmountByCategory,
             overridesForCat,
             year,
             config.inflationRatePercent,
             vndPerJpy,
             nowYear,
           );
-          const valueYen = annualCategoryYen(c, monthlyYen * 12, year, nowYear, dayOfYear, daysInThisYear, vndPerJpy, actualByCategoryVnd);
-          return { id: c.id, name: c.name, valueYen, color: getCategoryHex(c.name) };
-        })
-      : config.cohabitation.preVariable.map((item) => ({
-          id: `pre-variable-${item.id}`,
-          name: item.label,
-          valueYen: preLifeMonthlyYen(item, year, config.inflationRatePercent, nowYear) * 12,
-          color: getCategoryHex(item.label),
-        }));
+      const valueYen = annualCategoryYen(c, monthlyYen * 12, year, nowYear, dayOfYear, daysInThisYear, vndPerJpy, actualByCategoryVnd);
+      return { id: c.id, name: c.name, valueYen, color: getCategoryHex(c.name) };
+    });
     const variableTotalYen = variableByCategory.reduce((s, c) => s + c.valueYen, 0);
 
     const variableByCategoryMonthly: Record<string, number[]> | undefined =
-      year === nowYear && useSharedVariable
+      year === nowYear
         ? Object.fromEntries(
             variableCats.map((c) => [
               c.id,
               categoryMonthlyActualOrBudgetYen(
                 c,
                 overridesByCategory.get(c.id) ?? [],
+                config.cohabitation.preAmountByCategory,
+                cohabiting,
                 actualByCategoryMonthVnd[c.name],
                 nowMonth,
                 config.inflationRatePercent,

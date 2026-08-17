@@ -44,7 +44,7 @@ export default function SimulationPage() {
   const [loading, setLoading] = useState(true);
 
   const [compareMode, setCompareMode] = useState<"single" | "compare">("single");
-  const [timeMode, setTimeMode] = useState<"yearly" | "monthly">("yearly");
+  const [timeMode, setTimeMode] = useState<"yearly" | "monthly">("monthly");
   const [viewMode, setViewMode] = useState<"table" | "graph">("table");
   const [focusYear, setFocusYear] = useState(CUR_YEAR);
   const [chartKind, setChartKind] = useState<ChartKind>("overview");

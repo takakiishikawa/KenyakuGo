@@ -122,6 +122,9 @@ export function ScenarioSettingsDialog({
   const [configTab, setConfigTab] = useState<ConfigTab>("family");
   const [spendingSub, setSpendingSub] = useState<SpendingSub>("life");
   const [lifeSub, setLifeSub] = useState<LifeSub>("fixed");
+  const [lifePhase, setLifePhase] = useState<"pre" | "post">("post");
+  const [addLifeItemLabel, setAddLifeItemLabel] = useState("");
+  const [addLifeItemAmount, setAddLifeItemAmount] = useState("");
   const [draft, setDraft] = useState<ScenarioConfig>(() => cloneConfig(scenario.config));
   const [savePromptOpen, setSavePromptOpen] = useState(false);
   const [newScenarioName, setNewScenarioName] = useState("");
@@ -297,6 +300,47 @@ export function ScenarioSettingsDialog({
                   ))}
                 </div>
               </div>
+
+              {draft.family.spouse && (
+                <div className="flex flex-col gap-2 rounded-lg border p-2.5" style={{ borderColor: DC.trackAlt }}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs w-32 shrink-0 flex items-center gap-1" style={{ color: DC.textSecondary }}>
+                      {t(lang, "cohabitationStartYear")}
+                      <HelpTip text={t(lang, "cohabitationHelp")} />
+                    </span>
+                    <Select
+                      value={String(draft.cohabitation.startYear)}
+                      onValueChange={(v) => commit({ ...draft, cohabitation: { ...draft.cohabitation, startYear: Number(v) } })}
+                    >
+                      <SelectTrigger className="h-8 text-xs w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {YEAR_OPTIONS.map((y) => (
+                          <SelectItem key={y} value={String(y)}>
+                            {y}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs w-32 shrink-0 flex items-center gap-1" style={{ color: DC.textSecondary }}>
+                      {t(lang, "moveInBonus")}
+                      <HelpTip text={t(lang, "moveInBonusHelp")} />
+                    </span>
+                    <YenInput
+                      value={draft.cohabitation.moveInBonusYen}
+                      onChange={(n) => setDraft({ ...draft, cohabitation: { ...draft.cohabitation, moveInBonusYen: n } })}
+                      onCommit={() => commit(draft)}
+                      className="h-8 w-28 text-xs text-right font-num"
+                    />
+                    <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                      {t(lang, "yenPerYear")}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold" style={{ color: DC.textSecondary }}>
@@ -658,45 +702,157 @@ export function ScenarioSettingsDialog({
                     </span>
                   </div>
 
-                  {(lifeSub === "fixed" ? fixedCats : variableCats).map((cat) => (
-                    <CategoryBudgetCard
-                      key={cat.id}
-                      cat={cat}
-                      displayCurrency={currency}
-                      overrides={overridesByCategory.get(cat.id) ?? []}
-                      onUpdate={onCategoryUpdate}
-                      onScheduleOverride={onScheduleOverride}
-                      onDeleteOverride={onDeleteOverride}
-                      onDelete={onCategoryDelete}
-                      lang={lang}
-                    />
-                  ))}
+                  {draft.family.spouse && (
+                    <div className="flex gap-0.5 p-0.5 rounded-lg w-fit" style={{ backgroundColor: DC.track }}>
+                      {(
+                        [
+                          { k: "pre" as const, l: t(lang, "preCohabitation") },
+                          { k: "post" as const, l: t(lang, "postCohabitation") },
+                        ]
+                      ).map((s) => (
+                        <button
+                          key={s.k}
+                          type="button"
+                          onClick={() => setLifePhase(s.k)}
+                          className="px-3 py-1 rounded-md text-[11.5px] font-semibold cursor-pointer"
+                          style={{
+                            backgroundColor: lifePhase === s.k ? DC.cardBg : "transparent",
+                            color: DC.textPrimary,
+                          }}
+                        >
+                          {s.l}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
-                  <div className="flex items-center gap-2 rounded-lg border border-dashed p-2" style={{ borderColor: DC.cardBorder }}>
-                    <Input
-                      value={addCatName}
-                      onChange={(e) => setAddCatName(e.target.value)}
-                      placeholder={t(lang, "newCategoryName")}
-                      className="h-8 text-xs flex-1"
-                    />
-                    <YenInput
-                      value={addCatBudget === "" ? 0 : Number(addCatBudget)}
-                      onChange={(n) => setAddCatBudget(n === 0 ? "" : String(n))}
-                      className="h-8 text-xs w-32 text-right font-num"
-                    />
-                    <Button
-                      size="sm"
-                      onClick={async () => {
-                        const val = parseInt(addCatBudget, 10);
-                        if (!addCatName.trim()) return;
-                        await onCategoryAdd(addCatName.trim(), isNaN(val) ? 0 : val, lifeSub === "fixed");
-                        setAddCatName("");
-                        setAddCatBudget("");
-                      }}
-                    >
-                      <Plus size={13} />
-                    </Button>
-                  </div>
+                  {draft.family.spouse && lifePhase === "pre" ? (
+                    <>
+                      {(lifeSub === "fixed" ? draft.cohabitation.preFixed : draft.cohabitation.preVariable).map((item, itemIdx) => {
+                        const listKey = lifeSub === "fixed" ? "preFixed" : "preVariable";
+                        return (
+                          <div key={item.id} className="flex items-center gap-2 rounded-lg border py-2 px-3" style={{ borderColor: DC.trackAlt }}>
+                            <Input
+                              value={item.label}
+                              onChange={(e) => {
+                                const list = [...draft.cohabitation[listKey]];
+                                list[itemIdx] = { ...list[itemIdx], label: e.target.value };
+                                setDraft({ ...draft, cohabitation: { ...draft.cohabitation, [listKey]: list } });
+                              }}
+                              onBlur={() => commit(draft)}
+                              className="h-8 text-xs flex-1 min-w-0"
+                            />
+                            <YenInput
+                              value={item.monthlyYen}
+                              onChange={(n) => {
+                                const list = [...draft.cohabitation[listKey]];
+                                list[itemIdx] = { ...list[itemIdx], monthlyYen: n };
+                                setDraft({ ...draft, cohabitation: { ...draft.cohabitation, [listKey]: list } });
+                              }}
+                              onCommit={() => commit(draft)}
+                              className="h-8 w-28 text-xs text-right font-num"
+                            />
+                            <span className="text-[11px] shrink-0" style={{ color: DC.textFaint }}>
+                              {t(lang, "yenPerMonth")}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                commit({
+                                  ...draft,
+                                  cohabitation: {
+                                    ...draft.cohabitation,
+                                    [listKey]: draft.cohabitation[listKey].filter((_, ix) => ix !== itemIdx),
+                                  },
+                                })
+                              }
+                              className="p-1 rounded transition-all hover:bg-muted"
+                              style={{ color: DC.textFaint }}
+                            >
+                              <X size={13} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                      <div className="flex items-center gap-2 rounded-lg border border-dashed p-2" style={{ borderColor: DC.cardBorder }}>
+                        <Input
+                          value={addLifeItemLabel}
+                          onChange={(e) => setAddLifeItemLabel(e.target.value)}
+                          placeholder={t(lang, "newLifeItemLabel")}
+                          className="h-8 text-xs flex-1"
+                        />
+                        <YenInput
+                          value={addLifeItemAmount === "" ? 0 : Number(addLifeItemAmount)}
+                          onChange={(n) => setAddLifeItemAmount(n === 0 ? "" : String(n))}
+                          className="h-8 text-xs w-32 text-right font-num"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            if (!addLifeItemLabel.trim()) return;
+                            const listKey = lifeSub === "fixed" ? "preFixed" : "preVariable";
+                            const val = parseInt(addLifeItemAmount, 10);
+                            commit({
+                              ...draft,
+                              cohabitation: {
+                                ...draft.cohabitation,
+                                [listKey]: [
+                                  ...draft.cohabitation[listKey],
+                                  { id: `li${Date.now()}`, label: addLifeItemLabel.trim(), monthlyYen: isNaN(val) ? 0 : val },
+                                ],
+                              },
+                            });
+                            setAddLifeItemLabel("");
+                            setAddLifeItemAmount("");
+                          }}
+                        >
+                          <Plus size={13} />
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {(lifeSub === "fixed" ? fixedCats : variableCats).map((cat) => (
+                        <CategoryBudgetCard
+                          key={cat.id}
+                          cat={cat}
+                          displayCurrency={currency}
+                          overrides={overridesByCategory.get(cat.id) ?? []}
+                          onUpdate={onCategoryUpdate}
+                          onScheduleOverride={onScheduleOverride}
+                          onDeleteOverride={onDeleteOverride}
+                          onDelete={onCategoryDelete}
+                          lang={lang}
+                        />
+                      ))}
+
+                      <div className="flex items-center gap-2 rounded-lg border border-dashed p-2" style={{ borderColor: DC.cardBorder }}>
+                        <Input
+                          value={addCatName}
+                          onChange={(e) => setAddCatName(e.target.value)}
+                          placeholder={t(lang, "newCategoryName")}
+                          className="h-8 text-xs flex-1"
+                        />
+                        <YenInput
+                          value={addCatBudget === "" ? 0 : Number(addCatBudget)}
+                          onChange={(n) => setAddCatBudget(n === 0 ? "" : String(n))}
+                          className="h-8 text-xs w-32 text-right font-num"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            const val = parseInt(addCatBudget, 10);
+                            if (!addCatName.trim()) return;
+                            await onCategoryAdd(addCatName.trim(), isNaN(val) ? 0 : val, lifeSub === "fixed");
+                            setAddCatName("");
+                            setAddCatBudget("");
+                          }}
+                        >
+                          <Plus size={13} />
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 

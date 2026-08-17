@@ -68,6 +68,16 @@ export const DICT = {
     addLeavePeriod: "期間を追加",
     leaveIncomePercent: "その間の収入(通常の何%か)",
     leaveNoPeriods: "設定なし",
+    cohabitation: "同棲",
+    cohabitationStartYear: "同棲開始年",
+    cohabitationHelp:
+      "この年から配偶者の収入と「暮らし(同棲後)」が反映されます。それより前は配偶者の収入は0円、暮らしは「同棲前」の内容が使われます。",
+    moveInBonus: "同棲時の一時収入",
+    moveInBonusHelp: "同棲開始年に一度だけ収入として加算されます(例: 相手が共通口座に入れる資金)。",
+    preCohabitation: "同棲前",
+    postCohabitation: "同棲後",
+    addLifeItem: "項目を追加",
+    newLifeItemLabel: "新しい項目",
 
     // 設定モーダル: 支出タブ
     inflationRate: "インフレ率",
@@ -183,6 +193,16 @@ export const DICT = {
     addLeavePeriod: "Add a period",
     leaveIncomePercent: "Income during leave (% of normal)",
     leaveNoPeriods: "None set",
+    cohabitation: "Cohabitation",
+    cohabitationStartYear: "Cohabitation start year",
+    cohabitationHelp:
+      "From this year on, spouse income and \"Life (post-cohabitation)\" apply. Before it, spouse income is ¥0 and \"Life (pre-cohabitation)\" is used instead.",
+    moveInBonus: "One-time move-in income",
+    moveInBonusHelp: "Added once, in the cohabitation start year (e.g. funds your partner puts into the joint account).",
+    preCohabitation: "Pre-cohabitation",
+    postCohabitation: "Post-cohabitation",
+    addLifeItem: "Add item",
+    newLifeItemLabel: "New item",
 
     inflationRate: "Inflation rate",
     inflationUnit: "%/yr (whole Life budget)",

@@ -381,7 +381,7 @@ export default function Dashboard() {
               </a>
               {uncategorizedCount > 0 && (
                 <a
-                  href="/transactions"
+                  href="/transactions?filter=needs_category"
                   className="flex items-center gap-2 rounded-[10px] px-3.5 py-2 text-xs font-semibold transition-all hover:brightness-95 active:scale-[0.98]"
                   style={{ backgroundColor: "#F7E1EA", border: "1px solid #F0C7D8", color: "#8C3A5E" }}
                 >

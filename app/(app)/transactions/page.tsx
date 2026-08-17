@@ -1,31 +1,29 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
-import type { ColumnDef } from "@tanstack/react-table";
-import { AlertTriangle, Trash2, Pencil } from "lucide-react";
-import { toast } from "@takaki/go-design-system";
-import { formatVND, formatDateWithYear } from "@/lib/format";
-import { getCategoryColors } from "@/lib/category-colors";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { AlertCircle, Search, Sparkles } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  toast,
+} from "@takaki/go-design-system";
+import { formatVND, formatDateShort } from "@/lib/format";
+import { getCategoryColorTint, getCategoryHex } from "@/lib/category-colors";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { FALLBACK_CATEGORY } from "@/lib/constants";
 import { NoteTag } from "@/components/note-tag";
 import { SpecialExpenseToggle } from "@/components/special-expense-toggle";
-import {
-  Button,
-  Card,
-  DataTable,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-  Tag,
-} from "@takaki/go-design-system";
+import { DC } from "@/lib/scenario/design-colors";
+
+// claude design の取引ページ(検索バー + カテゴリチップ + フラットなリスト)に
+// 合わせて全面刷新。以前あったストア単位の一括レビューパネル・検索一致の
+// 一括カテゴリ変更バナー・DataTableは、新デザインに無いため廃止(個別取引ごとの
+// インライン選択に統一)。Note・特別支出トグルは新デザインには無いが実データの
+// 機能なので、行にhoverした時だけ出る形で維持する。
 
 interface Transaction {
   id: string;
@@ -44,329 +42,81 @@ interface Category {
   name: string;
 }
 
-interface UncategorizedStore {
-  store: string;
-  count: number;
-  totalAmount: number;
-  suggested: string | null;
-  hint: string | null;
+// 「未分類」= フォールバックカテゴリのままAI/手動でまだレビューされていない取引。
+// (既存のCategoryBadge/uncategorized-countと同じ判定基準)
+function needsCategory(tx: Transaction): boolean {
+  return tx.category === FALLBACK_CATEGORY && !tx.reviewed;
 }
 
-function CategoryBadge({ category, reviewed }: { category: string; reviewed: boolean }) {
-  if (category === FALLBACK_CATEGORY && !reviewed) return <Tag color="danger">Uncategorized</Tag>;
-  const { bg, border, text } = getCategoryColors(category);
+function CategoryBadgeInline({ category }: { category: string }) {
   const Icon = getCategoryIcon(category);
+  const hex = getCategoryHex(category);
   return (
-    <Tag style={{ backgroundColor: bg, borderColor: border, color: text }}>
-      <Icon size={11} style={{ color: text }} />
-      {category}
-    </Tag>
-  );
-}
-
-function CategoryManagerDialog({
-  open,
-  onOpenChange,
-  onChanged,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onChanged: () => void;
-}) {
-  const [items, setItems] = useState<Category[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [newName, setNewName] = useState("");
-  const [busy, setBusy] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    const data = (await fetch("/api/categories").then((r) =>
-      r.json(),
-    )) as Category[];
-    setItems(data);
-  }, []);
-
-  useEffect(() => {
-    if (open) load();
-  }, [open, load]);
-
-  const handleAdd = async () => {
-    const name = newName.trim();
-    if (!name) return;
-    setBusy("__add__");
-    const res = await fetch("/api/categories", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    setBusy(null);
-    if (res.status === 409) {
-      toast.error("That category already exists");
-      return;
-    }
-    if (!res.ok) {
-      toast.error("Failed to add");
-      return;
-    }
-    toast.success(`Added "${name}"`);
-    setNewName("");
-    load();
-    onChanged();
-  };
-
-  const handleSaveRename = async (item: Category) => {
-    const name = editName.trim();
-    if (!name || name === item.name) {
-      setEditingId(null);
-      return;
-    }
-    setBusy(item.id);
-    const res = await fetch(`/api/categories/${item.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    setBusy(null);
-    if (!res.ok) {
-      const { error } = await res.json().catch(() => ({ error: "" }));
-      toast.error(error || "Failed to update");
-      return;
-    }
-    toast.success(`Renamed "${item.name}" to "${name}"`);
-    setEditingId(null);
-    load();
-    onChanged();
-  };
-
-  const handleDelete = async (item: Category) => {
-    if (
-      !window.confirm(
-        `Delete "${item.name}"?\nAll transactions in this category will be moved back to "${FALLBACK_CATEGORY}".`,
-      )
-    )
-      return;
-    setBusy(item.id);
-    const res = await fetch(`/api/categories/${item.id}`, { method: "DELETE" });
-    setBusy(null);
-    if (!res.ok) {
-      const { error } = await res.json().catch(() => ({ error: "" }));
-      toast.error(error || "Failed to delete");
-      return;
-    }
-    toast.success(`Deleted "${item.name}"`);
-    load();
-    onChanged();
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-0 overflow-hidden">
-        <DialogHeader className="px-6 py-5 border-b">
-          <DialogTitle>Manage Categories</DialogTitle>
-        </DialogHeader>
-        <div className="max-h-[60vh] overflow-y-auto">
-          {items
-            .filter((item) => item.name !== FALLBACK_CATEGORY)
-            .map((item) => {
-            const isEditing = editingId === item.id;
-            const isProtected = false;
-            return (
-              <div
-                key={item.id}
-                className="flex items-center gap-2 px-6 py-3 border-b last:border-0"
-              >
-                {isEditing ? (
-                  <>
-                    <Input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleSaveRename(item);
-                        if (e.key === "Escape") setEditingId(null);
-                      }}
-                      autoFocus
-                      className="flex-1 h-9"
-                    />
-                    <Button
-                      size="sm"
-                      onClick={() => handleSaveRename(item)}
-                      disabled={busy === item.id}
-                    >
-                      Save
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditingId(null)}
-                    >
-                      ✕
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <CategoryBadge category={item.name} reviewed={true} />
-                    <span className="flex-1" />
-                    {!isProtected && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setEditingId(item.id);
-                            setEditName(item.name);
-                          }}
-                          aria-label="Edit"
-                        >
-                          <Pencil size={14} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(item)}
-                          disabled={busy === item.id}
-                          aria-label="Delete"
-                          style={{ color: "var(--color-danger)" }}
-                        >
-                          <Trash2 size={14} />
-                        </Button>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex items-center gap-2 px-6 py-4 border-t bg-muted/30">
-          <Input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleAdd();
-            }}
-            placeholder="New category name..."
-            className="flex-1 h-9"
-          />
-          <Button
-            size="sm"
-            onClick={handleAdd}
-            disabled={!newName.trim() || busy === "__add__"}
-          >
-            Add
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <span className="flex items-center gap-1.5 text-[11.5px] font-semibold shrink-0 w-32" style={{ color: DC.textSecondary }}>
+      <span
+        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
+        style={{ backgroundColor: getCategoryColorTint(category) }}
+      >
+        <Icon size={11} style={{ color: hex }} />
+      </span>
+      <span className="truncate">{category}</span>
+    </span>
   );
 }
 
 export default function TransactionsPage() {
+  return (
+    <Suspense fallback={null}>
+      <TransactionsPageInner />
+    </Suspense>
+  );
+}
+
+function TransactionsPageInner() {
+  const searchParams = useSearchParams();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editCategory, setEditCategory] = useState("");
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [uncategorizedStores, setUncategorizedStores] = useState<
-    UncategorizedStore[]
-  >([]);
-  const [uncategorizedCount, setUncategorizedCount] = useState<number | null>(
-    null,
+  const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState<string>(
+    searchParams.get("filter") === "needs_category" ? "needs_category" : "all",
   );
-  const [reviewLoading, setReviewLoading] = useState(false);
-  const [reviewSelections, setReviewSelections] = useState<
-    Record<string, string>
-  >({});
-  const [applyingStore, setApplyingStore] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [bulkCategory, setBulkCategory] = useState("");
-  const [bulkApplying, setBulkApplying] = useState(false);
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   const fetchCategories = useCallback(() => {
     fetch("/api/categories")
       .then((r) => r.json())
-      .then((data) =>
-        setCategories((data as { name: string }[]).map((c) => c.name)),
-      );
+      .then((data) => setCategories((data as Category[]).map((c) => c.name)));
   }, []);
-
-  const fetchUncategorizedCount = useCallback(async () => {
-    const res = await fetch("/api/transactions/uncategorized-count");
-    const { count } = await res.json();
-    setUncategorizedCount(count ?? 0);
-  }, []);
-
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
-  useEffect(() => {
-    fetchUncategorizedCount();
-  }, [fetchUncategorizedCount]);
 
   const fetchTransactions = useCallback(async () => {
-    const params = new URLSearchParams({ period: "all" });
-    if (categoryFilter !== "all") params.set("category", categoryFilter);
-    const res = await fetch(`/api/transactions?${params}`);
+    const res = await fetch("/api/transactions?period=all");
     setTransactions(await res.json());
-  }, [categoryFilter]);
-
-  useEffect(() => {
-    fetchTransactions();
-  }, [fetchTransactions]);
-
-  const fetchUncategorizedStores = useCallback(async () => {
-    setReviewLoading(true);
-    const data: UncategorizedStore[] = await fetch(
-      "/api/transactions/uncategorized-stores",
-    ).then((r) => r.json());
-    setUncategorizedStores(data);
-    setUncategorizedCount(data.length);
-    const defaults: Record<string, string> = {};
-    for (const s of data) {
-      if (s.suggested) defaults[s.store] = s.suggested;
-    }
-    setReviewSelections(defaults);
-    setReviewLoading(false);
   }, []);
 
-  const handleApplyStore = async (store: string) => {
-    const category = reviewSelections[store];
-    if (!category) return;
-    setApplyingStore(store);
-    const { updated } = await fetch("/api/transactions/reclassify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ store, category }),
-    }).then((r) => r.json());
-    toast.success(`Updated ${updated} transactions for "${store}" to "${category}"`);
-    setApplyingStore(null);
-    setUncategorizedStores((prev) => {
-      const next = prev.filter((s) => s.store !== store);
-      setUncategorizedCount(next.length);
-      return next;
-    });
-    fetchTransactions();
+  useEffect(() => {
     fetchCategories();
-  };
+    fetchTransactions();
+  }, [fetchCategories, fetchTransactions]);
 
-  const handleSaveCategory = async (tx: Transaction, category: string) => {
-    setEditingId(null);
+  const handleSelectCategory = async (tx: Transaction, category: string) => {
     if (!category || category === tx.category) return;
     setSavingId(tx.id);
-    await fetch(`/api/transactions/${tx.id}`, {
+    const res = await fetch(`/api/transactions/${tx.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ category }),
     });
-    toast.success("Category updated");
     setSavingId(null);
+    if (!res.ok) {
+      toast.error("Failed to update category");
+      return;
+    }
+    toast.success(`Categorized as "${category}"`);
     fetchTransactions();
   };
 
   const handleSaveNote = async (id: string, note: string | null) => {
-    setTransactions((prev) =>
-      prev.map((tx) => (tx.id === id ? { ...tx, note } : tx)),
-    );
+    setTransactions((prev) => prev.map((tx) => (tx.id === id ? { ...tx, note } : tx)));
     await fetch(`/api/transactions/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -388,363 +138,155 @@ export default function TransactionsPage() {
     setTransactions((prev) =>
       prev.map((tx) =>
         tx.id === id
-          ? {
-              ...tx,
-              excluded_from_dashboard: updated.excluded_from_dashboard,
-              special_entry_id: updated.special_entry_id,
-            }
+          ? { ...tx, excluded_from_dashboard: updated.excluded_from_dashboard, special_entry_id: updated.special_entry_id }
           : tx,
       ),
     );
-    toast.success(
-      next ? "Marked as special expense" : "Unmarked as special expense",
-    );
+    toast.success(next ? "Marked as special expense" : "Unmarked as special expense");
   };
 
-  const handleBulkApply = async () => {
-    if (!bulkCategory || !searchQuery.trim()) return;
-    setBulkApplying(true);
-    try {
-      const res = await fetch("/api/transactions/reclassify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: searchQuery.trim(),
-          category: bulkCategory,
-        }),
-      });
-      const { updated, error } = await res.json();
-      if (error) throw new Error(error);
-      toast.success(
-        `Changed ${updated} transactions matching "${searchQuery}" to "${bulkCategory}"`,
-      );
-      fetchTransactions();
-      fetchCategories();
-      fetchUncategorizedCount();
-    } catch (e) {
-      toast.error(
-        `Update failed: ${e instanceof Error ? e.message : "Unknown error"}`,
-      );
-    } finally {
-      setBulkApplying(false);
-    }
-  };
+  const pendingCount = useMemo(() => transactions.filter(needsCategory).length, [transactions]);
 
-  const filteredTransactions = useMemo(
-    () =>
-      searchQuery.trim()
-        ? transactions.filter((tx) =>
-            tx.store.toLowerCase().includes(searchQuery.toLowerCase()),
-          )
-        : transactions,
-    [transactions, searchQuery],
-  );
+  // チップに出すカテゴリは、実際に取引で使われているものだけ(空のカテゴリまで
+  // 全部並ぶと長くなりすぎるため)。
+  const usedCategories = useMemo(() => {
+    const set = new Set(transactions.filter((tx) => !needsCategory(tx)).map((tx) => tx.category));
+    return categories.filter((c) => set.has(c));
+  }, [categories, transactions]);
 
-  const columns = useMemo<ColumnDef<Transaction>[]>(
-    () => [
-      {
-        id: "store",
-        accessorKey: "store",
-        header: "Name",
-        cell: ({ row }) => (
-          <div className="min-w-[280px] max-w-[420px]">
-            <span className="text-sm text-foreground truncate block">
-              {row.original.store}
-            </span>
-          </div>
-        ),
-      },
-      {
-        id: "category",
-        accessorKey: "category",
-        header: "Category",
-        cell: ({ row }) => {
-          const tx = row.original;
-          const isEditing = editingId === tx.id;
-          if (isEditing) {
-            return (
-              <Select
-                value={editCategory}
-                defaultOpen
-                onValueChange={(v) => {
-                  setEditCategory(v);
-                  handleSaveCategory(tx, v);
-                }}
-                onOpenChange={(open) => {
-                  if (!open) setEditingId(null);
-                }}
-              >
-                <SelectTrigger className="w-32 h-8 transition-colors hover:bg-muted/40 active:bg-muted/60">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            );
-          }
-          return (
-            <button
-              type="button"
-              onClick={() => {
-                setEditingId(tx.id);
-                setEditCategory(tx.category);
-              }}
-              className="cursor-pointer bg-transparent border-0 p-0 rounded-full transition-transform hover:opacity-80 hover:scale-105 active:scale-95"
-            >
-              <CategoryBadge category={tx.category} reviewed={tx.reviewed} />
-            </button>
-          );
-        },
-      },
-      {
-        id: "note",
-        header: "Note",
-        cell: ({ row }) => (
-          <div className="group flex items-center gap-2 min-w-[160px]">
-            <NoteTag
-              value={row.original.note}
-              onSave={(v) => handleSaveNote(row.original.id, v)}
-            />
-            <SpecialExpenseToggle
-              active={row.original.special_entry_id !== null}
-              onToggle={(v) => handleToggleSpecialExpense(row.original.id, v)}
-            />
-          </div>
-        ),
-      },
-      {
-        id: "date",
-        accessorKey: "date",
-        header: "Date",
-        cell: ({ row }) => (
-          <span className="text-sm text-foreground whitespace-nowrap">
-            {formatDateWithYear(row.original.date)}
-          </span>
-        ),
-      },
-      {
-        id: "amount",
-        accessorKey: "amount",
-        header: "Amount",
-        cell: ({ row }) => (
-          <div className="text-left font-num text-sm text-foreground min-w-[140px]">
-            {formatVND(row.original.amount)}
-          </div>
-        ),
-      },
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [editingId, editCategory, savingId, categories],
-  );
-
-  // 初期取得中(null) または 0件 ならボタンを出さない（リロード時のチラ見え対策）
-  const showReviewButton =
-    uncategorizedCount !== null && uncategorizedCount > 0;
+  const filtered = useMemo(() => {
+    let list = transactions;
+    if (catFilter === "needs_category") list = list.filter(needsCategory);
+    else if (catFilter !== "all") list = list.filter((tx) => tx.category === catFilter);
+    const q = search.trim().toLowerCase();
+    if (q) list = list.filter((tx) => tx.store.toLowerCase().includes(q) || tx.category.toLowerCase().includes(q));
+    return list;
+  }, [transactions, catFilter, search]);
 
   return (
-    <div>
-      {/* 要確認ストア */}
-      {uncategorizedStores.length > 0 && (
-        <Card
-          className="mt-6 mb-6"
-          style={{
-            border: "1px solid var(--color-warning)",
-            background: "var(--color-warning-subtle)",
-          }}
-        >
-          <div
-            className="px-6 py-4 border-b"
-            style={{ borderColor: "var(--color-warning)" }}
-          >
-            <p
-              className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-widest"
-              style={{ color: "var(--color-warning)" }}
-            >
-              <AlertTriangle size={13} />
-              Needs Review ({uncategorizedStores.length})
-            </p>
-          </div>
-          {uncategorizedStores.map((s) => (
-            <div
-              key={s.store}
-              className="flex items-center gap-3 px-6 py-3 border-b last:border-0"
-              style={{ borderColor: "var(--color-warning)" }}
-            >
-              <div className="flex-1 min-w-0">
-                <p
-                  className="text-sm font-medium truncate"
-                  style={{ color: "var(--kg-text)" }}
-                >
-                  {s.store}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {s.count} tx · {formatVND(s.totalAmount)}
-                </p>
-              </div>
-              {s.hint && (
-                <span
-                  className="text-sm px-2 py-1 rounded-full whitespace-nowrap"
-                  style={{
-                    backgroundColor: "var(--color-warning-subtle)",
-                    color: "var(--color-warning)",
-                  }}
-                >
-                  {s.hint}
-                </span>
-              )}
-              <Select
-                value={reviewSelections[s.store] || undefined}
-                onValueChange={(val) =>
-                  setReviewSelections((prev) => ({ ...prev, [s.store]: val }))
-                }
-              >
-                <SelectTrigger className="w-36 transition-colors hover:bg-muted/40 active:bg-muted/60">
-                  <SelectValue placeholder="Choose category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                size="sm"
-                onClick={() => handleApplyStore(s.store)}
-                disabled={
-                  !reviewSelections[s.store] || applyingStore === s.store
-                }
-              >
-                {applyingStore === s.store ? "Applying..." : "Apply to all"}
-              </Button>
-            </div>
-          ))}
-        </Card>
-      )}
-
-      {/* 検索 + カテゴリフィルタ */}
-      <div className="flex items-center gap-3 mt-6 mb-4">
-        <div className="relative flex-1" style={{ maxWidth: 320 }}>
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground"
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.35-4.35" />
-          </svg>
-          <Input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name"
-            className="pl-9"
-          />
-        </div>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-44 transition-colors hover:bg-muted/40 active:bg-muted/60">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Category</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {cat}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {showReviewButton && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={fetchUncategorizedStores}
-            disabled={reviewLoading}
-            style={
-              uncategorizedCount && uncategorizedCount > 0
-                ? { color: "var(--color-warning)" }
-                : undefined
-            }
-          >
-            {uncategorizedCount && uncategorizedCount > 0 ? <AlertTriangle size={13} /> : null}
-            {reviewLoading
-              ? "Loading..."
-              : `Needs Review${uncategorizedCount ? ` (${uncategorizedCount})` : ""}`}
-          </Button>
-        )}
+    <div className="flex flex-col gap-3.5 max-w-[900px]">
+      <div
+        className="flex items-center gap-2 rounded-[10px] border px-3.5 py-2.5 max-w-[340px]"
+        style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}
+      >
+        <Search size={14} style={{ color: DC.textFaint }} className="shrink-0" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name or category"
+          className="flex-1 text-[12.5px] bg-transparent outline-none border-none min-w-0"
+          style={{ color: DC.textPrimary }}
+        />
       </div>
 
-      {/* 一括カテゴリ変更バナー */}
-      {searchQuery.trim() && filteredTransactions.length > 0 && (
-        <div
-          className="flex items-center gap-3 px-5 py-3 mb-4 rounded-md"
-          style={{
-            backgroundColor: "var(--color-success-subtle)",
-            border: "1px solid var(--color-success)",
-          }}
-        >
-          <p className="text-sm flex-1 text-muted-foreground">
-            Bulk change {filteredTransactions.length} matching{" "}
-            <span className="font-medium text-foreground">
-              "{searchQuery}"
-            </span>
-            :
-          </p>
-          <Select
-            value={bulkCategory || undefined}
-            onValueChange={setBulkCategory}
+      <div className="flex flex-wrap gap-1.5">
+        {pendingCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setCatFilter("needs_category")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all border"
+            style={
+              catFilter === "needs_category"
+                ? { backgroundColor: DC.primaryHover, color: "#fff", borderColor: DC.primaryHover }
+                : { backgroundColor: DC.cardBg, color: DC.primaryHover, borderColor: "#F0C7D8" }
+            }
           >
-            <SelectTrigger className="w-40 transition-colors hover:bg-muted/40 active:bg-muted/60">
-              <SelectValue placeholder="Choose category" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {cat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            size="sm"
-            onClick={handleBulkApply}
-            disabled={!bulkCategory || bulkApplying}
-          >
-            {bulkApplying ? "Updating..." : "Apply to all"}
-          </Button>
-        </div>
-      )}
-
-      {/* 件数 */}
-      <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground mb-3">
-        {filteredTransactions.length.toLocaleString()} transactions
-        {searchQuery.trim() ? ` — filtered by "${searchQuery}"` : ""}
-      </p>
-
-      <div className="kg-hide-pagesize">
-        <DataTable
-          columns={columns}
-          data={filteredTransactions}
-          searchable={false}
-          pageSize={100}
-          pageSizeOptions={[100]}
-          emptyMessage={
-            searchQuery.trim()
-              ? `No transactions match "${searchQuery}"`
-              : "No transactions yet"
+            <AlertCircle size={11} />
+            Uncategorized ({pendingCount})
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setCatFilter("all")}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all border"
+          style={
+            catFilter === "all"
+              ? { backgroundColor: DC.textPrimary, color: "#fff", borderColor: DC.textPrimary }
+              : { backgroundColor: DC.cardBg, color: DC.textSecondary, borderColor: DC.cardBorder }
           }
-        />
+        >
+          <Sparkles size={12} />
+          All
+        </button>
+        {usedCategories.map((cat) => {
+          const Icon = getCategoryIcon(cat);
+          const active = catFilter === cat;
+          return (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setCatFilter(cat)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all border"
+              style={
+                active
+                  ? { backgroundColor: DC.textPrimary, color: "#fff", borderColor: DC.textPrimary }
+                  : { backgroundColor: DC.cardBg, color: DC.textSecondary, borderColor: DC.cardBorder }
+              }
+            >
+              <Icon size={12} style={{ color: active ? "#fff" : getCategoryHex(cat) }} />
+              {cat}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="rounded-[14px] border overflow-hidden" style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}>
+        {filtered.length === 0 ? (
+          <p className="text-sm text-center py-10" style={{ color: DC.textSecondary }}>
+            {search.trim() ? `No transactions match "${search}"` : "No transactions yet"}
+          </p>
+        ) : (
+          filtered.map((tx) => {
+            const uncategorized = needsCategory(tx);
+            return (
+              <div
+                key={tx.id}
+                className="group flex items-center gap-3 px-4.5 py-3 border-b last:border-b-0 flex-wrap"
+                style={{ borderColor: DC.trackAlt, backgroundColor: uncategorized ? DC.primaryTint : DC.cardBg }}
+              >
+                <span className="w-14 shrink-0 text-[11.5px]" style={{ color: DC.textFaint }}>
+                  {formatDateShort(tx.date)}
+                </span>
+                <span className="flex-1 min-w-[120px] text-[13px] font-semibold truncate" style={{ color: DC.textPrimary }}>
+                  {tx.store}
+                </span>
+                <span className="w-24 shrink-0 text-right text-[13px] font-bold font-num" style={{ color: DC.textPrimary }}>
+                  {formatVND(tx.amount)}
+                </span>
+                {uncategorized ? (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <AlertCircle size={13} style={{ color: DC.primaryHover }} />
+                    <Select
+                      value={undefined}
+                      onValueChange={(v) => handleSelectCategory(tx, v)}
+                      disabled={savingId === tx.id}
+                    >
+                      <SelectTrigger className="h-7 text-xs w-36" style={{ borderColor: DC.primaryHover, color: DC.primaryHover }}>
+                        <SelectValue placeholder="Choose category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <CategoryBadgeInline category={tx.category} />
+                )}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <NoteTag value={tx.note} onSave={(v) => handleSaveNote(tx.id, v)} />
+                  <SpecialExpenseToggle
+                    active={tx.special_entry_id !== null}
+                    onToggle={(v) => handleToggleSpecialExpense(tx.id, v)}
+                  />
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

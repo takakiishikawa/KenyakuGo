@@ -65,6 +65,21 @@ const cohabitationSchema = z.object({
   preVariable: z.array(lifeItemSchema),
 });
 
+// 結婚式: 単発。旅行: 毎年繰り返す前提の定番イベントなので、汎用のevents配列とは
+// 別に常設のフォームとして持つ(「タブを開いてクリックしたら追加」ではなく、
+// 最初から用意されているようにという要望への対応)。
+const weddingEventSchema = z.object({
+  enabled: z.boolean(),
+  year: z.number().int(),
+  month: z.number().int().min(1).max(12),
+  amountYen: z.number().min(0),
+});
+const travelEventSchema = z.object({
+  enabled: z.boolean(),
+  amountYen: z.number().min(0),
+  startYear: z.number().int(),
+});
+
 // シナリオが持つ、カテゴリ(piggybank.categories)では表現できない前提のみ。
 // 「暮らし」(固定費/変動費)の実額は categories / category_budget_overrides を
 // 共有で参照するため、ここには含まない(同棲前を除く。上記参照)。
@@ -83,6 +98,8 @@ export const scenarioConfigSchema = z.object({
   // 塾・習い事込みの合算)。公立/私立ボタンは金額欄への「入力補助(クイック入力)」
   // であり、選んだ後も金額は自由に編集できる。
   education: z.record(z.string(), z.record(z.string(), z.number())),
+  wedding: weddingEventSchema,
+  travel: travelEventSchema,
   events: z.array(eventSchema),
   savings: z.object({
     returnRatePercent: z.number(),
@@ -156,6 +173,23 @@ export function normalizeScenarioConfig(raw: unknown): ScenarioConfig {
       preVariable: Array.isArray(cohabitation.preVariable) ? (cohabitation.preVariable as ScenarioConfig["cohabitation"]["preVariable"]) : [],
     },
     education: isRecord(r.education) ? (r.education as ScenarioConfig["education"]) : d.education,
+    wedding: (() => {
+      const w = isRecord(r.wedding) ? r.wedding : {};
+      return {
+        enabled: typeof w.enabled === "boolean" ? w.enabled : d.wedding.enabled,
+        year: typeof w.year === "number" ? w.year : d.wedding.year,
+        month: typeof w.month === "number" ? w.month : d.wedding.month,
+        amountYen: typeof w.amountYen === "number" ? w.amountYen : d.wedding.amountYen,
+      };
+    })(),
+    travel: (() => {
+      const tr = isRecord(r.travel) ? r.travel : {};
+      return {
+        enabled: typeof tr.enabled === "boolean" ? tr.enabled : d.travel.enabled,
+        amountYen: typeof tr.amountYen === "number" ? tr.amountYen : d.travel.amountYen,
+        startYear: typeof tr.startYear === "number" ? tr.startYear : d.travel.startYear,
+      };
+    })(),
     events: Array.isArray(r.events) ? (r.events as ScenarioConfig["events"]) : d.events,
     savings: {
       returnRatePercent: typeof savings.returnRatePercent === "number" ? savings.returnRatePercent : d.savings.returnRatePercent,
@@ -174,6 +208,8 @@ export const DEFAULT_SCENARIO_CONFIG: ScenarioConfig = {
   },
   cohabitation: { startYear: new Date().getFullYear(), moveInBonusYen: 0, preFixed: [], preVariable: [] },
   education: {},
+  wedding: { enabled: false, year: new Date().getFullYear() + 1, month: 10, amountYen: 2_500_000 },
+  travel: { enabled: false, amountYen: 400_000, startYear: new Date().getFullYear() + 1 },
   events: [],
   savings: { returnRatePercent: 5, investRatioPercent: 60 },
   inflationRatePercent: 1,

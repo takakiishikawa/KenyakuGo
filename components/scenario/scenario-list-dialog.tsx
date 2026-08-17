@@ -130,7 +130,7 @@ export function ScenarioListDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-0 overflow-hidden">
+      <DialogContent className="max-w-md p-0 overflow-hidden" style={{ backgroundColor: DC.cardBg }}>
         <DialogHeader className="px-5 py-4 border-b" style={{ borderColor: DC.cardBorder }}>
           <DialogTitle>{t(lang, "scenarios")}</DialogTitle>
         </DialogHeader>

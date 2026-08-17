@@ -193,9 +193,15 @@ export function computeScenarioYears(
   let investPrincipalCum = 0;
 
   return years.map((year, i) => {
-    // 同棲開始年から: 配偶者の収入・共有カテゴリの暮らしが反映される。
-    // それより前: 配偶者収入は0、暮らしはシナリオ側のpreFixed/preVariableを使う。
+    // 同棲開始年から: 配偶者の収入が反映される。
+    // それより前: 配偶者収入は0。暮らしについては、同棲前用の項目
+    // (preFixed/preVariable)をユーザーが実際に入力している場合だけそちらを使い、
+    // 何も入力していなければ(初期状態)共有categoriesの実額をそのまま使う
+    // (「同棲開始年を先の年に設定したら今年の暮らしが¥0になった」への対応 —
+    // 未入力を「支出0」と解釈するのではなく「まだ同棲後の実額と同じ」とみなす)。
     const cohabiting = year >= config.cohabitation.startYear;
+    const useSharedFixed = cohabiting || config.cohabitation.preFixed.length === 0;
+    const useSharedVariable = cohabiting || config.cohabitation.preVariable.length === 0;
     const moveInBonusYen = year === config.cohabitation.startYear ? config.cohabitation.moveInBonusYen : 0;
 
     // 入力は手取り(月+ボーナス)。額面年収は設定モーダル側でview-only表示用に
@@ -210,7 +216,7 @@ export function computeScenarioYears(
     );
     const incomeTotalYen = husbandYen + wifeYen + sideYen + allowanceYen + moveInBonusYen;
 
-    const fixedByCategory: ScenarioCategoryValue[] = cohabiting
+    const fixedByCategory: ScenarioCategoryValue[] = useSharedFixed
       ? fixedCats.map((c) => {
           const overridesForCat = overridesByCategory.get(c.id) ?? [];
           const monthlyYen = projectCategoryMonthlyYen(
@@ -243,7 +249,7 @@ export function computeScenarioYears(
         }));
     const fixedTotalYen = fixedByCategory.reduce((s, c) => s + c.valueYen, 0);
 
-    const variableByCategory: ScenarioCategoryValue[] = cohabiting
+    const variableByCategory: ScenarioCategoryValue[] = useSharedVariable
       ? variableCats.map((c) => {
           const overridesForCat = overridesByCategory.get(c.id) ?? [];
           const monthlyYen = projectCategoryMonthlyYen(
@@ -271,9 +277,15 @@ export function computeScenarioYears(
       return sum + eduCostForAge(age, config.education[String(kidIdx)]);
     }, 0);
 
-    const eventsTotalYen = config.events
-      .filter((e) => e.year === year)
-      .reduce((s, e) => s + e.amountYen, 0);
+    // 結婚式(単発)・旅行(毎年繰り返す、暮らしと同じインフレ率で複利)は常設フォーム
+    // のイベントとして、汎用のevents配列とは別に計算する。
+    const weddingYen = config.wedding.enabled && config.wedding.year === year ? config.wedding.amountYen : 0;
+    const travelYen =
+      config.travel.enabled && year >= config.travel.startYear
+        ? config.travel.amountYen * Math.pow(1 + config.inflationRatePercent / 100, year - config.travel.startYear)
+        : 0;
+    const customEventsYen = config.events.filter((e) => e.year === year).reduce((s, e) => s + e.amountYen, 0);
+    const eventsTotalYen = weddingYen + travelYen + customEventsYen;
 
     const expenseTotalYen = fixedTotalYen + variableTotalYen + educationTotalYen + eventsTotalYen;
     const netFlowYen = incomeTotalYen - expenseTotalYen;
@@ -329,9 +341,16 @@ export function expandMonthly(
   const divide = (v: number) => v / 12;
   return Array.from({ length: 12 }, (_, idx) => {
     const m = idx + 1;
-    const eventsThisMonth = config.events
+    // 結婚式はその月にまとめて計上。旅行は特定の月を持たないので年額を均等按分する。
+    const weddingThisMonth = config.wedding.enabled && config.wedding.year === focusYear && config.wedding.month === m ? config.wedding.amountYen : 0;
+    const travelThisYear =
+      config.travel.enabled && focusYear >= config.travel.startYear
+        ? config.travel.amountYen * Math.pow(1 + config.inflationRatePercent / 100, focusYear - config.travel.startYear)
+        : 0;
+    const customEventsThisMonth = config.events
       .filter((e) => e.year === focusYear && e.month === m)
       .reduce((s, e) => s + e.amountYen, 0);
+    const eventsThisMonth = weddingThisMonth + divide(travelThisYear) + customEventsThisMonth;
     const nonEventExpense =
       divide(row.fixedTotalYen) + divide(row.variableTotalYen) + divide(row.educationTotalYen);
     const expenseTotalYen = nonEventExpense + eventsThisMonth;

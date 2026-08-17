@@ -40,9 +40,14 @@ function cloneConfig(config: ScenarioConfig): ScenarioConfig {
 
 // 生まれ年が未来(まだ生まれていない予定の子ども)だと age が負になり
 // 「今年-3歳」のような表示になってしまうので、その場合は生まれ年予定として表示する。
-function ageLabel(lang: Lang, birthYear: number): string {
+// includeYear=false は、生まれ年をすぐ隣の入力欄で既に表示している場合用
+// (「2029」の入力欄の隣に「2029年生まれ予定」と出て年が重複するのを避ける)。
+function ageLabel(lang: Lang, birthYear: number, includeYear = true): string {
   const age = CUR_YEAR - birthYear;
-  if (age < 0) return lang === "ja" ? `${birthYear}年生まれ予定` : `due ${birthYear}`;
+  if (age < 0) {
+    if (!includeYear) return lang === "ja" ? "生まれ予定" : "not yet born";
+    return lang === "ja" ? `${birthYear}年生まれ予定` : `due ${birthYear}`;
+  }
   return tf(lang, "ageThisYear", { age });
 }
 
@@ -250,7 +255,7 @@ export function ScenarioSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden">
+      <DialogContent className="max-w-2xl p-0 overflow-hidden" style={{ backgroundColor: DC.cardBg }}>
         <DialogHeader className="px-5 py-4 border-b flex-row items-center justify-between" style={{ borderColor: DC.cardBorder }}>
           <DialogTitle>
             {t(lang, "settingsBtn")} — {scenario.name}
@@ -399,7 +404,7 @@ export function ScenarioSettingsDialog({
                       className="h-7 w-20 text-xs font-num"
                     />
                     <span className="text-[11px]" style={{ color: DC.textFaint }}>
-                      {ageLabel(lang, kid.birthYear)}
+                      {ageLabel(lang, kid.birthYear, false)}
                     </span>
                     <button
                       type="button"
@@ -417,11 +422,6 @@ export function ScenarioSettingsDialog({
                   </div>
                 </div>
               ))}
-              {draft.family.kids.length > 0 && (
-                <p className="text-[11px]" style={{ color: DC.textFaint }}>
-                  {t(lang, "selectEducationHint")}
-                </p>
-              )}
             </div>
           )}
 
@@ -616,6 +616,14 @@ export function ScenarioSettingsDialog({
                 />
                 <span className="text-[11px]" style={{ color: DC.textFaint }}>
                   {t(lang, "yenPerMonth")}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs w-24" style={{ color: DC.textSecondary }}>
+                  {t(lang, "publicAllowance")}
+                </span>
+                <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                  {t(lang, "publicAllowanceDetail")}
                 </span>
               </div>
               <div className="text-xs rounded-lg px-2.5 py-2" style={{ backgroundColor: DC.track, color: DC.textSecondary }}>
@@ -846,44 +854,114 @@ export function ScenarioSettingsDialog({
 
               {spendingSub === "education" && (
                 <div className="flex flex-col gap-2.5">
-                  <p className="text-xs" style={{ color: DC.textSecondary }}>
-                    {t(lang, "selectEducationHint")}
-                  </p>
                   {kidEducationMatrix}
                 </div>
               )}
 
               {spendingSub === "events" && (
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[11px]" style={{ color: DC.textFaint }}>
-                      {t(lang, "eventPresetHint")}
-                    </span>
-                    {(
-                      [
-                        { label: t(lang, "eventPresetWedding"), amountYen: 2_500_000, month: 10 },
-                        { label: t(lang, "eventPresetTravel"), amountYen: 400_000, month: 8 },
-                      ]
-                    ).map((preset) => (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        onClick={() =>
-                          commit({
-                            ...draft,
-                            events: [
-                              ...draft.events,
-                              { id: `e${Date.now()}`, label: preset.label, year: CUR_YEAR + 1, month: preset.month, amountYen: preset.amountYen },
-                            ],
-                          })
-                        }
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold cursor-pointer transition-all border hover:brightness-95"
-                        style={{ backgroundColor: DC.cardBg, color: DC.textSecondary, borderColor: DC.cardBorder }}
-                      >
-                        <Plus size={10} /> {preset.label}
-                      </button>
-                    ))}
+                  {/* 結婚式・旅行は「よくあるイベント」として、クリックして追加するのではなく
+                      最初から常設のフォームとして用意する。 */}
+                  <div className="flex flex-col gap-1.5 rounded-lg border p-2.5" style={{ borderColor: DC.trackAlt }}>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={draft.wedding.enabled}
+                        onChange={(e) => commit({ ...draft, wedding: { ...draft.wedding, enabled: e.target.checked } })}
+                      />
+                      <span className="text-xs font-semibold" style={{ color: DC.textPrimary }}>
+                        {t(lang, "eventPresetWedding")}
+                      </span>
+                    </label>
+                    {draft.wedding.enabled && (
+                      <div className="flex items-center gap-1.5 flex-wrap pl-6">
+                        <Select
+                          value={String(draft.wedding.year)}
+                          onValueChange={(v) => commit({ ...draft, wedding: { ...draft.wedding, year: Number(v) } })}
+                        >
+                          <SelectTrigger className="h-7 text-[11px] w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {YEAR_OPTIONS.map((y) => (
+                              <SelectItem key={y} value={String(y)}>
+                                {y}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={String(draft.wedding.month)}
+                          onValueChange={(v) => commit({ ...draft, wedding: { ...draft.wedding, month: Number(v) } })}
+                        >
+                          <SelectTrigger className="h-7 text-[11px] w-16">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 12 }, (_, m) => m + 1).map((m) => (
+                              <SelectItem key={m} value={String(m)}>
+                                {monthLabels[m - 1]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <YenInput
+                          value={draft.wedding.amountYen}
+                          onChange={(n) => setDraft({ ...draft, wedding: { ...draft.wedding, amountYen: n } })}
+                          onCommit={() => commit(draft)}
+                          className="h-7 w-28 text-[11px] text-right font-num"
+                        />
+                        <span className="text-[10px]" style={{ color: DC.textFaint }}>
+                          {t(lang, "yenPerYear")}
+                        </span>
+                      </div>
+                    )}
                   </div>
+
+                  <div className="flex flex-col gap-1.5 rounded-lg border p-2.5" style={{ borderColor: DC.trackAlt }}>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={draft.travel.enabled}
+                        onChange={(e) => commit({ ...draft, travel: { ...draft.travel, enabled: e.target.checked } })}
+                      />
+                      <span className="text-xs font-semibold" style={{ color: DC.textPrimary }}>
+                        {t(lang, "eventPresetTravel")}
+                      </span>
+                    </label>
+                    {draft.travel.enabled && (
+                      <div className="flex items-center gap-1.5 flex-wrap pl-6">
+                        <span className="text-[10.5px]" style={{ color: DC.textFaint }}>
+                          {t(lang, "travelStartYear")}
+                        </span>
+                        <Select
+                          value={String(draft.travel.startYear)}
+                          onValueChange={(v) => commit({ ...draft, travel: { ...draft.travel, startYear: Number(v) } })}
+                        >
+                          <SelectTrigger className="h-7 text-[11px] w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {YEAR_OPTIONS.map((y) => (
+                              <SelectItem key={y} value={String(y)}>
+                                {y}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <YenInput
+                          value={draft.travel.amountYen}
+                          onChange={(n) => setDraft({ ...draft, travel: { ...draft.travel, amountYen: n } })}
+                          onCommit={() => commit(draft)}
+                          className="h-7 w-28 text-[11px] text-right font-num"
+                        />
+                        <span className="text-[10px]" style={{ color: DC.textFaint }}>
+                          {t(lang, "yenPerYear")}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
                   {draft.events.map((ev, i) => (
                     <div key={ev.id} className="flex items-center gap-1.5 flex-wrap rounded-lg border p-2" style={{ borderColor: DC.trackAlt }}>
                       <Input

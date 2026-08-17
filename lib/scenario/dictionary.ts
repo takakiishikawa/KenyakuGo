@@ -65,7 +65,9 @@ export const DICT = {
     yenPerYear: "円/年",
     raisePerYear: "%/年 昇給",
     sideIncome: "副業収入",
-    grossAnnualNote: "額面年収の目安(自動計算・入力不可): {amount}/年 · 児童手当は自動加算されます",
+    grossAnnualNote: "額面年収: {amount}/年",
+    publicAllowance: "公的手当",
+    publicAllowanceDetail: "0-2歳: 1.5万円/月、3歳-高校生: 1万円/月(自動計算)",
     netIncomeHelp:
       "税金・社会保険料を引いた後の手取り額を入力してください。額面年収は (月額×12+ボーナス)÷0.8 で自動計算され、参考表示のみです。",
     parentalLeave: "産休・育休",
@@ -94,8 +96,8 @@ export const DICT = {
     selectEducationHint: "子どもごとの進路は下の表から選べます(家族タブと同じ内容です)。",
     addEvent: "イベントを追加",
     eventPresetWedding: "結婚式",
-    eventPresetTravel: "旅行",
-    eventPresetHint: "よくあるイベントをすぐ追加:",
+    eventPresetTravel: "旅行(毎年)",
+    travelStartYear: "開始年",
     newEventLabel: "新規イベント",
 
     // 設定モーダル: 貯蓄タブ
@@ -197,7 +199,9 @@ export const DICT = {
     yenPerYear: "¥/yr",
     raisePerYear: "%/yr raise",
     sideIncome: "Side income",
-    grossAnnualNote: "Approx. gross annual income (auto-calculated, read-only): {amount}/yr · child allowance added automatically",
+    grossAnnualNote: "Gross annual income: {amount}/yr",
+    publicAllowance: "Public allowance",
+    publicAllowanceDetail: "Ages 0-2: ¥15,000/mo, ages 3-high school: ¥10,000/mo (auto-calculated)",
     netIncomeHelp:
       "Enter your take-home pay after tax/social insurance. Gross annual income is auto-calculated as (monthly×12 + bonus) ÷ 0.8, shown for reference only.",
     parentalLeave: "Parental leave",
@@ -225,8 +229,8 @@ export const DICT = {
     selectEducationHint: "Pick each child's education path in the table below (same data as the Family tab).",
     addEvent: "Add event",
     eventPresetWedding: "Wedding",
-    eventPresetTravel: "Travel",
-    eventPresetHint: "Quick-add a common event:",
+    eventPresetTravel: "Travel (annual)",
+    travelStartYear: "From",
     newEventLabel: "New event",
 
     returnRate: "Expected return",

@@ -302,11 +302,11 @@ export default function SimulationPage() {
               { value: "graph", label: t(lang, "graph") },
             ]}
           />
-          <IconButton title="シナリオ管理" onClick={() => setScenarioListOpen(true)}>
+          <IconButton title={t(lang, "scenarios")} onClick={() => setScenarioListOpen(true)}>
             <ListTree size={14} />
           </IconButton>
           {isSingle && (
-            <IconButton title="シミュレーション設定" onClick={() => setEditorOpen(true)} accent>
+            <IconButton title={t(lang, "settingsBtn")} onClick={() => setEditorOpen(true)} accent>
               <Settings2 size={14} />
             </IconButton>
           )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Receipt, Trash2, X } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@takaki/go-design-system";
 import type { DisplayCurrency } from "@/components/currency-switch";
-import { makeFormatAmount } from "@/lib/currency";
+import { formatJPY, formatVND } from "@/lib/format";
 import type { CategoryBudgetOverride } from "@/lib/category-budget";
 import { CategoryBudgetCard, type CategoryForCard } from "@/components/category-budget-card";
 import { EDU_STAGES } from "@/lib/scenario/education-costs";
@@ -150,7 +150,6 @@ export function ScenarioSettingsDialog({
     setDraft(cloneConfig(scenario.config));
   }, [scenario.id, scenario.config]);
 
-  const formatAmount = makeFormatAmount(currency);
   const fixedCats = useMemo(() => categories.filter((c) => c.is_fixed), [categories]);
   const variableCats = useMemo(() => categories.filter((c) => !c.is_fixed), [categories]);
   const overridesByCategory = useMemo(() => {
@@ -173,7 +172,10 @@ export function ScenarioSettingsDialog({
     ((draft.income.husband.netMonthlyYen * 12 + draft.income.husband.netBonusYen) +
       (draft.family.spouse ? draft.income.wife.netMonthlyYen * 12 + draft.income.wife.netBonusYen : 0)) /
     0.8;
-  const grossAnnualPreview = formatAmount(grossAnnualYen);
+  // grossAnnualYen は円建ての値なので、VND-native な formatAmount ではなく
+  // 通貨に応じた円/VNDフォーマッタを直接使う(以前は formatAmount にそのまま渡していて
+  // 162で余計に割られ、額面が桁違いに小さく表示されるバグがあった)。
+  const grossAnnualPreview = currency === "JPY" ? formatJPY(grossAnnualYen) : formatVND(grossAnnualYen * vndPerJpy);
 
   const monthLabels = lang === "ja" ? MONTH_LABELS_JA : MONTH_LABELS_EN;
 
@@ -207,7 +209,7 @@ export function ScenarioSettingsDialog({
                 const amount = kidEdu[stage.key] ?? stage.options[0].amountYen;
                 return (
                   <div key={stage.key} className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[11px] w-24 shrink-0 flex items-center gap-1" style={{ color: DC.textSecondary }}>
+                    <span className="text-xs w-24 shrink-0 flex items-center gap-1" style={{ color: DC.textSecondary }}>
                       {lang === "ja" ? stage.labelJa : stage.labelEn}
                       <HelpTip text={lang === "ja" ? stage.tipJa : stage.tipEn} />
                     </span>
@@ -221,7 +223,7 @@ export function ScenarioSettingsDialog({
                             education[String(kidIdx)] = { ...(education[String(kidIdx)] ?? {}), [stage.key]: opt.amountYen };
                             commit({ ...draft, education });
                           }}
-                          className="px-2.5 py-1 rounded-full text-[10.5px] font-semibold cursor-pointer transition-all border"
+                          className="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all border"
                           style={{
                             backgroundColor: amount === opt.amountYen ? DC.primary : DC.cardBg,
                             color: amount === opt.amountYen ? "#fff" : DC.textSecondary,
@@ -240,9 +242,9 @@ export function ScenarioSettingsDialog({
                         setDraft({ ...draft, education });
                       }}
                       onCommit={() => commit(draft)}
-                      className="h-7 w-24 text-[11px] text-right font-num"
+                      className="h-7 w-24 text-xs text-right font-num"
                     />
-                    <span className="text-[10px] shrink-0" style={{ color: DC.textSecondary }}>
+                    <span className="text-xs shrink-0" style={{ color: DC.textSecondary }}>
                       {t(lang, "yenPerYear")}
                     </span>
                   </div>
@@ -257,14 +259,14 @@ export function ScenarioSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden" style={{ backgroundColor: DC.cardBg }}>
+      <DialogContent className="max-w-3xl p-0 overflow-hidden" style={{ backgroundColor: DC.cardBg }}>
         <DialogHeader className="px-5 py-4 border-b flex-row items-center justify-between" style={{ borderColor: DC.cardBorder }}>
           <DialogTitle>
             {t(lang, "settingsBtn")} — {scenario.name}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="px-5 py-4 max-h-[76vh] overflow-y-auto flex flex-col gap-3.5">
+        <div className="px-5 py-4 max-h-[80vh] overflow-y-auto flex flex-col gap-3.5">
           {isCompare && (
             <div className="flex items-center gap-2">
               <span className="text-xs" style={{ color: DC.textSecondary }}>
@@ -363,7 +365,7 @@ export function ScenarioSettingsDialog({
                       onCommit={() => commit(draft)}
                       className="h-8 w-28 text-xs text-right font-num"
                     />
-                    <span className="text-[11px]" style={{ color: DC.textSecondary }}>
+                    <span className="text-xs" style={{ color: DC.textSecondary }}>
                       {t(lang, "yenPerYear")}
                     </span>
                   </div>
@@ -379,10 +381,13 @@ export function ScenarioSettingsDialog({
                   onClick={() =>
                     commit({
                       ...draft,
-                      family: { ...draft.family, kids: [...draft.family.kids, { birthYear: CUR_YEAR }] },
+                      family: {
+                        ...draft.family,
+                        kids: [...draft.family.kids, { birthYear: CUR_YEAR, leaveParent: "none", leaveExtensionYears: 0 }],
+                      },
                     })
                   }
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold cursor-pointer transition-all hover:brightness-95"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95"
                   style={{ backgroundColor: DC.track, color: DC.textSecondary }}
                 >
                   <Plus size={12} /> {t(lang, "addChild")}
@@ -390,9 +395,9 @@ export function ScenarioSettingsDialog({
               </div>
 
               {draft.family.kids.map((kid, kidIdx) => (
-                <div key={kidIdx} className="rounded-lg border p-3 flex flex-col gap-2" style={{ borderColor: DC.trackAlt }}>
+                <div key={kidIdx} className="rounded-lg border p-3 flex flex-col gap-2.5" style={{ borderColor: DC.trackAlt }}>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs" style={{ color: DC.textSecondary }}>
+                    <span className="text-sm" style={{ color: DC.textSecondary }}>
                       {t(lang, "birthYear")}
                     </span>
                     <Input
@@ -400,12 +405,12 @@ export function ScenarioSettingsDialog({
                       value={kid.birthYear}
                       onChange={(e) => {
                         const kids = [...draft.family.kids];
-                        kids[kidIdx] = { birthYear: Number(e.target.value) };
+                        kids[kidIdx] = { ...kids[kidIdx], birthYear: Number(e.target.value) };
                         commit({ ...draft, family: { ...draft.family, kids } });
                       }}
-                      className="h-7 w-20 text-xs font-num"
+                      className="h-7 w-20 text-sm font-num"
                     />
-                    <span className="text-[11px]" style={{ color: DC.textSecondary }}>
+                    <span className="text-xs" style={{ color: DC.textSecondary }}>
                       {ageLabel(lang, kid.birthYear, false)}
                     </span>
                     <button
@@ -422,6 +427,61 @@ export function ScenarioSettingsDialog({
                       <Trash2 size={13} />
                     </button>
                   </div>
+
+                  <div className="flex flex-col gap-1.5 pt-2 border-t" style={{ borderColor: DC.trackAlt }}>
+                    <span className="text-xs font-semibold flex items-center gap-1" style={{ color: DC.textPrimary }}>
+                      {t(lang, "leaveParentLabel")}
+                      <HelpTip text={t(lang, "leaveHelp")} />
+                    </span>
+                    <div className="flex gap-0.5 p-0.5 rounded-lg w-fit" style={{ backgroundColor: DC.track }}>
+                      {(
+                        [
+                          { v: "none" as const, l: t(lang, "leaveParentNone") },
+                          { v: "husband" as const, l: t(lang, "leaveParentHusband") },
+                          { v: "wife" as const, l: t(lang, "leaveParentWife") },
+                        ]
+                      ).map((o) => (
+                        <button
+                          key={o.v}
+                          type="button"
+                          onClick={() => {
+                            const kids = [...draft.family.kids];
+                            kids[kidIdx] = { ...kids[kidIdx], leaveParent: o.v };
+                            commit({ ...draft, family: { ...draft.family, kids } });
+                          }}
+                          className="px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all"
+                          style={{
+                            backgroundColor: kid.leaveParent === o.v ? DC.primary : "transparent",
+                            color: kid.leaveParent === o.v ? "#fff" : DC.textSecondary,
+                          }}
+                        >
+                          {o.l}
+                        </button>
+                      ))}
+                    </div>
+                    {kid.leaveParent !== "none" && (
+                      <div className="flex items-center gap-2 pl-0.5">
+                        <span className="text-xs shrink-0" style={{ color: DC.textSecondary }}>
+                          {t(lang, "leaveExtensionYears")}
+                        </span>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={kid.leaveExtensionYears}
+                          onChange={(e) => {
+                            const kids = [...draft.family.kids];
+                            kids[kidIdx] = { ...kids[kidIdx], leaveExtensionYears: Math.max(0, Number(e.target.value)) };
+                            setDraft({ ...draft, family: { ...draft.family, kids } });
+                          }}
+                          onBlur={() => commit(draft)}
+                          className="h-7 w-16 text-sm text-right font-num"
+                        />
+                        <span className="text-xs" style={{ color: DC.textSecondary }}>
+                          {t(lang, "leaveExtensionYearsUnit")}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -436,12 +496,12 @@ export function ScenarioSettingsDialog({
                 ]
               ).map((row) => (
                 <div key={row.key} className="flex flex-col gap-1.5">
-                  <span className="text-xs font-semibold flex items-center gap-1" style={{ color: DC.textPrimary }}>
+                  <span className="text-sm font-semibold flex items-center gap-1" style={{ color: DC.textPrimary }}>
                     {row.label}
                     <HelpTip text={t(lang, "netIncomeHelp")} />
                   </span>
                   <div className="flex items-center gap-2 flex-wrap pl-1">
-                    <span className="text-[11px] w-14 shrink-0" style={{ color: DC.textSecondary }}>
+                    <span className="text-xs w-14 shrink-0" style={{ color: DC.textSecondary }}>
                       {t(lang, "netMonthly")}
                     </span>
                     <YenInput
@@ -450,9 +510,9 @@ export function ScenarioSettingsDialog({
                         setDraft({ ...draft, income: { ...draft.income, [row.key]: { ...draft.income[row.key], netMonthlyYen: n } } })
                       }
                       onCommit={() => commit(draft)}
-                      className="h-8 w-28 text-xs text-right font-num"
+                      className="h-8 w-28 text-sm text-right font-num"
                     />
-                    <span className="text-[11px]" style={{ color: DC.textSecondary }}>
+                    <span className="text-xs" style={{ color: DC.textSecondary }}>
                       {t(lang, "yenPerMonth")}
                     </span>
                     <Input
@@ -465,14 +525,14 @@ export function ScenarioSettingsDialog({
                         })
                       }
                       onBlur={() => commit(draft)}
-                      className="h-8 w-16 text-xs text-right font-num"
+                      className="h-8 w-16 text-sm text-right font-num"
                     />
-                    <span className="text-[11px]" style={{ color: DC.textSecondary }}>
+                    <span className="text-xs" style={{ color: DC.textSecondary }}>
                       {t(lang, "raisePerYear")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap pl-1">
-                    <span className="text-[11px] w-14 shrink-0" style={{ color: DC.textSecondary }}>
+                    <span className="text-xs w-14 shrink-0" style={{ color: DC.textSecondary }}>
                       {t(lang, "netBonus")}
                     </span>
                     <YenInput
@@ -481,154 +541,91 @@ export function ScenarioSettingsDialog({
                         setDraft({ ...draft, income: { ...draft.income, [row.key]: { ...draft.income[row.key], netBonusYen: n } } })
                       }
                       onCommit={() => commit(draft)}
-                      className="h-8 w-28 text-xs text-right font-num"
+                      className="h-8 w-28 text-sm text-right font-num"
                     />
-                    <span className="text-[11px]" style={{ color: DC.textSecondary }}>
+                    <span className="text-xs" style={{ color: DC.textSecondary }}>
                       {t(lang, "yenPerYear")}
                     </span>
                   </div>
-
-                  <div className="flex flex-col gap-1.5 pl-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-semibold" style={{ color: DC.textSecondary }}>
-                        {t(lang, "parentalLeave")}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          commit({
-                            ...draft,
-                            income: {
-                              ...draft.income,
-                              [row.key]: {
-                                ...draft.income[row.key],
-                                leavePeriods: [
-                                  ...draft.income[row.key].leavePeriods,
-                                  { id: `lv${Date.now()}`, fromYear: CUR_YEAR, fromMonth: 1, toYear: CUR_YEAR, toMonth: 6, incomePercent: 0 },
-                                ],
-                              },
-                            },
-                          })
-                        }
-                        className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold cursor-pointer transition-all hover:brightness-95"
-                        style={{ backgroundColor: DC.track, color: DC.textSecondary }}
-                      >
-                        <Plus size={10} /> {t(lang, "addLeavePeriod")}
-                      </button>
-                    </div>
-                    {draft.income[row.key].leavePeriods.length === 0 ? (
-                      <span className="text-[11px]" style={{ color: DC.textSecondary }}>
-                        {t(lang, "leaveNoPeriods")}
-                      </span>
-                    ) : (
-                      draft.income[row.key].leavePeriods.map((lp, lvIdx) => (
-                        <div key={lp.id} className="flex items-center gap-1.5 flex-wrap rounded-lg border p-1.5" style={{ borderColor: DC.trackAlt }}>
-                          {(
-                            [
-                              { field: "fromYear" as const, w: "w-16" },
-                              { field: "fromMonth" as const, w: "w-12" },
-                            ]
-                          ).map(({ field, w }) => (
-                            <Input
-                              key={field}
-                              type="number"
-                              value={lp[field]}
-                              onChange={(e) => {
-                                const leavePeriods = [...draft.income[row.key].leavePeriods];
-                                leavePeriods[lvIdx] = { ...leavePeriods[lvIdx], [field]: Number(e.target.value) };
-                                setDraft({ ...draft, income: { ...draft.income, [row.key]: { ...draft.income[row.key], leavePeriods } } });
-                              }}
-                              onBlur={() => commit(draft)}
-                              className={`h-7 ${w} text-[11px] text-right font-num`}
-                            />
-                          ))}
-                          <span className="text-[10.5px]" style={{ color: DC.textSecondary }}>
-                            {t(lang, "to")}
-                          </span>
-                          {(
-                            [
-                              { field: "toYear" as const, w: "w-16" },
-                              { field: "toMonth" as const, w: "w-12" },
-                            ]
-                          ).map(({ field, w }) => (
-                            <Input
-                              key={field}
-                              type="number"
-                              value={lp[field]}
-                              onChange={(e) => {
-                                const leavePeriods = [...draft.income[row.key].leavePeriods];
-                                leavePeriods[lvIdx] = { ...leavePeriods[lvIdx], [field]: Number(e.target.value) };
-                                setDraft({ ...draft, income: { ...draft.income, [row.key]: { ...draft.income[row.key], leavePeriods } } });
-                              }}
-                              onBlur={() => commit(draft)}
-                              className={`h-7 ${w} text-[11px] text-right font-num`}
-                            />
-                          ))}
-                          <span className="text-[10.5px] shrink-0" style={{ color: DC.textSecondary }}>
-                            {t(lang, "leaveIncomePercent")}
-                          </span>
-                          <Input
-                            type="number"
-                            value={lp.incomePercent}
-                            onChange={(e) => {
-                              const leavePeriods = [...draft.income[row.key].leavePeriods];
-                              leavePeriods[lvIdx] = { ...leavePeriods[lvIdx], incomePercent: Number(e.target.value) };
-                              setDraft({ ...draft, income: { ...draft.income, [row.key]: { ...draft.income[row.key], leavePeriods } } });
-                            }}
-                            onBlur={() => commit(draft)}
-                            className="h-7 w-14 text-[11px] text-right font-num"
-                          />
-                          <span className="text-[10.5px]" style={{ color: DC.textSecondary }}>
-                            %
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              commit({
-                                ...draft,
-                                income: {
-                                  ...draft.income,
-                                  [row.key]: {
-                                    ...draft.income[row.key],
-                                    leavePeriods: draft.income[row.key].leavePeriods.filter((_, ix) => ix !== lvIdx),
-                                  },
-                                },
-                              })
-                            }
-                            className="p-1 rounded transition-all hover:bg-muted ml-auto"
-                            style={{ color: DC.textSecondary }}
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
                 </div>
               ))}
-              <div className="flex items-center gap-2">
-                <span className="text-xs w-24" style={{ color: DC.textSecondary }}>
+              {/* 産休・育休は子どもに紐づく前提なので、家族タブの子ども行で設定する
+                  (収入タブには置かない)。 */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm font-semibold" style={{ color: DC.textPrimary }}>
                   {t(lang, "sideIncome")}
                 </span>
-                <YenInput
-                  value={draft.income.side.amountYen}
-                  onChange={(n) => setDraft({ ...draft, income: { ...draft.income, side: { amountYen: n } } })}
-                  onCommit={() => commit(draft)}
-                  className="h-8 w-28 text-xs text-right font-num"
-                />
-                <span className="text-[11px]" style={{ color: DC.textSecondary }}>
-                  {t(lang, "yenPerMonth")}
-                </span>
+                <div className="flex items-center gap-2 flex-wrap pl-1">
+                  <YenInput
+                    value={draft.income.side.amountYen}
+                    onChange={(n) => setDraft({ ...draft, income: { ...draft.income, side: { ...draft.income.side, amountYen: n } } })}
+                    onCommit={() => commit(draft)}
+                    className="h-8 w-28 text-sm text-right font-num"
+                  />
+                  <span className="text-xs" style={{ color: DC.textSecondary }}>
+                    {t(lang, "yenPerMonth")}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap pl-1">
+                  <span className="text-xs shrink-0" style={{ color: DC.textSecondary }}>
+                    {t(lang, "sideIncomePeriod")}
+                  </span>
+                  <Select
+                    value={draft.income.side.startYear === null ? "unset" : String(draft.income.side.startYear)}
+                    onValueChange={(v) =>
+                      commit({
+                        ...draft,
+                        income: { ...draft.income, side: { ...draft.income.side, startYear: v === "unset" ? null : Number(v) } },
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-sm w-28">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unset">{t(lang, "unspecified")}</SelectItem>
+                      {YEAR_OPTIONS.map((y) => (
+                        <SelectItem key={y} value={String(y)}>
+                          {y}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span className="text-xs" style={{ color: DC.textSecondary }}>
+                    {t(lang, "to")}
+                  </span>
+                  <Select
+                    value={draft.income.side.endYear === null ? "unset" : String(draft.income.side.endYear)}
+                    onValueChange={(v) =>
+                      commit({
+                        ...draft,
+                        income: { ...draft.income, side: { ...draft.income.side, endYear: v === "unset" ? null : Number(v) } },
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-sm w-28">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unset">{t(lang, "unspecified")}</SelectItem>
+                      {YEAR_OPTIONS.map((y) => (
+                        <SelectItem key={y} value={String(y)}>
+                          {y}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs w-24" style={{ color: DC.textSecondary }}>
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-semibold" style={{ color: DC.textPrimary }}>
                   {t(lang, "publicAllowance")}
                 </span>
-                <span className="text-[11px]" style={{ color: DC.textSecondary }}>
+                <span className="text-xs pl-1" style={{ color: DC.textSecondary }}>
                   {t(lang, "publicAllowanceDetail")}
                 </span>
               </div>
-              <div className="text-xs rounded-lg px-2.5 py-2" style={{ backgroundColor: DC.track, color: DC.textSecondary }}>
+              <div className="text-sm rounded-lg px-2.5 py-2" style={{ backgroundColor: DC.track, color: DC.textSecondary }}>
                 {tf(lang, "grossAnnualNote", { amount: grossAnnualPreview })}
               </div>
             </div>
@@ -672,7 +669,7 @@ export function ScenarioSettingsDialog({
                         key={s.k}
                         type="button"
                         onClick={() => setLifeSub(s.k)}
-                        className="px-3 py-1 rounded-md text-[11.5px] font-semibold cursor-pointer"
+                        className="px-3 py-1 rounded-md text-sm font-semibold cursor-pointer"
                         style={{
                           backgroundColor: lifeSub === s.k ? DC.primary : "transparent",
                           color: lifeSub === s.k ? "#fff" : DC.textSecondary,
@@ -695,7 +692,7 @@ export function ScenarioSettingsDialog({
                       onBlur={() => commit(draft)}
                       className="h-8 w-16 text-xs text-right font-num"
                     />
-                    <span className="text-[11px]" style={{ color: DC.textSecondary }}>
+                    <span className="text-xs" style={{ color: DC.textSecondary }}>
                       {t(lang, "inflationUnit")}
                     </span>
                   </div>
@@ -712,7 +709,7 @@ export function ScenarioSettingsDialog({
                           key={s.k}
                           type="button"
                           onClick={() => setLifePhase(s.k)}
-                          className="px-3 py-1 rounded-md text-[11.5px] font-semibold cursor-pointer"
+                          className="px-3 py-1 rounded-md text-sm font-semibold cursor-pointer"
                           style={{
                             backgroundColor: lifePhase === s.k ? DC.cardBg : "transparent",
                             color: DC.textPrimary,
@@ -725,30 +722,21 @@ export function ScenarioSettingsDialog({
                   )}
 
                   {draft.family.spouse && lifePhase === "pre" ? (
-                    <>
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const listKey = lifeSub === "fixed" ? "preFixed" : "preVariable";
-                            const sourceCats = lifeSub === "fixed" ? fixedCats : variableCats;
-                            const copied = sourceCats.map((c) => ({
-                              id: `li${Date.now()}-${c.id}`,
-                              label: c.name,
-                              monthlyYen: Math.round(c.budget / vndPerJpy),
-                            }));
-                            commit({ ...draft, cohabitation: { ...draft.cohabitation, [listKey]: copied } });
-                          }}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold cursor-pointer transition-all hover:brightness-95"
-                          style={{ backgroundColor: DC.track, color: DC.textSecondary }}
-                        >
-                          {t(lang, "copyFromPost")}
-                        </button>
-                      </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {(lifeSub === "fixed" ? draft.cohabitation.preFixed : draft.cohabitation.preVariable).map((item, itemIdx) => {
                         const listKey = lifeSub === "fixed" ? "preFixed" : "preVariable";
                         return (
-                          <div key={item.id} className="flex items-center gap-2 rounded-lg border py-2 px-3" style={{ borderColor: DC.trackAlt }}>
+                          <div
+                            key={item.id}
+                            className="flex items-center gap-2.5 rounded-xl border py-3 px-3.5"
+                            style={{ borderColor: DC.cardBorder, backgroundColor: DC.rowAltBg }}
+                          >
+                            <div
+                              className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg"
+                              style={{ backgroundColor: DC.track }}
+                            >
+                              <Receipt size={14} style={{ color: DC.textSecondary }} />
+                            </div>
                             <Input
                               value={item.label}
                               onChange={(e) => {
@@ -757,7 +745,7 @@ export function ScenarioSettingsDialog({
                                 setDraft({ ...draft, cohabitation: { ...draft.cohabitation, [listKey]: list } });
                               }}
                               onBlur={() => commit(draft)}
-                              className="h-8 text-xs flex-1 min-w-0"
+                              className="h-8 text-sm flex-1 min-w-0"
                             />
                             <YenInput
                               value={item.monthlyYen}
@@ -767,11 +755,8 @@ export function ScenarioSettingsDialog({
                                 setDraft({ ...draft, cohabitation: { ...draft.cohabitation, [listKey]: list } });
                               }}
                               onCommit={() => commit(draft)}
-                              className="h-8 w-28 text-xs text-right font-num"
+                              className="h-8 text-sm text-right w-24 shrink-0 font-num rounded-lg"
                             />
-                            <span className="text-[11px] shrink-0" style={{ color: DC.textSecondary }}>
-                              {t(lang, "yenPerMonth")}
-                            </span>
                             <button
                               type="button"
                               onClick={() =>
@@ -783,25 +768,28 @@ export function ScenarioSettingsDialog({
                                   },
                                 })
                               }
-                              className="p-1 rounded transition-all hover:bg-muted"
-                              style={{ color: DC.textSecondary }}
+                              className="p-1 rounded transition-all hover:bg-muted shrink-0"
+                              style={{ color: DC.textFaint }}
                             >
                               <X size={13} />
                             </button>
                           </div>
                         );
                       })}
-                      <div className="flex items-center gap-2 rounded-lg border border-dashed p-2" style={{ borderColor: DC.cardBorder }}>
+                      <div
+                        className="flex items-center gap-2 rounded-xl border border-dashed py-3 px-3.5"
+                        style={{ borderColor: DC.cardBorder }}
+                      >
                         <Input
                           value={addLifeItemLabel}
                           onChange={(e) => setAddLifeItemLabel(e.target.value)}
                           placeholder={t(lang, "newLifeItemLabel")}
-                          className="h-8 text-xs flex-1"
+                          className="h-8 text-sm flex-1"
                         />
                         <YenInput
                           value={addLifeItemAmount === "" ? 0 : Number(addLifeItemAmount)}
                           onChange={(n) => setAddLifeItemAmount(n === 0 ? "" : String(n))}
-                          className="h-8 text-xs w-32 text-right font-num"
+                          className="h-8 text-sm w-24 text-right font-num"
                         />
                         <Button
                           size="sm"
@@ -826,9 +814,9 @@ export function ScenarioSettingsDialog({
                           <Plus size={13} />
                         </Button>
                       </div>
-                    </>
+                    </div>
                   ) : (
-                    <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {(lifeSub === "fixed" ? fixedCats : variableCats).map((cat) => (
                         <CategoryBudgetCard
                           key={cat.id}
@@ -843,17 +831,20 @@ export function ScenarioSettingsDialog({
                         />
                       ))}
 
-                      <div className="flex items-center gap-2 rounded-lg border border-dashed p-2" style={{ borderColor: DC.cardBorder }}>
+                      <div
+                        className="flex items-center gap-2 rounded-xl border border-dashed py-3 px-3.5"
+                        style={{ borderColor: DC.cardBorder }}
+                      >
                         <Input
                           value={addCatName}
                           onChange={(e) => setAddCatName(e.target.value)}
                           placeholder={t(lang, "newCategoryName")}
-                          className="h-8 text-xs flex-1"
+                          className="h-8 text-sm flex-1"
                         />
                         <YenInput
                           value={addCatBudget === "" ? 0 : Number(addCatBudget)}
                           onChange={(n) => setAddCatBudget(n === 0 ? "" : String(n))}
-                          className="h-8 text-xs w-32 text-right font-num"
+                          className="h-8 text-sm w-24 text-right font-num"
                         />
                         <Button
                           size="sm"
@@ -868,7 +859,7 @@ export function ScenarioSettingsDialog({
                           <Plus size={13} />
                         </Button>
                       </div>
-                    </>
+                    </div>
                   )}
                 </div>
               )}
@@ -882,138 +873,19 @@ export function ScenarioSettingsDialog({
               {spendingSub === "events" && (
                 <div className="flex flex-col gap-2">
                   {/* 結婚式・旅行は「よくあるイベント」として、クリックして追加するのではなく
-                      最初から常設のフォームとして用意する。 */}
+                      最初から常設のフォームとして用意する。チェックボックスは1ステップ
+                      余分になるので置かず、金額0円=未計上として扱う(compute.ts側もそう判定)。 */}
                   <div className="flex flex-col gap-1.5 rounded-lg border p-2.5" style={{ borderColor: DC.trackAlt }}>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={draft.wedding.enabled}
-                        onChange={(e) => commit({ ...draft, wedding: { ...draft.wedding, enabled: e.target.checked } })}
-                      />
-                      <span className="text-xs font-semibold" style={{ color: DC.textPrimary }}>
-                        {t(lang, "eventPresetWedding")}
-                      </span>
-                    </label>
-                    {draft.wedding.enabled && (
-                      <div className="flex items-center gap-1.5 flex-wrap pl-6">
-                        <Select
-                          value={String(draft.wedding.year)}
-                          onValueChange={(v) => commit({ ...draft, wedding: { ...draft.wedding, year: Number(v) } })}
-                        >
-                          <SelectTrigger className="h-7 text-[11px] w-20">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {YEAR_OPTIONS.map((y) => (
-                              <SelectItem key={y} value={String(y)}>
-                                {y}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={String(draft.wedding.month)}
-                          onValueChange={(v) => commit({ ...draft, wedding: { ...draft.wedding, month: Number(v) } })}
-                        >
-                          <SelectTrigger className="h-7 text-[11px] w-16">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Array.from({ length: 12 }, (_, m) => m + 1).map((m) => (
-                              <SelectItem key={m} value={String(m)}>
-                                {monthLabels[m - 1]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <YenInput
-                          value={draft.wedding.amountYen}
-                          onChange={(n) => setDraft({ ...draft, wedding: { ...draft.wedding, amountYen: n } })}
-                          onCommit={() => commit(draft)}
-                          className="h-7 w-28 text-[11px] text-right font-num"
-                        />
-                        <span className="text-[10px]" style={{ color: DC.textSecondary }}>
-                          {t(lang, "yenPerYear")}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-1.5 rounded-lg border p-2.5" style={{ borderColor: DC.trackAlt }}>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={draft.travel.enabled}
-                        onChange={(e) => commit({ ...draft, travel: { ...draft.travel, enabled: e.target.checked } })}
-                      />
-                      <span className="text-xs font-semibold" style={{ color: DC.textPrimary }}>
-                        {t(lang, "eventPresetTravel")}
-                      </span>
-                    </label>
-                    {draft.travel.enabled && (
-                      <div className="flex items-center gap-1.5 flex-wrap pl-6">
-                        <span className="text-[10.5px]" style={{ color: DC.textSecondary }}>
-                          {t(lang, "travelStartYear")}
-                        </span>
-                        <Select
-                          value={String(draft.travel.startYear)}
-                          onValueChange={(v) => commit({ ...draft, travel: { ...draft.travel, startYear: Number(v) } })}
-                        >
-                          <SelectTrigger className="h-7 text-[11px] w-20">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {YEAR_OPTIONS.map((y) => (
-                              <SelectItem key={y} value={String(y)}>
-                                {y}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <YenInput
-                          value={draft.travel.amountYen}
-                          onChange={(n) => setDraft({ ...draft, travel: { ...draft.travel, amountYen: n } })}
-                          onCommit={() => commit(draft)}
-                          className="h-7 w-28 text-[11px] text-right font-num"
-                        />
-                        <span className="text-[10px]" style={{ color: DC.textSecondary }}>
-                          {t(lang, "yenPerYear")}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {draft.events.map((ev, i) => (
-                    <div key={ev.id} className="flex items-center gap-1.5 flex-wrap rounded-lg border p-2" style={{ borderColor: DC.trackAlt }}>
-                      <Input
-                        value={ev.label}
-                        onChange={(e) => {
-                          const events = [...draft.events];
-                          events[i] = { ...events[i], label: e.target.value };
-                          setDraft({ ...draft, events });
-                        }}
-                        onBlur={() => commit(draft)}
-                        className="h-8 text-xs flex-1 min-w-24"
-                      />
-                      <YenInput
-                        value={ev.amountYen}
-                        onChange={(n) => {
-                          const events = [...draft.events];
-                          events[i] = { ...events[i], amountYen: n };
-                          setDraft({ ...draft, events });
-                        }}
-                        onCommit={() => commit(draft)}
-                        className="h-8 w-28 text-xs text-right font-num"
-                      />
+                    <span className="text-sm font-semibold flex items-center gap-1" style={{ color: DC.textPrimary }}>
+                      {t(lang, "eventPresetWedding")}
+                      <HelpTip text={t(lang, "eventPresetWeddingHelp")} />
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <Select
-                        value={String(ev.year)}
-                        onValueChange={(v) => {
-                          const events = [...draft.events];
-                          events[i] = { ...events[i], year: Number(v) };
-                          commit({ ...draft, events });
-                        }}
+                        value={String(draft.wedding.year)}
+                        onValueChange={(v) => commit({ ...draft, wedding: { ...draft.wedding, year: Number(v) } })}
                       >
-                        <SelectTrigger className="h-8 text-xs w-24">
+                        <SelectTrigger className="h-8 text-sm w-20">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1025,14 +897,10 @@ export function ScenarioSettingsDialog({
                         </SelectContent>
                       </Select>
                       <Select
-                        value={String(ev.month)}
-                        onValueChange={(v) => {
-                          const events = [...draft.events];
-                          events[i] = { ...events[i], month: Number(v) };
-                          commit({ ...draft, events });
-                        }}
+                        value={String(draft.wedding.month)}
+                        onValueChange={(v) => commit({ ...draft, wedding: { ...draft.wedding, month: Number(v) } })}
                       >
-                        <SelectTrigger className="h-8 text-xs w-20">
+                        <SelectTrigger className="h-8 text-sm w-16">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1043,32 +911,53 @@ export function ScenarioSettingsDialog({
                           ))}
                         </SelectContent>
                       </Select>
-                      <button
-                        type="button"
-                        onClick={() => commit({ ...draft, events: draft.events.filter((_, ix) => ix !== i) })}
-                        className="p-1 rounded transition-all hover:bg-muted"
-                        style={{ color: DC.textSecondary }}
-                      >
-                        <X size={13} />
-                      </button>
+                      <YenInput
+                        value={draft.wedding.amountYen}
+                        onChange={(n) => setDraft({ ...draft, wedding: { ...draft.wedding, amountYen: n } })}
+                        onCommit={() => commit(draft)}
+                        className="h-8 w-28 text-sm text-right font-num"
+                      />
+                      <span className="text-xs" style={{ color: DC.textSecondary }}>
+                        {t(lang, "yenPerYear")}
+                      </span>
                     </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      commit({
-                        ...draft,
-                        events: [
-                          ...draft.events,
-                          { id: `e${Date.now()}`, label: t(lang, "newEventLabel"), year: CUR_YEAR, month: 1, amountYen: 100000 },
-                        ],
-                      })
-                    }
-                    className="flex items-center gap-1.5 justify-center px-3 py-2 rounded-lg border border-dashed text-xs font-semibold cursor-pointer"
-                    style={{ borderColor: DC.cardBorder, color: DC.textSecondary }}
-                  >
-                    <Plus size={13} /> {t(lang, "addEvent")}
-                  </button>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 rounded-lg border p-2.5" style={{ borderColor: DC.trackAlt }}>
+                    <span className="text-sm font-semibold" style={{ color: DC.textPrimary }}>
+                      {t(lang, "eventPresetTravel")}
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs" style={{ color: DC.textSecondary }}>
+                        {t(lang, "travelStartYear")}
+                      </span>
+                      <Select
+                        value={String(draft.travel.startYear)}
+                        onValueChange={(v) => commit({ ...draft, travel: { ...draft.travel, startYear: Number(v) } })}
+                      >
+                        <SelectTrigger className="h-8 text-sm w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {YEAR_OPTIONS.map((y) => (
+                            <SelectItem key={y} value={String(y)}>
+                              {y}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <YenInput
+                        value={draft.travel.amountYen}
+                        onChange={(n) => setDraft({ ...draft, travel: { ...draft.travel, amountYen: n } })}
+                        onCommit={() => commit(draft)}
+                        className="h-8 w-28 text-sm text-right font-num"
+                      />
+                      <span className="text-xs" style={{ color: DC.textSecondary }}>
+                        {t(lang, "yenPerYear")}
+                      </span>
+                    </div>
+                  </div>
+
                 </div>
               )}
             </div>
@@ -1088,7 +977,7 @@ export function ScenarioSettingsDialog({
                   onBlur={() => commit(draft)}
                   className="h-8 w-20 text-xs text-right font-num"
                 />
-                <span className="text-[11px]" style={{ color: DC.textSecondary }}>
+                <span className="text-xs" style={{ color: DC.textSecondary }}>
                   {t(lang, "returnRateUnit")}
                 </span>
               </div>
@@ -1103,7 +992,7 @@ export function ScenarioSettingsDialog({
                   onBlur={() => commit(draft)}
                   className="h-8 w-20 text-xs text-right font-num"
                 />
-                <span className="text-[11px]" style={{ color: DC.textSecondary }}>
+                <span className="text-xs" style={{ color: DC.textSecondary }}>
                   {t(lang, "investRatioUnit")}
                 </span>
               </div>
@@ -1140,18 +1029,17 @@ export function ScenarioSettingsDialog({
                 <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>
                   {t(lang, "close")}
                 </Button>
+                <Button size="sm" variant="outline" onClick={() => setSavePromptOpen(true)}>
+                  {t(lang, "addScenario")}
+                </Button>
                 <Button
                   size="sm"
-                  variant="outline"
                   onClick={() => {
                     commit(draft);
                     onOpenChange(false);
                   }}
                 >
                   {t(lang, "apply")}
-                </Button>
-                <Button size="sm" onClick={() => setSavePromptOpen(true)}>
-                  {t(lang, "addScenario")}
                 </Button>
               </div>
             )}

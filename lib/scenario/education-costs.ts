@@ -88,13 +88,13 @@ export const EDU_STAGES: EduStageDef[] = [
     ageMin: 15,
     ageMax: 17,
     options: [
-      { key: "public", labelJa: "公立", labelEn: "Public", amountYen: 510_000 },
+      { key: "public", labelJa: "公立", labelEn: "Public", amountYen: 1_010_000 },
       { key: "private", labelJa: "私立", labelEn: "Private", amountYen: 1_550_000 },
     ],
     tipJa:
-      "高校目安(塾込):公立約51万円/年・私立約155万円/年。公立は就学支援金で実質無償化に近い。大学受験塾代が増加。私立は入学金別途20〜40万円。",
+      "高校目安(塾込):公立約101万円/年・私立約155万円/年。公立は就学支援金で実質無償化に近い。大学受験塾代が増加。私立は入学金別途20〜40万円。",
     tipEn:
-      "Approx. incl. cram school: public ~¥510k/yr, private ~¥1.55M/yr. Public tuition is nearly free via the support grant; private adds a ¥200-400k entrance fee.",
+      "Approx. incl. cram school: public ~¥1.01M/yr, private ~¥1.55M/yr. Public tuition is nearly free via the support grant; private adds a ¥200-400k entrance fee.",
   },
   {
     key: "university",

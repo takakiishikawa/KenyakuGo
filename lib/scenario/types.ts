@@ -11,20 +11,17 @@ export const EDU_STAGE_KEYS = [
 ] as const;
 export type EduStageKey = (typeof EDU_STAGE_KEYS)[number];
 
+// 産休・育休(基本): 子どもごとのON/OFF。ONなら出生年(age===0)は対象親の収入を
+// 65%として計算する(法定の産休67%・育休67〜80%/50%の細かい再現はせず、
+// ざっくり中間の65%で近似)。
+// 延長育休: 年数を指定すると、基本の対象期間の直後からその年数ぶん(age 1〜
+// leaveExtensionYears)、対象親の収入を0%として計算する。
+// 複数の子どもで重なった場合は、優先度が高い(数値が大きい)方を採用する
+// (=基本65%が延長0%より優先される)。
 const kidSchema = z.object({
   birthYear: z.number().int(),
-});
-
-// 産休・育休: 指定期間だけ月収を通常の incomePercent% に減らす(0=無収入)。
-// 要件5-2「支出>イベントの出産イベントと連動する」は、期間を出産予定に合わせて
-// 手動で入力する運用とする(自動連動はしない)。
-const leavePeriodSchema = z.object({
-  id: z.string(),
-  fromYear: z.number().int(),
-  fromMonth: z.number().int().min(1).max(12),
-  toYear: z.number().int(),
-  toMonth: z.number().int().min(1).max(12),
-  incomePercent: z.number().min(0).max(100),
+  leaveParent: z.enum(["none", "husband", "wife"]),
+  leaveExtensionYears: z.number().min(0),
 });
 
 // 手取り(税・社会保険料控除後)で入力してもらう。額面年収は
@@ -34,7 +31,6 @@ const incomeEntrySchema = z.object({
   netMonthlyYen: z.number().min(0),
   netBonusYen: z.number().min(0),
   raisePercent: z.number(),
-  leavePeriods: z.array(leavePeriodSchema),
 });
 
 const eventSchema = z.object({
@@ -67,7 +63,8 @@ const cohabitationSchema = z.object({
 
 // 結婚式: 単発。旅行: 毎年繰り返す前提の定番イベントなので、汎用のevents配列とは
 // 別に常設のフォームとして持つ(「タブを開いてクリックしたら追加」ではなく、
-// 最初から用意されているようにという要望への対応)。
+// 最初から用意されているようにという要望への対応)。指輪・結婚式本体・新婚旅行を
+// まとめた「結婚式関連費用」として1フォームに入力する(内訳はツールチップで案内)。
 const weddingEventSchema = z.object({
   enabled: z.boolean(),
   year: z.number().int(),
@@ -91,7 +88,8 @@ export const scenarioConfigSchema = z.object({
   income: z.object({
     husband: incomeEntrySchema,
     wife: incomeEntrySchema,
-    side: z.object({ amountYen: z.number().min(0) }),
+    // startYear/endYearがnullなら期間指定なし(常に加算)。
+    side: z.object({ amountYen: z.number().min(0), startYear: z.number().int().nullable(), endYear: z.number().int().nullable() }),
   }),
   cohabitation: cohabitationSchema,
   // キー: kids配列のindex(文字列)。値: ステージキー -> そのステージの年額(円、
@@ -136,14 +134,21 @@ function normalizeIncomeEntry(raw: unknown, fallback: ScenarioConfig["income"]["
       netMonthlyYen: r.amountYen,
       netBonusYen: 0,
       raisePercent: typeof r.raisePercent === "number" ? r.raisePercent : fallback.raisePercent,
-      leavePeriods: [],
     };
   }
   return {
     netMonthlyYen: typeof r.netMonthlyYen === "number" ? r.netMonthlyYen : fallback.netMonthlyYen,
     netBonusYen: typeof r.netBonusYen === "number" ? r.netBonusYen : fallback.netBonusYen,
     raisePercent: typeof r.raisePercent === "number" ? r.raisePercent : fallback.raisePercent,
-    leavePeriods: Array.isArray(r.leavePeriods) ? (r.leavePeriods as ScenarioConfig["income"]["husband"]["leavePeriods"]) : [],
+  };
+}
+
+function normalizeKid(raw: unknown): ScenarioConfig["family"]["kids"][number] {
+  const r = isRecord(raw) ? raw : {};
+  return {
+    birthYear: typeof r.birthYear === "number" ? r.birthYear : new Date().getFullYear(),
+    leaveParent: r.leaveParent === "husband" || r.leaveParent === "wife" ? r.leaveParent : "none",
+    leaveExtensionYears: typeof r.leaveExtensionYears === "number" ? r.leaveExtensionYears : 0,
   };
 }
 
@@ -159,12 +164,16 @@ export function normalizeScenarioConfig(raw: unknown): ScenarioConfig {
   return {
     family: {
       spouse: typeof family.spouse === "boolean" ? family.spouse : d.family.spouse,
-      kids: Array.isArray(family.kids) ? (family.kids as ScenarioConfig["family"]["kids"]) : d.family.kids,
+      kids: Array.isArray(family.kids) ? family.kids.map(normalizeKid) : d.family.kids,
     },
     income: {
       husband: normalizeIncomeEntry(income.husband, d.income.husband),
       wife: normalizeIncomeEntry(income.wife, d.income.wife),
-      side: { amountYen: typeof side.amountYen === "number" ? side.amountYen : d.income.side.amountYen },
+      side: {
+        amountYen: typeof side.amountYen === "number" ? side.amountYen : d.income.side.amountYen,
+        startYear: typeof side.startYear === "number" ? side.startYear : d.income.side.startYear,
+        endYear: typeof side.endYear === "number" ? side.endYear : d.income.side.endYear,
+      },
     },
     cohabitation: {
       startYear: typeof cohabitation.startYear === "number" ? cohabitation.startYear : d.cohabitation.startYear,
@@ -202,9 +211,9 @@ export function normalizeScenarioConfig(raw: unknown): ScenarioConfig {
 export const DEFAULT_SCENARIO_CONFIG: ScenarioConfig = {
   family: { spouse: true, kids: [] },
   income: {
-    husband: { netMonthlyYen: 300000, netBonusYen: 600000, raisePercent: 2, leavePeriods: [] },
-    wife: { netMonthlyYen: 180000, netBonusYen: 300000, raisePercent: 1.5, leavePeriods: [] },
-    side: { amountYen: 0 },
+    husband: { netMonthlyYen: 300000, netBonusYen: 600000, raisePercent: 2 },
+    wife: { netMonthlyYen: 180000, netBonusYen: 300000, raisePercent: 1.5 },
+    side: { amountYen: 0, startYear: null, endYear: null },
   },
   cohabitation: { startYear: new Date().getFullYear(), moveInBonusYen: 0, preFixed: [], preVariable: [] },
   education: {},

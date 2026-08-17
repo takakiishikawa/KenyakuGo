@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthDb } from "@/lib/supabase/auth-db";
-import { FALLBACK_CATEGORY } from "@/lib/constants";
+import { FALLBACK_CATEGORY, UNDELETABLE_CATEGORIES } from "@/lib/constants";
 
 export const maxDuration = 30;
 
@@ -127,9 +127,9 @@ export async function DELETE(
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
   const name = (cur as { name: string }).name;
-  if (name === FALLBACK_CATEGORY) {
+  if (name === FALLBACK_CATEGORY || (UNDELETABLE_CATEGORIES as readonly string[]).includes(name)) {
     return NextResponse.json(
-      { error: `"${FALLBACK_CATEGORY}" cannot be deleted` },
+      { error: `"${name}" cannot be deleted` },
       { status: 400 },
     );
   }

@@ -9,6 +9,7 @@ import { makeFormatAmount, toDisplayAmount, toVndAmount, withThousands } from "@
 import { DC } from "@/lib/scenario/design-colors";
 import { t, tf, catLabel, type Lang } from "@/lib/scenario/dictionary";
 import type { DisplayCurrency } from "@/components/currency-switch";
+import { UNDELETABLE_CATEGORIES } from "@/lib/constants";
 import {
   Button,
   Input,
@@ -348,7 +349,7 @@ export function CategoryBudgetCard({
               placeholder="0"
             />
             <ScheduleOverridePopover cat={cat} displayCurrency={displayCurrency} onSchedule={onScheduleOverride} lang={lang} />
-            {onDelete && (
+            {onDelete && !(UNDELETABLE_CATEGORIES as readonly string[]).includes(cat.name) && (
               <button
                 type="button"
                 onClick={() => onDelete(cat.id)}
@@ -389,10 +390,11 @@ export function CategoryBudgetCard({
           })}
         </div>
       )}
-      {/* 更新料(周期性のある賃貸更新料など)。固定費カテゴリのみ対象。 */}
-      {cat.is_fixed && (
+      {/* 更新料(賃貸更新料)。Rentカテゴリのみ対象(他の固定費カテゴリには不要という
+          指摘があり、Rent限定にした)。 */}
+      {cat.is_fixed && (UNDELETABLE_CATEGORIES as readonly string[]).includes(cat.name) && (
         <div className="flex items-center gap-2 pl-10 flex-wrap">
-          <span className="text-[11px]" style={{ color: DC.textFaint }}>
+          <span className="text-xs" style={{ color: DC.textFaint }}>
             {t(lang, "renewal")}:
           </span>
           <Input
@@ -400,9 +402,9 @@ export function CategoryBudgetCard({
             value={renewalCycleInput}
             onChange={(e) => setRenewalCycleInput(e.target.value)}
             onBlur={saveRenewal}
-            className="h-7 text-[11px] w-16 font-num"
+            className="h-7 text-xs w-16 font-num"
           />
-          <span className="text-[10.5px]" style={{ color: DC.textFaint }}>
+          <span className="text-xs" style={{ color: DC.textFaint }}>
             {t(lang, "renewalCycle")} ·
           </span>
           <Input
@@ -410,9 +412,9 @@ export function CategoryBudgetCard({
             value={renewalFeeInput}
             onChange={(e) => setRenewalFeeInput(e.target.value)}
             onBlur={saveRenewal}
-            className="h-7 text-[11px] w-16 font-num"
+            className="h-7 text-xs w-16 font-num"
           />
-          <span className="text-[10.5px]" style={{ color: DC.textFaint }}>
+          <span className="text-xs" style={{ color: DC.textFaint }}>
             {t(lang, "renewalFee")}
           </span>
         </div>

@@ -70,10 +70,16 @@ export const DICT = {
     publicAllowanceDetail: "0-2歳: 1.5万円/月、3歳-高校生: 1万円/月(自動計算)",
     netIncomeHelp:
       "税金・社会保険料を引いた後の手取り額を入力してください。額面年収は (月額×12+ボーナス)÷0.8 で自動計算され、参考表示のみです。",
-    parentalLeave: "産休・育休",
-    addLeavePeriod: "期間を追加",
-    leaveIncomePercent: "その間の収入(通常の何%か)",
-    leaveNoPeriods: "設定なし",
+    sideIncomePeriod: "期間",
+    unspecified: "指定なし",
+    leaveParentLabel: "産休・育休",
+    leaveParentNone: "なし",
+    leaveParentHusband: "本人",
+    leaveParentWife: "配偶者",
+    leaveExtensionYears: "延長育休",
+    leaveExtensionYearsUnit: "年",
+    leaveHelp:
+      "対象(本人・配偶者)を選ぶと、出生年の収入が65%として計算されます。延長育休に年数を入れると、その年数分は収入0%として計算されます(基本の65%が優先)。",
     cohabitation: "同棲",
     cohabitationStartYear: "同棲開始年",
     cohabitationHelp:
@@ -82,7 +88,6 @@ export const DICT = {
     moveInBonusHelp: "同棲開始年に一度だけ収入として加算されます(例: 相手が共通口座に入れる資金)。",
     preCohabitation: "同棲前",
     postCohabitation: "同棲後",
-    copyFromPost: "同棲後の内容をコピー",
     addLifeItem: "項目を追加",
     newLifeItemLabel: "新しい項目",
 
@@ -94,12 +99,10 @@ export const DICT = {
     manageCategory: "カテゴリを管理",
     newCategoryName: "新しいカテゴリ名",
     budgetLabel: "予算",
-    selectEducationHint: "子どもごとの進路は下の表から選べます(家族タブと同じ内容です)。",
-    addEvent: "イベントを追加",
-    eventPresetWedding: "結婚式",
+    eventPresetWedding: "結婚式関連費用",
+    eventPresetWeddingHelp: "指輪・結婚式・新婚旅行などをまとめて1つの金額で入力してください。",
     eventPresetTravel: "旅行(毎年)",
     travelStartYear: "開始年",
-    newEventLabel: "新規イベント",
 
     // 設定モーダル: 貯蓄タブ
     returnRate: "想定利率",
@@ -111,7 +114,6 @@ export const DICT = {
 
     // フッター
     newScenarioPlaceholder: "新しいシナリオ名を入力…",
-    saveHint: "この条件のまま確認するだけなら閉じるでOK。別条件として残したい場合は保存。",
     editTarget: "編集対象:",
 
     // カテゴリ予算カード(暮らし)
@@ -205,10 +207,16 @@ export const DICT = {
     publicAllowanceDetail: "Ages 0-2: ¥15,000/mo, ages 3-high school: ¥10,000/mo (auto-calculated)",
     netIncomeHelp:
       "Enter your take-home pay after tax/social insurance. Gross annual income is auto-calculated as (monthly×12 + bonus) ÷ 0.8, shown for reference only.",
-    parentalLeave: "Parental leave",
-    addLeavePeriod: "Add a period",
-    leaveIncomePercent: "Income during leave (% of normal)",
-    leaveNoPeriods: "None set",
+    sideIncomePeriod: "Period",
+    unspecified: "Unset",
+    leaveParentLabel: "Parental leave",
+    leaveParentNone: "None",
+    leaveParentHusband: "You",
+    leaveParentWife: "Spouse",
+    leaveExtensionYears: "Extended leave",
+    leaveExtensionYearsUnit: "yr",
+    leaveHelp:
+      "Choosing a parent (you/spouse) sets that parent's income to 65% in the birth year. Adding extended-leave years sets income to 0% for that many years after (the 65% base takes priority).",
     cohabitation: "Cohabitation",
     cohabitationStartYear: "Cohabitation start year",
     cohabitationHelp:
@@ -217,7 +225,6 @@ export const DICT = {
     moveInBonusHelp: "Added once, in the cohabitation start year (e.g. funds your partner puts into the joint account).",
     preCohabitation: "Pre-cohabitation",
     postCohabitation: "Post-cohabitation",
-    copyFromPost: "Copy from post-cohabitation",
     addLifeItem: "Add item",
     newLifeItemLabel: "New item",
 
@@ -228,12 +235,10 @@ export const DICT = {
     manageCategory: "Manage categories",
     newCategoryName: "New category name",
     budgetLabel: "Budget",
-    selectEducationHint: "Pick each child's education path in the table below (same data as the Family tab).",
-    addEvent: "Add event",
-    eventPresetWedding: "Wedding",
+    eventPresetWedding: "Wedding-related costs",
+    eventPresetWeddingHelp: "Enter one combined amount covering the ring, ceremony, honeymoon, etc.",
     eventPresetTravel: "Travel (annual)",
     travelStartYear: "From",
-    newEventLabel: "New event",
 
     returnRate: "Expected return",
     returnRateUnit: "%/yr",
@@ -243,7 +248,6 @@ export const DICT = {
     investRatioUnit: "% (of each month's surplus)",
 
     newScenarioPlaceholder: "Enter a new scenario name…",
-    saveHint: "Just checking? Close is fine. Want to keep this as a separate plan? Save it.",
     editTarget: "Editing:",
 
     scheduleChangeFor: "Schedule a change for {name}",

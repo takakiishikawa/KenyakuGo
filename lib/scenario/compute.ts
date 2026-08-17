@@ -4,26 +4,37 @@ import { eduCostForAge } from "./education-costs";
 import type { ScenarioConfig } from "./types";
 
 type IncomeEntry = ScenarioConfig["income"]["husband"];
+type Kid = ScenarioConfig["family"]["kids"][number];
 
-// 産休・育休期間中は、その月の月収を incomePercent% に減らす(ボーナスは対象外)。
-function leaveMultiplier(leavePeriods: IncomeEntry["leavePeriods"], year: number, month: number): number {
-  const cur = year * 12 + (month - 1);
-  for (const lp of leavePeriods) {
-    const start = lp.fromYear * 12 + (lp.fromMonth - 1);
-    const end = lp.toYear * 12 + (lp.toMonth - 1);
-    if (cur >= start && cur <= end) return lp.incomePercent / 100;
+// 産休・育休(基本): 出生年(age===0)は対象親の収入を65%として計算する(法定の
+// 産休67%・育休67〜80%/50%の細かい再現はせず、ざっくり中間の65%で近似)。
+// 延長育休: 年数を指定すると、対象期間の翌年からその年数ぶん(age 1〜
+// leaveExtensionYears)、対象親の収入を0%として計算する。
+// 複数の子どもで重なる場合は、優先度が高い方(基本65% > 延長0%)を採用する。
+function leaveMultiplierForYear(parentKey: "husband" | "wife", kids: Kid[], year: number): number {
+  let best: number | null = null;
+  for (const kid of kids) {
+    if (kid.leaveParent !== parentKey) continue;
+    const age = year - kid.birthYear;
+    let candidate: number | null = null;
+    if (age === 0) candidate = 65;
+    else if (age >= 1 && age <= kid.leaveExtensionYears) candidate = 0;
+    if (candidate !== null) best = best === null ? candidate : Math.max(best, candidate);
   }
-  return 1;
+  return (best ?? 100) / 100;
 }
 
-function netAnnualForYear(entry: IncomeEntry, year: number, yearsFromStart: number): number {
+function netAnnualForYear(
+  entry: IncomeEntry,
+  year: number,
+  yearsFromStart: number,
+  parentKey: "husband" | "wife",
+  kids: Kid[],
+): number {
   const monthlyNet = entry.netMonthlyYen * Math.pow(1 + entry.raisePercent / 100, yearsFromStart);
   const bonusNet = entry.netBonusYen * Math.pow(1 + entry.raisePercent / 100, yearsFromStart);
-  let monthsSum = 0;
-  for (let m = 1; m <= 12; m++) {
-    monthsSum += monthlyNet * leaveMultiplier(entry.leavePeriods, year, m);
-  }
-  return monthsSum + bonusNet;
+  const multiplier = leaveMultiplierForYear(parentKey, kids, year);
+  return monthlyNet * 12 * multiplier + bonusNet;
 }
 
 export const SIMULATION_YEARS_AHEAD = 15;
@@ -207,9 +218,12 @@ export function computeScenarioYears(
     // 入力は手取り(月+ボーナス)。額面年収は設定モーダル側でview-only表示用に
     // 逆算するだけで、ここでの収支計算には使わない。産休・育休期間があれば、
     // その月ぶんの月収だけ incomePercent% に減らす。
-    const husbandYen = netAnnualForYear(config.income.husband, year, i);
-    const wifeYen = config.family.spouse && cohabiting ? netAnnualForYear(config.income.wife, year, i) : 0;
-    const sideYen = config.income.side.amountYen * 12;
+    const husbandYen = netAnnualForYear(config.income.husband, year, i, "husband", config.family.kids);
+    const wifeYen = config.family.spouse && cohabiting ? netAnnualForYear(config.income.wife, year, i, "wife", config.family.kids) : 0;
+    const sideActiveThisYear =
+      (config.income.side.startYear === null || year >= config.income.side.startYear) &&
+      (config.income.side.endYear === null || year <= config.income.side.endYear);
+    const sideYen = sideActiveThisYear ? config.income.side.amountYen * 12 : 0;
     const allowanceYen = config.family.kids.reduce(
       (sum, kid) => sum + childAllowanceYenForYear(kid.birthYear, year),
       0,
@@ -278,10 +292,11 @@ export function computeScenarioYears(
     }, 0);
 
     // 結婚式(単発)・旅行(毎年繰り返す、暮らしと同じインフレ率で複利)は常設フォーム
-    // のイベントとして、汎用のevents配列とは別に計算する。
-    const weddingYen = config.wedding.enabled && config.wedding.year === year ? config.wedding.amountYen : 0;
+    // のイベントとして、汎用のevents配列とは別に計算する。UIにON/OFFチェックボックスは
+    // 置かない(1ステップ余分になるため)ので、金額0円=未計上として扱う。
+    const weddingYen = config.wedding.amountYen > 0 && config.wedding.year === year ? config.wedding.amountYen : 0;
     const travelYen =
-      config.travel.enabled && year >= config.travel.startYear
+      config.travel.amountYen > 0 && year >= config.travel.startYear
         ? config.travel.amountYen * Math.pow(1 + config.inflationRatePercent / 100, year - config.travel.startYear)
         : 0;
     const customEventsYen = config.events.filter((e) => e.year === year).reduce((s, e) => s + e.amountYen, 0);
@@ -342,9 +357,10 @@ export function expandMonthly(
   return Array.from({ length: 12 }, (_, idx) => {
     const m = idx + 1;
     // 結婚式はその月にまとめて計上。旅行は特定の月を持たないので年額を均等按分する。
-    const weddingThisMonth = config.wedding.enabled && config.wedding.year === focusYear && config.wedding.month === m ? config.wedding.amountYen : 0;
+    const weddingThisMonth =
+      config.wedding.amountYen > 0 && config.wedding.year === focusYear && config.wedding.month === m ? config.wedding.amountYen : 0;
     const travelThisYear =
-      config.travel.enabled && focusYear >= config.travel.startYear
+      config.travel.amountYen > 0 && focusYear >= config.travel.startYear
         ? config.travel.amountYen * Math.pow(1 + config.inflationRatePercent / 100, focusYear - config.travel.startYear)
         : 0;
     const customEventsThisMonth = config.events

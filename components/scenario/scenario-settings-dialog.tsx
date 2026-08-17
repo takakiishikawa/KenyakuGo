@@ -547,10 +547,11 @@ export function ScenarioSettingsDialog({
                             },
                           })
                         }
-                        className="flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95"
+                        title={t(lang, "addBonus")}
+                        className="flex items-center justify-center p-1 rounded-md cursor-pointer transition-all hover:brightness-95"
                         style={{ backgroundColor: DC.track, color: DC.textSecondary }}
                       >
-                        <Plus size={11} /> {t(lang, "addBonus")}
+                        <Plus size={12} />
                       </button>
                     </div>
                     {draft.income[row.key].netBonuses.map((bonus, bIdx) => (
@@ -566,7 +567,7 @@ export function ScenarioSettingsDialog({
                           className="h-8 w-28 text-sm text-right font-num"
                         />
                         <span className="text-xs" style={{ color: DC.textSecondary }}>
-                          {t(lang, "yenPerYear")}
+                          {t(lang, "yenUnit")}
                         </span>
                         <Select
                           value={String(bonus.month)}

@@ -172,44 +172,70 @@ function VariableCategoryCard({
   );
 }
 
-// Claude Design通り、固定費カードはアイコン+名前+金額のみのシンプルな1行
-// (進捗バー・%表示は無し — 固定費は毎月ほぼ一定額なので、実績/予算比較の
-// 表示は不要と判断)。
+// 変動費カードと同じく、進捗バー・%表示付きに統一(固定費も予算に対する実績が
+// ひと目でわかった方がいいという指摘のため)。
 function FixedCategoryCard({
   cat,
+  todayPct,
   onClick,
   formatAmount,
   lang,
 }: {
   cat: CategoryEntry;
+  todayPct: number;
   onClick: () => void;
   formatAmount: (vnd: number) => string;
   lang: Lang;
 }) {
-  const amount = cat.actual > 0 ? cat.actual : cat.budget;
+  const pctNum = cat.budget > 0 ? Math.round((cat.actual / cat.budget) * 100) : null;
+  const over = cat.budget > 0 && cat.actual > cat.budget;
+  const near = pctNum !== null && pctNum >= 80 && !over;
+  const pctColor = over ? "var(--color-danger)" : near ? "var(--color-warning)" : "var(--color-text-secondary)";
+  const barColor = over ? "var(--color-danger)" : "#6B5D45";
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-2.5 text-left rounded-[13px] border p-[11px_14px] transition-all hover:bg-muted/40 active:scale-[0.98] active:bg-muted/60 cursor-pointer"
+      className="text-left rounded-[13px] border p-[11px_14px] transition-all hover:bg-muted/40 active:scale-[0.98] active:bg-muted/60 cursor-pointer"
       style={{ borderColor: "var(--color-border-default)", backgroundColor: "var(--color-surface-subtle)" }}
     >
-      <div
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[9px]"
-        style={{ backgroundColor: "var(--kg-track)" }}
-      >
-        {(() => {
-          const Icon = getCategoryIcon(cat.name);
-          return <Icon size={14} style={{ color: "#6B5D45" }} />;
-        })()}
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <div
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[9px]"
+            style={{ backgroundColor: "var(--kg-track)" }}
+          >
+            {(() => {
+              const Icon = getCategoryIcon(cat.name);
+              return <Icon size={14} style={{ color: "#6B5D45" }} />;
+            })()}
+          </div>
+          <span className="text-[13.5px] font-semibold truncate" style={{ color: "var(--color-text-primary)" }}>
+            {catLabel(lang, cat.name)}
+          </span>
+        </div>
+        {pctNum !== null && (
+          <span className="font-num text-[13px] font-bold shrink-0" style={{ color: pctColor }}>
+            {pctNum}%
+          </span>
+        )}
       </div>
-      <span className="text-[13px] font-semibold truncate flex-1 min-w-0" style={{ color: "var(--color-text-primary)" }}>
-        {catLabel(lang, cat.name)}
+      <span className="text-[12.5px]" style={{ color: "var(--color-text-secondary)" }}>
+        <span className="font-num font-semibold" style={{ color: "var(--color-text-primary)" }}>
+          {formatAmount(cat.actual)}
+        </span>
+        {cat.budget > 0 && <span className="font-num"> / {formatAmount(cat.budget)}</span>}
       </span>
-      <span className="font-num text-[13px] font-bold shrink-0" style={{ color: "var(--color-text-primary)" }}>
-        {formatAmount(amount)}
-      </span>
+      <div className="mt-1.5">
+        <ProgressBar
+          actual={cat.actual}
+          budget={cat.budget}
+          todayPct={todayPct}
+          showToday={false}
+          fillColor={barColor}
+        />
+      </div>
     </button>
   );
 }
@@ -493,6 +519,7 @@ export default function Dashboard() {
                 <FixedCategoryCard
                   key={cat.id}
                   cat={cat}
+                  todayPct={todayPct}
                   onClick={() => openCategory(cat.name)}
                   formatAmount={formatAmount}
                   lang={lang}

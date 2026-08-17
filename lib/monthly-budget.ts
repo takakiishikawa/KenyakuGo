@@ -130,6 +130,27 @@ export async function computeActualSpendByMonth(
   return byMonth;
 }
 
+// 当年(1/1〜今日)のカテゴリ別実績(VND)。Simulationが「今年」の暮らしを
+// 予算だけでなく実績も踏まえて projection するために使う
+// (要望: 「すでにあった今年の固定費・変動費の実際のデータがSimulationに出ていない」)。
+export async function computeActualSpendByCategoryThisYear(db: Db): Promise<Record<string, number>> {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+
+  const { data } = await db
+    .from("transactions")
+    .select("amount, category, date")
+    .gte("date", start.toISOString())
+    .lte("date", now.toISOString())
+    .eq("excluded_from_dashboard", false);
+
+  const byCategory: Record<string, number> = {};
+  for (const tx of data ?? []) {
+    byCategory[tx.category] = (byCategory[tx.category] ?? 0) + tx.amount;
+  }
+  return byCategory;
+}
+
 // Effective "Total Monthly Budget" (lifeBudgetVnd, i.e. sum of every
 // category's budget) for every month of `year`, honoring category budget
 // overrides — same resolution the Dashboard uses, but for all 12 months at

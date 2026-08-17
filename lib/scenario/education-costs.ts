@@ -119,13 +119,14 @@ export function eduStageForAge(age: number): EduStageDef | null {
   return EDU_STAGES.find((s) => age >= s.ageMin && age <= s.ageMax) ?? null;
 }
 
-// kidEducation: そのシナリオの education["<kidIndex>"] (stageKey -> optionKey)。
-export function eduCostForAge(age: number, kidEducation: Record<string, string> | undefined): number {
+// kidEducation: そのシナリオの education["<kidIndex>"] (stageKey -> 年額円)。
+// 未入力(そのステージをまだ一度も編集していない)なら公立の目安額を仮の値として使う。
+export function eduCostForAge(age: number, kidEducation: Record<string, number> | undefined): number {
   const stage = eduStageForAge(age);
   if (!stage) return 0;
-  const selectedKey = kidEducation?.[stage.key] ?? "public";
-  const option = stage.options.find((o) => o.key === selectedKey) ?? stage.options[0];
-  return option.amountYen;
+  const stored = kidEducation?.[stage.key];
+  if (typeof stored === "number" && Number.isFinite(stored)) return stored;
+  return stage.options[0].amountYen;
 }
 
 export function getEduStage(key: string): EduStageDef | undefined {

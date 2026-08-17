@@ -20,7 +20,7 @@ import {
 } from "@/lib/scenario/compute";
 import { buildChartSeries, buildCompareChartSeries, chartKindLabel, CHART_KINDS, type ChartKind } from "@/lib/scenario/chart";
 import { buildSingleTableRows, buildCompareTableRows } from "@/lib/scenario/table-rows";
-import { t } from "@/lib/scenario/dictionary";
+import { t, tf } from "@/lib/scenario/dictionary";
 import { DC } from "@/lib/scenario/design-colors";
 import type { Scenario, ScenarioConfig } from "@/lib/scenario/types";
 import type { DisplayCurrency } from "@/components/currency-switch";
@@ -37,6 +37,7 @@ export default function SimulationPage() {
 
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [vndPerJpy, setVndPerJpy] = useState(162);
+  const [actualByCategoryVnd, setActualByCategoryVnd] = useState<Record<string, number>>({});
   const [categories, setCategories] = useState<CategoryForCard[]>([]);
   const [overrides, setOverrides] = useState<CategoryBudgetOverride[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,9 +56,14 @@ export default function SimulationPage() {
   const fetchScenarios = useCallback(async () => {
     const r = await fetch("/api/scenarios");
     if (!r.ok) return;
-    const { scenarios: list, vndPerJpy: rate } = (await r.json()) as { scenarios: Scenario[]; vndPerJpy: number };
+    const { scenarios: list, vndPerJpy: rate, actualByCategoryVnd: actual } = (await r.json()) as {
+      scenarios: Scenario[];
+      vndPerJpy: number;
+      actualByCategoryVnd: Record<string, number>;
+    };
     setScenarios(list);
     setVndPerJpy(rate);
+    setActualByCategoryVnd(actual ?? {});
   }, []);
 
   const fetchCategories = useCallback(async () => {
@@ -100,8 +106,11 @@ export default function SimulationPage() {
   }, []);
 
   const primaryYearRows = useMemo(
-    () => (primary ? computeScenarioYears(primary.config, categories, overrides, vndPerJpy) : []),
-    [primary, categories, overrides, vndPerJpy],
+    () =>
+      primary
+        ? computeScenarioYears(primary.config, categories, overrides, vndPerJpy, CUR_YEAR, actualByCategoryVnd)
+        : [],
+    [primary, categories, overrides, vndPerJpy, actualByCategoryVnd],
   );
   const rowsForView: ScenarioRow[] = useMemo(() => {
     if (!primary) return [];
@@ -110,11 +119,11 @@ export default function SimulationPage() {
 
   const compareRows = useMemo(() => {
     return scenarios.map((s) => {
-      const yearRows = computeScenarioYears(s.config, categories, overrides, vndPerJpy);
+      const yearRows = computeScenarioYears(s.config, categories, overrides, vndPerJpy, CUR_YEAR, actualByCategoryVnd);
       const rows = timeMode === "yearly" ? toRows(yearRows) : expandMonthly(yearRows, s.config, focusYear);
       return { id: s.id, name: s.name, rows };
     });
-  }, [scenarios, categories, overrides, vndPerJpy, timeMode, focusYear]);
+  }, [scenarios, categories, overrides, vndPerJpy, actualByCategoryVnd, timeMode, focusYear]);
 
   const formatAmount = useCallback((yen: number) => formatYen(yen, currency, vndPerJpy), [currency, vndPerJpy]);
 
@@ -132,12 +141,10 @@ export default function SimulationPage() {
     return buildChartSeries(rowsForView, chartKind, lang);
   }, [compareMode, compareRows, rowsForView, chartKind, lang]);
 
-  const lastYear = primaryYearRows[primaryYearRows.length - 1];
-  const curYearRow = primaryYearRows.find((y) => y.year === CUR_YEAR) ?? primaryYearRows[0];
-  const simTargetPct =
-    lastYear && curYearRow
-      ? Math.max(0, Math.min(100, Math.round((curYearRow.savingsCumTotalYen / (lastYear.savingsCumTotalYen || 1)) * 100)))
-      : 0;
+  // 月次表示中は「今見ている年」の年末残高、年次表示中は最終年(15年後)の残高、
+  // というふうにrowsForViewの最後の列がそのまま「今表示している範囲の最終値」になる。
+  const latestVisibleRow = rowsForView[rowsForView.length - 1];
+  const milestoneYears = [1, 3, 5, 10];
 
   // --- シナリオCRUD ---
   const setPrimaryScenario = async (id: string) => {
@@ -305,34 +312,49 @@ export default function SimulationPage() {
           <IconButton title={t(lang, "scenarios")} onClick={() => setScenarioListOpen(true)}>
             <ListTree size={14} />
           </IconButton>
-          {isSingle && (
-            <IconButton title={t(lang, "settingsBtn")} onClick={() => setEditorOpen(true)} accent>
-              <Settings2 size={14} />
-            </IconButton>
-          )}
+          <IconButton title={t(lang, "settingsBtn")} onClick={() => setEditorOpen(true)} accent>
+            <Settings2 size={14} />
+          </IconButton>
         </div>
       </div>
 
-      {isSingle && lastYear && curYearRow && (
+      {isSingle && timeMode === "yearly" && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {milestoneYears.map((yrsAhead) => {
+            const targetYear = CUR_YEAR + yrsAhead;
+            const row = primaryYearRows.find((y) => y.year === targetYear);
+            return (
+              <Card
+                key={yrsAhead}
+                className="rounded-2xl px-4 py-3.5 flex flex-col gap-1"
+                style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}
+              >
+                <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em]" style={{ color: DC.textFaint }}>
+                  {tf(lang, "yearsAheadLabel", { n: yrsAhead })} ({targetYear})
+                </span>
+                <span className="font-display text-xl font-bold" style={{ color: DC.textPrimary }}>
+                  {row ? formatAmount(row.savingsCumTotalYen) : "—"}
+                </span>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {isSingle && timeMode === "monthly" && latestVisibleRow && (
         <Card
-          className="rounded-2xl px-5 py-4 flex items-center gap-4 flex-wrap"
+          className="rounded-2xl px-5 py-4 flex flex-col gap-1"
           style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}
         >
           <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em]" style={{ color: DC.textFaint }}>
-            {t(lang, "totalSavings")}
+            {t(lang, "totalSavings")} ({latestVisibleRow.yearLabel})
           </span>
           <span className="font-display text-2xl font-bold" style={{ color: DC.textPrimary }}>
-            {formatAmount(lastYear.savingsCumTotalYen)}
+            {formatAmount(latestVisibleRow.savingsCumTotalYen)}
           </span>
-          <div className="flex-1 min-w-20 h-1.5 rounded-full" style={{ backgroundColor: DC.track }}>
-            <div
-              className="h-full rounded-full transition-all"
-              style={{ width: `${simTargetPct}%`, backgroundColor: DC.primary }}
-            />
-          </div>
-          <span className="text-xs font-medium" style={{ color: DC.primaryHover }}>
-            {CUR_YEAR}年時点 {formatAmount(curYearRow.savingsCumTotalYen)} / {YEAR_OPTIONS[YEAR_OPTIONS.length - 1]}年見込み{" "}
-            {formatAmount(lastYear.savingsCumTotalYen)}
+          <span className="text-xs font-medium" style={{ color: DC.textSecondary }}>
+            {formatAmount(latestVisibleRow.incomeTotalYen)} − {formatAmount(latestVisibleRow.expenseTotalYen)} ={" "}
+            {formatAmount(latestVisibleRow.netFlowYen)}
           </span>
         </Card>
       )}

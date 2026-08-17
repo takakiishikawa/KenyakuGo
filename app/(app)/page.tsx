@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Inbox, TrendingDown, TrendingUp } from "lucide-react";
+import { Inbox, List, TrendingDown, TrendingUp } from "lucide-react";
 import { getCategoryColors, getCategoryColorTint } from "@/lib/category-colors";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { makeFormatAmount } from "@/lib/currency";
@@ -370,16 +370,26 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
-            {uncategorizedCount > 0 && (
+            <div className="flex items-center gap-2 shrink-0">
               <a
                 href="/transactions"
-                className="flex items-center gap-2 rounded-[10px] px-3.5 py-2 text-xs font-semibold shrink-0 transition-all hover:brightness-95 active:scale-[0.98]"
-                style={{ backgroundColor: "#F7E1EA", border: "1px solid #F0C7D8", color: "#8C3A5E" }}
+                title="Transactions"
+                className="flex items-center justify-center h-9 w-9 rounded-[10px] transition-all hover:brightness-95 active:scale-[0.98]"
+                style={{ backgroundColor: "var(--kg-track)", color: "var(--color-text-secondary)" }}
               >
-                <Inbox size={14} className="shrink-0" />
-                {uncategorizedCount} to review →
+                <List size={15} />
               </a>
-            )}
+              {uncategorizedCount > 0 && (
+                <a
+                  href="/transactions"
+                  className="flex items-center gap-2 rounded-[10px] px-3.5 py-2 text-xs font-semibold transition-all hover:brightness-95 active:scale-[0.98]"
+                  style={{ backgroundColor: "#F7E1EA", border: "1px solid #F0C7D8", color: "#8C3A5E" }}
+                >
+                  <Inbox size={14} className="shrink-0" />
+                  {uncategorizedCount} to review →
+                </a>
+              )}
+            </div>
           </div>
         </Card>
 

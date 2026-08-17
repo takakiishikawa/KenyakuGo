@@ -79,8 +79,10 @@ export const scenarioConfigSchema = z.object({
     side: z.object({ amountYen: z.number().min(0) }),
   }),
   cohabitation: cohabitationSchema,
-  // キー: kids配列のindex(文字列)。値: ステージキー -> 選択した進路キー。
-  education: z.record(z.string(), z.record(z.string(), z.string())),
+  // キー: kids配列のindex(文字列)。値: ステージキー -> そのステージの年額(円、
+  // 塾・習い事込みの合算)。公立/私立ボタンは金額欄への「入力補助(クイック入力)」
+  // であり、選んだ後も金額は自由に編集できる。
+  education: z.record(z.string(), z.record(z.string(), z.number())),
   events: z.array(eventSchema),
   savings: z.object({
     returnRatePercent: z.number(),

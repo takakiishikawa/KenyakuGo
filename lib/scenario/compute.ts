@@ -134,6 +134,25 @@ function preLifeMonthlyYen(item: { monthlyYen: number }, year: number, inflation
   return item.monthlyYen * Math.pow(1 + inflationRatePercent / 100, yearsBeyond);
 }
 
+// 今年ぶんは、予算projectionだけでなく「今日までの実績を年換算した見込み」も
+// 併せて使う。実績が無いカテゴリ(まだ一度も使っていない等)は従来通り予算ベース。
+function annualCategoryYen(
+  category: { name: string },
+  budgetProjectionAnnualYen: number,
+  year: number,
+  nowYear: number,
+  dayOfYear: number,
+  daysInThisYear: number,
+  vndPerJpy: number,
+  actualByCategoryVnd: Record<string, number>,
+): number {
+  if (year !== nowYear) return budgetProjectionAnnualYen;
+  const actualVnd = actualByCategoryVnd[category.name];
+  if (!actualVnd || actualVnd <= 0) return budgetProjectionAnnualYen;
+  const annualizedYen = (actualVnd / vndPerJpy) * (daysInThisYear / dayOfYear);
+  return annualizedYen;
+}
+
 // 児童手当: 0〜2歳 1.5万円/月、3歳〜高校生(18歳)まで 1万円/月。要件5-2。
 function childAllowanceYenForYear(birthYear: number, year: number): number {
   const age = year - birthYear;
@@ -149,8 +168,14 @@ export function computeScenarioYears(
   overrides: CategoryBudgetOverride[],
   vndPerJpy: number,
   startYear: number = new Date().getFullYear(),
+  // 今年ぶんのカテゴリ別実績(VND、カテゴリ名キー)。今年は予算projectionだけでなく
+  // 「今日までの実績を年換算した見込み」も併せて使う(要望: 既にある今年の実績が
+  // Simulationに反映されていない、への対応)。
+  actualByCategoryVnd: Record<string, number> = {},
 ): ScenarioYearRow[] {
   const nowYear = new Date().getFullYear();
+  const dayOfYear = Math.ceil((Date.now() - new Date(nowYear, 0, 1).getTime()) / 86_400_000) || 1;
+  const daysInThisYear = 365; // うるう年ぶんの誤差(365/366)は無視できる範囲として扱う
   const years = Array.from({ length: SIMULATION_YEARS_AHEAD + 1 }, (_, i) => startYear + i);
 
   const overridesByCategory = new Map<string, CategoryBudgetOverride[]>();
@@ -204,7 +229,11 @@ export function computeScenarioYears(
             vndPerJpy,
             nowYear,
           );
-          return { id: c.id, name: c.name, valueYen: monthlyYen * 12 + renewalYen, color: getCategoryHex(c.name) };
+          const budgetAnnualYen = monthlyYen * 12 + renewalYen;
+          const valueYen =
+            annualCategoryYen(c, budgetAnnualYen - renewalYen, year, nowYear, dayOfYear, daysInThisYear, vndPerJpy, actualByCategoryVnd) +
+            renewalYen;
+          return { id: c.id, name: c.name, valueYen, color: getCategoryHex(c.name) };
         })
       : config.cohabitation.preFixed.map((item) => ({
           id: `pre-fixed-${item.id}`,
@@ -225,7 +254,8 @@ export function computeScenarioYears(
             vndPerJpy,
             nowYear,
           );
-          return { id: c.id, name: c.name, valueYen: monthlyYen * 12, color: getCategoryHex(c.name) };
+          const valueYen = annualCategoryYen(c, monthlyYen * 12, year, nowYear, dayOfYear, daysInThisYear, vndPerJpy, actualByCategoryVnd);
+          return { id: c.id, name: c.name, valueYen, color: getCategoryHex(c.name) };
         })
       : config.cohabitation.preVariable.map((item) => ({
           id: `pre-variable-${item.id}`,

@@ -38,6 +38,14 @@ function cloneConfig(config: ScenarioConfig): ScenarioConfig {
   return JSON.parse(JSON.stringify(config));
 }
 
+// 生まれ年が未来(まだ生まれていない予定の子ども)だと age が負になり
+// 「今年-3歳」のような表示になってしまうので、その場合は生まれ年予定として表示する。
+function ageLabel(lang: Lang, birthYear: number): string {
+  const age = CUR_YEAR - birthYear;
+  if (age < 0) return lang === "ja" ? `${birthYear}年生まれ予定` : `due ${birthYear}`;
+  return tf(lang, "ageThisYear", { age });
+}
+
 // 千区切りカンマを表示しながら、値自体は数値で保持するyen入力。
 function YenInput({
   value,
@@ -169,8 +177,8 @@ export function ScenarioSettingsDialog({
     { key: "savingsTab", label: t(lang, "savingsTab") },
   ];
 
-  // 「家族」タブと「支出→教育」タブの両方から同じ子ども×ステージのマトリクスを
-  // 参照できるようにする(教育タブを押しても何も出ない、という問題への対応)。
+  // 教育費は「支出→教育」タブだけで扱う(家族タブには進路選択を置かない)。
+  // 公立/私立ボタンは金額欄へのクイック入力であり、選んだ後も自由に金額を編集できる。
   const kidEducationMatrix = (
     <div className="flex flex-col gap-2.5">
       {draft.family.kids.length === 0 ? (
@@ -183,40 +191,53 @@ export function ScenarioSettingsDialog({
             <div className="text-xs font-semibold" style={{ color: DC.textPrimary }}>
               {t(lang, "children")} {kidIdx + 1}{" "}
               <span className="font-normal" style={{ color: DC.textFaint }}>
-                ({kid.birthYear} · {tf(lang, "ageThisYear", { age: CUR_YEAR - kid.birthYear })})
+                ({ageLabel(lang, kid.birthYear)})
               </span>
             </div>
             <div className="flex flex-col gap-1.5">
               {EDU_STAGES.map((stage) => {
                 const kidEdu = draft.education[String(kidIdx)] ?? {};
-                const sel = kidEdu[stage.key] ?? "public";
+                const amount = kidEdu[stage.key] ?? stage.options[0].amountYen;
                 return (
                   <div key={stage.key} className="flex items-center gap-2 flex-wrap">
                     <span className="text-[11px] w-24 shrink-0 flex items-center gap-1" style={{ color: DC.textSecondary }}>
                       {lang === "ja" ? stage.labelJa : stage.labelEn}
                       <HelpTip text={lang === "ja" ? stage.tipJa : stage.tipEn} />
                     </span>
-                    <div className="flex gap-1 flex-wrap">
+                    <div className="flex gap-1 flex-wrap shrink-0">
                       {stage.options.map((opt) => (
                         <button
                           key={opt.key}
                           type="button"
                           onClick={() => {
                             const education = { ...draft.education };
-                            education[String(kidIdx)] = { ...(education[String(kidIdx)] ?? {}), [stage.key]: opt.key };
+                            education[String(kidIdx)] = { ...(education[String(kidIdx)] ?? {}), [stage.key]: opt.amountYen };
                             commit({ ...draft, education });
                           }}
                           className="px-2.5 py-1 rounded-full text-[10.5px] font-semibold cursor-pointer transition-all border"
                           style={{
-                            backgroundColor: sel === opt.key ? DC.primary : DC.cardBg,
-                            color: sel === opt.key ? "#fff" : DC.textSecondary,
-                            borderColor: sel === opt.key ? DC.primary : DC.cardBorder,
+                            backgroundColor: amount === opt.amountYen ? DC.primary : DC.cardBg,
+                            color: amount === opt.amountYen ? "#fff" : DC.textSecondary,
+                            borderColor: amount === opt.amountYen ? DC.primary : DC.cardBorder,
                           }}
                         >
                           {lang === "ja" ? opt.labelJa : opt.labelEn}
                         </button>
                       ))}
                     </div>
+                    <YenInput
+                      value={amount}
+                      onChange={(n) => {
+                        const education = { ...draft.education };
+                        education[String(kidIdx)] = { ...(education[String(kidIdx)] ?? {}), [stage.key]: n };
+                        setDraft({ ...draft, education });
+                      }}
+                      onCommit={() => commit(draft)}
+                      className="h-7 w-24 text-[11px] text-right font-num"
+                    />
+                    <span className="text-[10px] shrink-0" style={{ color: DC.textFaint }}>
+                      {t(lang, "yenPerYear")}
+                    </span>
                   </div>
                 );
               })}
@@ -378,7 +399,7 @@ export function ScenarioSettingsDialog({
                       className="h-7 w-20 text-xs font-num"
                     />
                     <span className="text-[11px]" style={{ color: DC.textFaint }}>
-                      {tf(lang, "ageThisYear", { age: CUR_YEAR - kid.birthYear })}
+                      {ageLabel(lang, kid.birthYear)}
                     </span>
                     <button
                       type="button"
@@ -394,46 +415,13 @@ export function ScenarioSettingsDialog({
                       <Trash2 size={13} />
                     </button>
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    {EDU_STAGES.map((stage) => {
-                      const kidEdu = draft.education[String(kidIdx)] ?? {};
-                      const sel = kidEdu[stage.key] ?? "public";
-                      return (
-                        <div key={stage.key} className="flex items-center gap-2 flex-wrap">
-                          <span
-                            className="text-[11px] w-24 shrink-0 flex items-center gap-1"
-                            style={{ color: DC.textSecondary }}
-                          >
-                            {lang === "ja" ? stage.labelJa : stage.labelEn}
-                            <HelpTip text={lang === "ja" ? stage.tipJa : stage.tipEn} />
-                          </span>
-                          <div className="flex gap-1 flex-wrap">
-                            {stage.options.map((opt) => (
-                              <button
-                                key={opt.key}
-                                type="button"
-                                onClick={() => {
-                                  const education = { ...draft.education };
-                                  education[String(kidIdx)] = { ...(education[String(kidIdx)] ?? {}), [stage.key]: opt.key };
-                                  commit({ ...draft, education });
-                                }}
-                                className="px-2.5 py-1 rounded-full text-[10.5px] font-semibold cursor-pointer transition-all border"
-                                style={{
-                                  backgroundColor: sel === opt.key ? DC.primary : DC.cardBg,
-                                  color: sel === opt.key ? "#fff" : DC.textSecondary,
-                                  borderColor: sel === opt.key ? DC.primary : DC.cardBorder,
-                                }}
-                              >
-                                {lang === "ja" ? opt.labelJa : opt.labelEn}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
                 </div>
               ))}
+              {draft.family.kids.length > 0 && (
+                <p className="text-[11px]" style={{ color: DC.textFaint }}>
+                  {t(lang, "selectEducationHint")}
+                </p>
+              )}
             </div>
           )}
 
@@ -867,6 +855,35 @@ export function ScenarioSettingsDialog({
 
               {spendingSub === "events" && (
                 <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                      {t(lang, "eventPresetHint")}
+                    </span>
+                    {(
+                      [
+                        { label: t(lang, "eventPresetWedding"), amountYen: 2_500_000, month: 10 },
+                        { label: t(lang, "eventPresetTravel"), amountYen: 400_000, month: 8 },
+                      ]
+                    ).map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() =>
+                          commit({
+                            ...draft,
+                            events: [
+                              ...draft.events,
+                              { id: `e${Date.now()}`, label: preset.label, year: CUR_YEAR + 1, month: preset.month, amountYen: preset.amountYen },
+                            ],
+                          })
+                        }
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold cursor-pointer transition-all border hover:brightness-95"
+                        style={{ backgroundColor: DC.cardBg, color: DC.textSecondary, borderColor: DC.cardBorder }}
+                      >
+                        <Plus size={10} /> {preset.label}
+                      </button>
+                    ))}
+                  </div>
                   {draft.events.map((ev, i) => (
                     <div key={ev.id} className="flex items-center gap-1.5 flex-wrap rounded-lg border p-2" style={{ borderColor: DC.trackAlt }}>
                       <Input
@@ -1020,10 +1037,23 @@ export function ScenarioSettingsDialog({
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex items-center justify-end gap-2 flex-wrap">
                 <span className="text-[11px] flex-1" style={{ color: DC.textFaint }}>
                   {t(lang, "saveHint")}
                 </span>
+                <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>
+                  {t(lang, "close")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    commit(draft);
+                    onOpenChange(false);
+                  }}
+                >
+                  {t(lang, "apply")}
+                </Button>
                 <Button size="sm" onClick={() => setSavePromptOpen(true)}>
                   {t(lang, "addScenario")}
                 </Button>

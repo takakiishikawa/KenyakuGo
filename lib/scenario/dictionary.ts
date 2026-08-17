@@ -74,11 +74,11 @@ export const DICT = {
     unspecified: "指定なし",
     leaveParentLabel: "産休・育休",
     leaveParentNone: "なし",
-    leaveParentWife: "配偶者",
+    leaveParentWife: "あり",
     leaveExtensionYears: "延長育休",
     leaveExtensionYearsUnit: "年",
     leaveHelp:
-      "対象(本人・配偶者)を選ぶと、出生年の収入が65%として計算されます。延長育休に年数を入れると、その年数分は収入0%として計算されます(基本の65%が優先)。",
+      "「あり」にすると、出生年の配偶者の収入が65%として計算されます(産休・育休は1年間有効)。延長育休に年数を入れると、その年数分は収入0%として計算されます(基本の65%が優先)。",
     cohabitation: "同棲",
     cohabitationStartYear: "同棲開始年",
     cohabitationHelp:
@@ -210,11 +210,11 @@ export const DICT = {
     unspecified: "Unset",
     leaveParentLabel: "Parental leave",
     leaveParentNone: "None",
-    leaveParentWife: "Spouse",
+    leaveParentWife: "Yes",
     leaveExtensionYears: "Extended leave",
     leaveExtensionYearsUnit: "yr",
     leaveHelp:
-      "Choosing a parent (you/spouse) sets that parent's income to 65% in the birth year. Adding extended-leave years sets income to 0% for that many years after (the 65% base takes priority).",
+      "Turning this on sets your spouse's income to 65% in the birth year (the basic leave lasts 1 year). Adding extended-leave years sets income to 0% for that many years after (the 65% base takes priority).",
     cohabitation: "Cohabitation",
     cohabitationStartYear: "Cohabitation start year",
     cohabitationHelp:

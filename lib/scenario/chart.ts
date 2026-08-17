@@ -117,12 +117,7 @@ export function buildChartSeries(rows: ScenarioRow[], kind: ChartKind, lang: Lan
         stacked: true,
         series: [
           { label: t(lang, "cash"), color: "#8A8172", values: rows.map((r) => r.cashCumYen) },
-          {
-            label: t(lang, "invest"),
-            color: "#4C6B8A",
-            values: rows.map((r) => r.investBalYen - r.profitCumYen),
-          },
-          { label: t(lang, "profit"), color: "#16A34A", values: rows.map((r) => r.profitCumYen) },
+          { label: t(lang, "invest"), color: "#4C6B8A", values: rows.map((r) => r.investBalYen) },
         ],
       };
   }

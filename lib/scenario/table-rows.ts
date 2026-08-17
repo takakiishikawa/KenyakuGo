@@ -104,13 +104,9 @@ export function buildSingleTableRows(
   });
   if (isExpanded("savings")) {
     push({ key: "savings.cash", depth: 1, label: t(lang, "cash"), cells: rows.map((r) => cell(r.cashCumYen, fmt, true)) });
-    push({
-      key: "savings.invest",
-      depth: 1,
-      label: t(lang, "invest"),
-      cells: rows.map((r) => cell(r.investBalYen - r.profitCumYen, fmt)),
-    });
-    push({ key: "savings.profit", depth: 1, label: t(lang, "profit"), cells: rows.map((r) => cell(r.profitCumYen, fmt)) });
+    // 利益(投資益)は総収入の内訳(投資益)として計上済みなので、ここでは
+    // 元本と別出しにせず運用残高をそのまま表示する。
+    push({ key: "savings.invest", depth: 1, label: t(lang, "invest"), cells: rows.map((r) => cell(r.investBalYen, fmt)) });
   }
 
   return out;
@@ -146,13 +142,7 @@ export function buildCompareTableRows(
       push({ key: `${ek}.variable`, depth: 2, label: t(lang, "variable"), cells: scn.rows.map((r) => cell(r.variableTotalYen, fmt)) });
     }
     push({ key: `${key}.cash`, depth: 1, label: t(lang, "cash"), cells: scn.rows.map((r) => cell(r.cashCumYen, fmt, true)) });
-    push({
-      key: `${key}.invest`,
-      depth: 1,
-      label: t(lang, "invest"),
-      cells: scn.rows.map((r) => cell(r.investBalYen - r.profitCumYen, fmt)),
-    });
-    push({ key: `${key}.profit`, depth: 1, label: t(lang, "profit"), cells: scn.rows.map((r) => cell(r.profitCumYen, fmt)) });
+    push({ key: `${key}.invest`, depth: 1, label: t(lang, "invest"), cells: scn.rows.map((r) => cell(r.investBalYen, fmt)) });
   }
 
   return out;

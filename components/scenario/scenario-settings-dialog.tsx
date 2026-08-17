@@ -109,6 +109,7 @@ export function ScenarioSettingsDialog({
   onDeleteOverride,
   lang,
   currency,
+  vndPerJpy,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -131,6 +132,7 @@ export function ScenarioSettingsDialog({
   onDeleteOverride: (categoryId: string, overrideId: string) => Promise<void>;
   lang: Lang;
   currency: DisplayCurrency;
+  vndPerJpy: number;
 }) {
   const [configTab, setConfigTab] = useState<ConfigTab>("family");
   const [spendingSub, setSpendingSub] = useState<SpendingSub>("life");
@@ -187,7 +189,7 @@ export function ScenarioSettingsDialog({
   const kidEducationMatrix = (
     <div className="flex flex-col gap-2.5">
       {draft.family.kids.length === 0 ? (
-        <p className="text-xs" style={{ color: DC.textFaint }}>
+        <p className="text-xs" style={{ color: DC.textSecondary }}>
           {t(lang, "children")}: 0
         </p>
       ) : (
@@ -195,7 +197,7 @@ export function ScenarioSettingsDialog({
           <div key={kidIdx} className="rounded-lg border p-3 flex flex-col gap-2" style={{ borderColor: DC.trackAlt }}>
             <div className="text-xs font-semibold" style={{ color: DC.textPrimary }}>
               {t(lang, "children")} {kidIdx + 1}{" "}
-              <span className="font-normal" style={{ color: DC.textFaint }}>
+              <span className="font-normal" style={{ color: DC.textSecondary }}>
                 ({ageLabel(lang, kid.birthYear)})
               </span>
             </div>
@@ -240,7 +242,7 @@ export function ScenarioSettingsDialog({
                       onCommit={() => commit(draft)}
                       className="h-7 w-24 text-[11px] text-right font-num"
                     />
-                    <span className="text-[10px] shrink-0" style={{ color: DC.textFaint }}>
+                    <span className="text-[10px] shrink-0" style={{ color: DC.textSecondary }}>
                       {t(lang, "yenPerYear")}
                     </span>
                   </div>
@@ -361,7 +363,7 @@ export function ScenarioSettingsDialog({
                       onCommit={() => commit(draft)}
                       className="h-8 w-28 text-xs text-right font-num"
                     />
-                    <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                    <span className="text-[11px]" style={{ color: DC.textSecondary }}>
                       {t(lang, "yenPerYear")}
                     </span>
                   </div>
@@ -390,7 +392,7 @@ export function ScenarioSettingsDialog({
               {draft.family.kids.map((kid, kidIdx) => (
                 <div key={kidIdx} className="rounded-lg border p-3 flex flex-col gap-2" style={{ borderColor: DC.trackAlt }}>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs" style={{ color: DC.textFaint }}>
+                    <span className="text-xs" style={{ color: DC.textSecondary }}>
                       {t(lang, "birthYear")}
                     </span>
                     <Input
@@ -403,7 +405,7 @@ export function ScenarioSettingsDialog({
                       }}
                       className="h-7 w-20 text-xs font-num"
                     />
-                    <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                    <span className="text-[11px]" style={{ color: DC.textSecondary }}>
                       {ageLabel(lang, kid.birthYear, false)}
                     </span>
                     <button
@@ -415,7 +417,7 @@ export function ScenarioSettingsDialog({
                         })
                       }
                       className="ml-auto p-1 rounded transition-all hover:bg-muted"
-                      style={{ color: DC.textFaint }}
+                      style={{ color: DC.textSecondary }}
                     >
                       <Trash2 size={13} />
                     </button>
@@ -439,7 +441,7 @@ export function ScenarioSettingsDialog({
                     <HelpTip text={t(lang, "netIncomeHelp")} />
                   </span>
                   <div className="flex items-center gap-2 flex-wrap pl-1">
-                    <span className="text-[11px] w-14 shrink-0" style={{ color: DC.textFaint }}>
+                    <span className="text-[11px] w-14 shrink-0" style={{ color: DC.textSecondary }}>
                       {t(lang, "netMonthly")}
                     </span>
                     <YenInput
@@ -450,7 +452,7 @@ export function ScenarioSettingsDialog({
                       onCommit={() => commit(draft)}
                       className="h-8 w-28 text-xs text-right font-num"
                     />
-                    <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                    <span className="text-[11px]" style={{ color: DC.textSecondary }}>
                       {t(lang, "yenPerMonth")}
                     </span>
                     <Input
@@ -465,12 +467,12 @@ export function ScenarioSettingsDialog({
                       onBlur={() => commit(draft)}
                       className="h-8 w-16 text-xs text-right font-num"
                     />
-                    <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                    <span className="text-[11px]" style={{ color: DC.textSecondary }}>
                       {t(lang, "raisePerYear")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap pl-1">
-                    <span className="text-[11px] w-14 shrink-0" style={{ color: DC.textFaint }}>
+                    <span className="text-[11px] w-14 shrink-0" style={{ color: DC.textSecondary }}>
                       {t(lang, "netBonus")}
                     </span>
                     <YenInput
@@ -481,7 +483,7 @@ export function ScenarioSettingsDialog({
                       onCommit={() => commit(draft)}
                       className="h-8 w-28 text-xs text-right font-num"
                     />
-                    <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                    <span className="text-[11px]" style={{ color: DC.textSecondary }}>
                       {t(lang, "yenPerYear")}
                     </span>
                   </div>
@@ -515,7 +517,7 @@ export function ScenarioSettingsDialog({
                       </button>
                     </div>
                     {draft.income[row.key].leavePeriods.length === 0 ? (
-                      <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                      <span className="text-[11px]" style={{ color: DC.textSecondary }}>
                         {t(lang, "leaveNoPeriods")}
                       </span>
                     ) : (
@@ -540,7 +542,7 @@ export function ScenarioSettingsDialog({
                               className={`h-7 ${w} text-[11px] text-right font-num`}
                             />
                           ))}
-                          <span className="text-[10.5px]" style={{ color: DC.textFaint }}>
+                          <span className="text-[10.5px]" style={{ color: DC.textSecondary }}>
                             {t(lang, "to")}
                           </span>
                           {(
@@ -562,7 +564,7 @@ export function ScenarioSettingsDialog({
                               className={`h-7 ${w} text-[11px] text-right font-num`}
                             />
                           ))}
-                          <span className="text-[10.5px] shrink-0" style={{ color: DC.textFaint }}>
+                          <span className="text-[10.5px] shrink-0" style={{ color: DC.textSecondary }}>
                             {t(lang, "leaveIncomePercent")}
                           </span>
                           <Input
@@ -576,7 +578,7 @@ export function ScenarioSettingsDialog({
                             onBlur={() => commit(draft)}
                             className="h-7 w-14 text-[11px] text-right font-num"
                           />
-                          <span className="text-[10.5px]" style={{ color: DC.textFaint }}>
+                          <span className="text-[10.5px]" style={{ color: DC.textSecondary }}>
                             %
                           </span>
                           <button
@@ -594,7 +596,7 @@ export function ScenarioSettingsDialog({
                               })
                             }
                             className="p-1 rounded transition-all hover:bg-muted ml-auto"
-                            style={{ color: DC.textFaint }}
+                            style={{ color: DC.textSecondary }}
                           >
                             <X size={12} />
                           </button>
@@ -614,7 +616,7 @@ export function ScenarioSettingsDialog({
                   onCommit={() => commit(draft)}
                   className="h-8 w-28 text-xs text-right font-num"
                 />
-                <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                <span className="text-[11px]" style={{ color: DC.textSecondary }}>
                   {t(lang, "yenPerMonth")}
                 </span>
               </div>
@@ -622,7 +624,7 @@ export function ScenarioSettingsDialog({
                 <span className="text-xs w-24" style={{ color: DC.textSecondary }}>
                   {t(lang, "publicAllowance")}
                 </span>
-                <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                <span className="text-[11px]" style={{ color: DC.textSecondary }}>
                   {t(lang, "publicAllowanceDetail")}
                 </span>
               </div>
@@ -693,7 +695,7 @@ export function ScenarioSettingsDialog({
                       onBlur={() => commit(draft)}
                       className="h-8 w-16 text-xs text-right font-num"
                     />
-                    <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                    <span className="text-[11px]" style={{ color: DC.textSecondary }}>
                       {t(lang, "inflationUnit")}
                     </span>
                   </div>
@@ -724,6 +726,25 @@ export function ScenarioSettingsDialog({
 
                   {draft.family.spouse && lifePhase === "pre" ? (
                     <>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const listKey = lifeSub === "fixed" ? "preFixed" : "preVariable";
+                            const sourceCats = lifeSub === "fixed" ? fixedCats : variableCats;
+                            const copied = sourceCats.map((c) => ({
+                              id: `li${Date.now()}-${c.id}`,
+                              label: c.name,
+                              monthlyYen: Math.round(c.budget / vndPerJpy),
+                            }));
+                            commit({ ...draft, cohabitation: { ...draft.cohabitation, [listKey]: copied } });
+                          }}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold cursor-pointer transition-all hover:brightness-95"
+                          style={{ backgroundColor: DC.track, color: DC.textSecondary }}
+                        >
+                          {t(lang, "copyFromPost")}
+                        </button>
+                      </div>
                       {(lifeSub === "fixed" ? draft.cohabitation.preFixed : draft.cohabitation.preVariable).map((item, itemIdx) => {
                         const listKey = lifeSub === "fixed" ? "preFixed" : "preVariable";
                         return (
@@ -748,7 +769,7 @@ export function ScenarioSettingsDialog({
                               onCommit={() => commit(draft)}
                               className="h-8 w-28 text-xs text-right font-num"
                             />
-                            <span className="text-[11px] shrink-0" style={{ color: DC.textFaint }}>
+                            <span className="text-[11px] shrink-0" style={{ color: DC.textSecondary }}>
                               {t(lang, "yenPerMonth")}
                             </span>
                             <button
@@ -763,7 +784,7 @@ export function ScenarioSettingsDialog({
                                 })
                               }
                               className="p-1 rounded transition-all hover:bg-muted"
-                              style={{ color: DC.textFaint }}
+                              style={{ color: DC.textSecondary }}
                             >
                               <X size={13} />
                             </button>
@@ -911,7 +932,7 @@ export function ScenarioSettingsDialog({
                           onCommit={() => commit(draft)}
                           className="h-7 w-28 text-[11px] text-right font-num"
                         />
-                        <span className="text-[10px]" style={{ color: DC.textFaint }}>
+                        <span className="text-[10px]" style={{ color: DC.textSecondary }}>
                           {t(lang, "yenPerYear")}
                         </span>
                       </div>
@@ -931,7 +952,7 @@ export function ScenarioSettingsDialog({
                     </label>
                     {draft.travel.enabled && (
                       <div className="flex items-center gap-1.5 flex-wrap pl-6">
-                        <span className="text-[10.5px]" style={{ color: DC.textFaint }}>
+                        <span className="text-[10.5px]" style={{ color: DC.textSecondary }}>
                           {t(lang, "travelStartYear")}
                         </span>
                         <Select
@@ -955,7 +976,7 @@ export function ScenarioSettingsDialog({
                           onCommit={() => commit(draft)}
                           className="h-7 w-28 text-[11px] text-right font-num"
                         />
-                        <span className="text-[10px]" style={{ color: DC.textFaint }}>
+                        <span className="text-[10px]" style={{ color: DC.textSecondary }}>
                           {t(lang, "yenPerYear")}
                         </span>
                       </div>
@@ -1026,7 +1047,7 @@ export function ScenarioSettingsDialog({
                         type="button"
                         onClick={() => commit({ ...draft, events: draft.events.filter((_, ix) => ix !== i) })}
                         className="p-1 rounded transition-all hover:bg-muted"
-                        style={{ color: DC.textFaint }}
+                        style={{ color: DC.textSecondary }}
                       >
                         <X size={13} />
                       </button>
@@ -1044,7 +1065,7 @@ export function ScenarioSettingsDialog({
                       })
                     }
                     className="flex items-center gap-1.5 justify-center px-3 py-2 rounded-lg border border-dashed text-xs font-semibold cursor-pointer"
-                    style={{ borderColor: DC.cardBorder, color: DC.textFaint }}
+                    style={{ borderColor: DC.cardBorder, color: DC.textSecondary }}
                   >
                     <Plus size={13} /> {t(lang, "addEvent")}
                   </button>
@@ -1067,7 +1088,7 @@ export function ScenarioSettingsDialog({
                   onBlur={() => commit(draft)}
                   className="h-8 w-20 text-xs text-right font-num"
                 />
-                <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                <span className="text-[11px]" style={{ color: DC.textSecondary }}>
                   {t(lang, "returnRateUnit")}
                 </span>
               </div>
@@ -1082,7 +1103,7 @@ export function ScenarioSettingsDialog({
                   onBlur={() => commit(draft)}
                   className="h-8 w-20 text-xs text-right font-num"
                 />
-                <span className="text-[11px]" style={{ color: DC.textFaint }}>
+                <span className="text-[11px]" style={{ color: DC.textSecondary }}>
                   {t(lang, "investRatioUnit")}
                 </span>
               </div>
@@ -1116,9 +1137,6 @@ export function ScenarioSettingsDialog({
               </div>
             ) : (
               <div className="flex items-center justify-end gap-2 flex-wrap">
-                <span className="text-[11px] flex-1" style={{ color: DC.textFaint }}>
-                  {t(lang, "saveHint")}
-                </span>
                 <Button size="sm" variant="outline" onClick={() => onOpenChange(false)}>
                   {t(lang, "close")}
                 </Button>

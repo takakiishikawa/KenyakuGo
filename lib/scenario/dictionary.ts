@@ -82,6 +82,7 @@ export const DICT = {
     moveInBonusHelp: "同棲開始年に一度だけ収入として加算されます(例: 相手が共通口座に入れる資金)。",
     preCohabitation: "同棲前",
     postCohabitation: "同棲後",
+    copyFromPost: "同棲後の内容をコピー",
     addLifeItem: "項目を追加",
     newLifeItemLabel: "新しい項目",
 
@@ -216,6 +217,7 @@ export const DICT = {
     moveInBonusHelp: "Added once, in the cohabitation start year (e.g. funds your partner puts into the joint account).",
     preCohabitation: "Pre-cohabitation",
     postCohabitation: "Post-cohabitation",
+    copyFromPost: "Copy from post-cohabitation",
     addLifeItem: "Add item",
     newLifeItemLabel: "New item",
 

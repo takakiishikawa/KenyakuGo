@@ -415,6 +415,7 @@ export default function SimulationPage() {
         onDeleteOverride={onDeleteOverride}
         lang={lang}
         currency={currency}
+        vndPerJpy={vndPerJpy}
       />
 
       <ScenarioListDialog

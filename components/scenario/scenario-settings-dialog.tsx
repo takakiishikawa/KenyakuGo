@@ -668,7 +668,7 @@ export function ScenarioSettingsDialog({
                         key={s.k}
                         type="button"
                         onClick={() => setLifeSub(s.k)}
-                        className="px-3 py-1 rounded-md text-sm font-semibold cursor-pointer"
+                        className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer"
                         style={{
                           backgroundColor: lifeSub === s.k ? DC.primary : "transparent",
                           color: lifeSub === s.k ? "#fff" : DC.textSecondary,
@@ -708,7 +708,7 @@ export function ScenarioSettingsDialog({
                           key={s.k}
                           type="button"
                           onClick={() => setLifePhase(s.k)}
-                          className="px-3 py-1 rounded-md text-sm font-semibold cursor-pointer"
+                          className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer"
                           style={{
                             backgroundColor: lifePhase === s.k ? DC.cardBg : "transparent",
                             color: DC.textPrimary,

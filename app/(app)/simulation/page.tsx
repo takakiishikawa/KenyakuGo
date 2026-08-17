@@ -392,6 +392,12 @@ export default function SimulationPage() {
           onToggleExpandAll={toggleExpandAll}
           onToggleRow={toggleRow}
           lang={lang}
+          // 月次表示で今年を見ている時だけ、当月の列がひと目でわかるようハイライトする。
+          currentColumnLabel={
+            timeMode === "monthly" && focusYear === CUR_YEAR
+              ? `${CUR_YEAR}/${String(new Date().getMonth() + 1).padStart(2, "0")}`
+              : null
+          }
         />
       ) : (
         <div className="flex flex-col gap-2.5">

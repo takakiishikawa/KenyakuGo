@@ -24,6 +24,7 @@ export function ScenarioTable({
   onToggleExpandAll,
   onToggleRow,
   lang,
+  currentColumnLabel = null,
 }: {
   rows: ScenarioTableRow[];
   columnLabels: string[];
@@ -32,6 +33,8 @@ export function ScenarioTable({
   onToggleExpandAll: () => void;
   onToggleRow: (key: string) => void;
   lang: Lang;
+  // 一致する列(月次表示の当月など)をハイライトする。無ければハイライトしない。
+  currentColumnLabel?: string | null;
 }) {
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const bodyScrollRef = useRef<HTMLDivElement>(null);
@@ -98,22 +101,26 @@ export function ScenarioTable({
                 >
                   {firstColumnLabel}
                 </th>
-                {columnLabels.map((label, i) => (
-                  <th
-                    key={i}
-                    className="text-right whitespace-nowrap"
-                    style={{
-                      backgroundColor: DC.headerBg,
-                      color: DC.textPrimary,
-                      fontSize: 11.5,
-                      fontWeight: 700,
-                      padding: "11px 14px",
-                      borderBottom: `1px solid ${DC.cardBorder}`,
-                    }}
-                  >
-                    {label}
-                  </th>
-                ))}
+                {columnLabels.map((label, i) => {
+                  const isCurrent = label === currentColumnLabel;
+                  return (
+                    <th
+                      key={i}
+                      className="text-right whitespace-nowrap"
+                      style={{
+                        backgroundColor: isCurrent ? DC.primaryTint : DC.headerBg,
+                        color: isCurrent ? DC.primaryHover : DC.textPrimary,
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        padding: "11px 14px",
+                        borderBottom: `1px solid ${DC.cardBorder}`,
+                        boxShadow: isCurrent ? `inset 0 2px 0 ${DC.primary}` : undefined,
+                      }}
+                    >
+                      {label}
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
           </table>
@@ -162,21 +169,25 @@ export function ScenarioTable({
                       {row.label}
                     </span>
                   </td>
-                  {row.cells.map((cell, i) => (
-                    <td
-                      key={i}
-                      className="text-right whitespace-nowrap overflow-hidden text-ellipsis"
-                      style={{
-                        padding: "9px 14px",
-                        fontSize: 12.5,
-                        fontWeight: row.bold ? 700 : row.depth === 0 ? 600 : 400,
-                        color: cell.negative ? DC.danger : DC.textPrimary,
-                        borderBottom: `1px solid ${DC.trackAlt}`,
-                      }}
-                    >
-                      {cell.fmt}
-                    </td>
-                  ))}
+                  {row.cells.map((cell, i) => {
+                    const isCurrent = columnLabels[i] === currentColumnLabel;
+                    return (
+                      <td
+                        key={i}
+                        className="text-right whitespace-nowrap overflow-hidden text-ellipsis"
+                        style={{
+                          padding: "9px 14px",
+                          fontSize: 12.5,
+                          fontWeight: row.bold ? 700 : row.depth === 0 ? 600 : 400,
+                          color: cell.negative ? DC.danger : DC.textPrimary,
+                          backgroundColor: isCurrent ? DC.primaryTint : undefined,
+                          borderBottom: `1px solid ${DC.trackAlt}`,
+                        }}
+                      >
+                        {cell.fmt}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

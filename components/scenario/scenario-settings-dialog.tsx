@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Receipt, Trash2, X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -19,6 +19,7 @@ import type { DisplayCurrency } from "@/components/currency-switch";
 import { formatJPY, formatVND } from "@/lib/format";
 import type { CategoryBudgetOverride } from "@/lib/category-budget";
 import { CategoryBudgetCard, type CategoryForCard } from "@/components/category-budget-card";
+import { LifeItemCard } from "@/components/scenario/life-item-card";
 import { EDU_STAGES } from "@/lib/scenario/education-costs";
 import { t, tf, type Lang } from "@/lib/scenario/dictionary";
 import { DC } from "@/lib/scenario/design-colors";
@@ -209,7 +210,7 @@ export function ScenarioSettingsDialog({
                 const amount = kidEdu[stage.key] ?? stage.options[0].amountYen;
                 return (
                   <div key={stage.key} className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs w-24 shrink-0 flex items-center gap-1" style={{ color: DC.textSecondary }}>
+                    <span className="text-sm w-24 shrink-0 flex items-center gap-1" style={{ color: DC.textSecondary }}>
                       {lang === "ja" ? stage.labelJa : stage.labelEn}
                       <HelpTip text={lang === "ja" ? stage.tipJa : stage.tipEn} />
                     </span>
@@ -307,7 +308,7 @@ export function ScenarioSettingsDialog({
           {configTab === "family" && (
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2.5">
-                <span className="text-xs w-24" style={{ color: DC.textSecondary }}>
+                <span className="text-sm w-24" style={{ color: DC.textSecondary }}>
                   {t(lang, "spouse")}
                 </span>
                 <div className="flex gap-0.5 p-0.5 rounded-lg" style={{ backgroundColor: DC.track }}>
@@ -334,7 +335,7 @@ export function ScenarioSettingsDialog({
               {draft.family.spouse && (
                 <div className="flex flex-col gap-2 rounded-lg border p-2.5" style={{ borderColor: DC.trackAlt }}>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs w-32 shrink-0 flex items-center gap-1" style={{ color: DC.textSecondary }}>
+                    <span className="text-sm w-32 shrink-0 flex items-center gap-1" style={{ color: DC.textSecondary }}>
                       {t(lang, "cohabitationStartYear")}
                       <HelpTip text={t(lang, "cohabitationHelp")} />
                     </span>
@@ -355,7 +356,7 @@ export function ScenarioSettingsDialog({
                     </Select>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs w-32 shrink-0 flex items-center gap-1" style={{ color: DC.textSecondary }}>
+                    <span className="text-sm w-32 shrink-0 flex items-center gap-1" style={{ color: DC.textSecondary }}>
                       {t(lang, "moveInBonus")}
                       <HelpTip text={t(lang, "moveInBonusHelp")} />
                     </span>
@@ -373,7 +374,7 @@ export function ScenarioSettingsDialog({
               )}
 
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold" style={{ color: DC.textSecondary }}>
+                <span className="text-sm font-semibold" style={{ color: DC.textSecondary }}>
                   {t(lang, "children")}
                 </span>
                 <button
@@ -427,7 +428,7 @@ export function ScenarioSettingsDialog({
 
                   {draft.family.spouse && (
                   <div className="flex flex-col gap-1.5 pt-2 border-t" style={{ borderColor: DC.trackAlt }}>
-                    <span className="text-xs font-semibold flex items-center gap-1" style={{ color: DC.textPrimary }}>
+                    <span className="text-sm font-semibold flex items-center gap-1" style={{ color: DC.textPrimary }}>
                       {t(lang, "leaveParentLabel")}
                       <HelpTip text={t(lang, "leaveHelp")} />
                     </span>
@@ -458,7 +459,7 @@ export function ScenarioSettingsDialog({
                     </div>
                     {kid.leaveParent !== "none" && (
                       <div className="flex items-center gap-2 pl-0.5">
-                        <span className="text-xs shrink-0" style={{ color: DC.textSecondary }}>
+                        <span className="text-sm shrink-0" style={{ color: DC.textSecondary }}>
                           {t(lang, "leaveExtensionYears")}
                         </span>
                         <Input
@@ -499,7 +500,7 @@ export function ScenarioSettingsDialog({
                     <HelpTip text={t(lang, "netIncomeHelp")} />
                   </span>
                   <div className="flex items-center gap-2 flex-wrap pl-1">
-                    <span className="text-xs w-14 shrink-0" style={{ color: DC.textSecondary }}>
+                    <span className="text-sm w-14 shrink-0" style={{ color: DC.textSecondary }}>
                       {t(lang, "netMonthly")}
                     </span>
                     <YenInput
@@ -530,7 +531,7 @@ export function ScenarioSettingsDialog({
                     </span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap pl-1">
-                    <span className="text-xs w-14 shrink-0" style={{ color: DC.textSecondary }}>
+                    <span className="text-sm w-14 shrink-0" style={{ color: DC.textSecondary }}>
                       {t(lang, "netBonus")}
                     </span>
                     <YenInput
@@ -565,7 +566,7 @@ export function ScenarioSettingsDialog({
                   </span>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap pl-1">
-                  <span className="text-xs shrink-0" style={{ color: DC.textSecondary }}>
+                  <span className="text-sm shrink-0" style={{ color: DC.textSecondary }}>
                     {t(lang, "sideIncomePeriod")}
                   </span>
                   <Select
@@ -679,7 +680,7 @@ export function ScenarioSettingsDialog({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-xs w-24 flex items-center gap-1" style={{ color: DC.textSecondary }}>
+                    <span className="text-sm w-24 flex items-center gap-1" style={{ color: DC.textSecondary }}>
                       {t(lang, "inflationRate")}
                       <HelpTip text={t(lang, "inflationHelp")} />
                     </span>
@@ -721,59 +722,67 @@ export function ScenarioSettingsDialog({
 
                   {draft.family.spouse && lifePhase === "pre" ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {(lifeSub === "fixed" ? draft.cohabitation.preFixed : draft.cohabitation.preVariable).map((item, itemIdx) => {
+                      {(() => {
                         const listKey = lifeSub === "fixed" ? "preFixed" : "preVariable";
-                        return (
-                          <div
+                        return draft.cohabitation[listKey].map((item) => (
+                          <LifeItemCard
                             key={item.id}
-                            className="flex items-center gap-2.5 rounded-xl border py-3 px-3.5"
-                            style={{ borderColor: DC.cardBorder, backgroundColor: DC.rowAltBg }}
-                          >
-                            <div
-                              className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg"
-                              style={{ backgroundColor: DC.track }}
-                            >
-                              <Receipt size={14} style={{ color: DC.textSecondary }} />
-                            </div>
-                            <Input
-                              value={item.label}
-                              onChange={(e) => {
-                                const list = [...draft.cohabitation[listKey]];
-                                list[itemIdx] = { ...list[itemIdx], label: e.target.value };
-                                setDraft({ ...draft, cohabitation: { ...draft.cohabitation, [listKey]: list } });
-                              }}
-                              onBlur={() => commit(draft)}
-                              className="h-8 text-sm flex-1 min-w-0"
-                            />
-                            <YenInput
-                              value={item.monthlyYen}
-                              onChange={(n) => {
-                                const list = [...draft.cohabitation[listKey]];
-                                list[itemIdx] = { ...list[itemIdx], monthlyYen: n };
-                                setDraft({ ...draft, cohabitation: { ...draft.cohabitation, [listKey]: list } });
-                              }}
-                              onCommit={() => commit(draft)}
-                              className="h-8 text-sm text-right w-24 shrink-0 font-num rounded-lg"
-                            />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                commit({
-                                  ...draft,
-                                  cohabitation: {
-                                    ...draft.cohabitation,
-                                    [listKey]: draft.cohabitation[listKey].filter((_, ix) => ix !== itemIdx),
-                                  },
-                                })
-                              }
-                              className="p-1 rounded transition-all hover:bg-muted shrink-0"
-                              style={{ color: DC.textFaint }}
-                            >
-                              <X size={13} />
-                            </button>
-                          </div>
-                        );
-                      })}
+                            item={item}
+                            lang={lang}
+                            onRename={(id, label) =>
+                              commit({
+                                ...draft,
+                                cohabitation: {
+                                  ...draft.cohabitation,
+                                  [listKey]: draft.cohabitation[listKey].map((it) => (it.id === id ? { ...it, label } : it)),
+                                },
+                              })
+                            }
+                            onAmountChange={(id, monthlyYen) =>
+                              commit({
+                                ...draft,
+                                cohabitation: {
+                                  ...draft.cohabitation,
+                                  [listKey]: draft.cohabitation[listKey].map((it) => (it.id === id ? { ...it, monthlyYen } : it)),
+                                },
+                              })
+                            }
+                            onSchedule={(itemId, month, endMonth, amountYen) =>
+                              commit({
+                                ...draft,
+                                cohabitation: {
+                                  ...draft.cohabitation,
+                                  [listKey]: draft.cohabitation[listKey].map((it) =>
+                                    it.id === itemId
+                                      ? { ...it, overrides: [...it.overrides, { id: `ov${Date.now()}`, month, endMonth, amountYen }] }
+                                      : it,
+                                  ),
+                                },
+                              })
+                            }
+                            onDeleteOverride={(itemId, overrideId) =>
+                              commit({
+                                ...draft,
+                                cohabitation: {
+                                  ...draft.cohabitation,
+                                  [listKey]: draft.cohabitation[listKey].map((it) =>
+                                    it.id === itemId ? { ...it, overrides: it.overrides.filter((o) => o.id !== overrideId) } : it,
+                                  ),
+                                },
+                              })
+                            }
+                            onDelete={(id) =>
+                              commit({
+                                ...draft,
+                                cohabitation: {
+                                  ...draft.cohabitation,
+                                  [listKey]: draft.cohabitation[listKey].filter((it) => it.id !== id),
+                                },
+                              })
+                            }
+                          />
+                        ));
+                      })()}
                       <div
                         className="flex items-center gap-2 rounded-xl border border-dashed py-3 px-3.5"
                         style={{ borderColor: DC.cardBorder }}
@@ -801,7 +810,7 @@ export function ScenarioSettingsDialog({
                                 ...draft.cohabitation,
                                 [listKey]: [
                                   ...draft.cohabitation[listKey],
-                                  { id: `li${Date.now()}`, label: addLifeItemLabel.trim(), monthlyYen: isNaN(val) ? 0 : val },
+                                  { id: `li${Date.now()}`, label: addLifeItemLabel.trim(), monthlyYen: isNaN(val) ? 0 : val, overrides: [] },
                                 ],
                               },
                             });
@@ -964,7 +973,7 @@ export function ScenarioSettingsDialog({
           {configTab === "savingsTab" && (
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <span className="text-xs w-28 flex items-center gap-1" style={{ color: DC.textSecondary }}>
+                <span className="text-sm w-28 flex items-center gap-1" style={{ color: DC.textSecondary }}>
                   {t(lang, "returnRate")}
                   <HelpTip text={t(lang, "returnRateHelp")} />
                 </span>
@@ -980,7 +989,7 @@ export function ScenarioSettingsDialog({
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs w-28" style={{ color: DC.textSecondary }}>
+                <span className="text-sm w-28" style={{ color: DC.textSecondary }}>
                   {t(lang, "investRatio")}
                 </span>
                 <Input

@@ -92,9 +92,17 @@ export default function SimulationPage() {
     [scenarios, editTargetId, primary],
   );
 
+  // 「展開する」は 総収入/総支出/総貯蓄 とその直下(固定費/変動費など)までを開く。
+  // 固定費/変動費のさらに下(カテゴリ単位の内訳)は自動では開かず、クリックした
+  // ときだけ開く(一気に全カテゴリが開いて長くなりすぎるのを防ぐため)。
+  const NO_AUTO_EXPAND_KEYS = useMemo(() => new Set(["expense.fixed", "expense.variable"]), []);
   const isExpanded = useCallback(
-    (key: string) => (expandedRows[key] !== undefined ? expandedRows[key] : expandAllFlag),
-    [expandedRows, expandAllFlag],
+    (key: string) => {
+      if (expandedRows[key] !== undefined) return expandedRows[key];
+      if (NO_AUTO_EXPAND_KEYS.has(key)) return false;
+      return expandAllFlag;
+    },
+    [expandedRows, expandAllFlag, NO_AUTO_EXPAND_KEYS],
   );
   const toggleRow = useCallback(
     (key: string) => setExpandedRows((prev) => ({ ...prev, [key]: !isExpanded(key) })),

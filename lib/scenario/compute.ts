@@ -138,12 +138,31 @@ function renewalFeeYenForYear(
   return monthlyYen * category.renewal_fee_months;
 }
 
-// 同棲前の暮らし項目(シンプルな月額固定リスト)の、その年の月額。
-// 実カテゴリと違って期間別オーバーライドは持たないので、インフレ率だけ
-// 「今年」からの経過年数ぶん複利適用する。
-function preLifeMonthlyYen(item: { monthlyYen: number }, year: number, inflationRatePercent: number, nowYear: number): number {
-  const yearsBeyond = Math.max(0, year - nowYear);
-  return item.monthlyYen * Math.pow(1 + inflationRatePercent / 100, yearsBeyond);
+// 同棲前の暮らし項目の、その年の月額。実カテゴリ(projectCategoryMonthlyYen)と
+// 同じ考え方: 持続的オーバーライド(endMonth===null)があればそれを起点にし、
+// それより先の年数ぶんだけインフレ率を複利適用する。
+function preLifeMonthlyYen(
+  item: { monthlyYen: number; overrides: { month: string; endMonth: string | null; amountYen: number }[] },
+  year: number,
+  inflationRatePercent: number,
+  nowYear: number,
+): number {
+  const persistent = item.overrides
+    .filter((o) => o.endMonth === null)
+    .slice()
+    .sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
+
+  let base = item.monthlyYen;
+  let baseYear = nowYear;
+  for (const o of persistent) {
+    const oYear = parseInt(o.month.slice(0, 4), 10);
+    if (oYear <= year) {
+      base = o.amountYen;
+      baseYear = oYear;
+    }
+  }
+  const yearsBeyond = Math.max(0, year - baseYear);
+  return base * Math.pow(1 + inflationRatePercent / 100, yearsBeyond);
 }
 
 // 今年ぶんは、予算projectionだけでなく「今日までの実績を年換算した見込み」も

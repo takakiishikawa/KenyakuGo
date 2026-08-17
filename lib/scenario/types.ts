@@ -41,13 +41,26 @@ const eventSchema = z.object({
   amountYen: z.number(),
 });
 
+// 同棲前の暮らし項目に対する期間別オーバーライド。実カテゴリの
+// category_budget_overrides と同じ考え方(endMonth===nullなら持続的、それ以外は
+// 期間限定)だが、こちらはJSONB内で完結し金額は最初から円建て(VND換算不要)。
+const lifeItemOverrideSchema = z.object({
+  id: z.string(),
+  month: z.string(), // "YYYY-MM"
+  endMonth: z.string().nullable(),
+  amountYen: z.number().min(0),
+});
+
 // 同棲前の暮らし(固定費/変動費)。同棲後は既存の categories /
 // category_budget_overrides をそのまま使うが、同棲前はDashboardと共有する実データが
 // 無い(別居中の想定支出のため)ので、シナリオ側にシンプルな一覧として持つ。
+// 同棲後のカテゴリカードと見た目・機能(期間別オーバーライドの予約)を完全に
+// 揃えるため、overridesを持たせている。
 const lifeItemSchema = z.object({
   id: z.string(),
   label: z.string(),
   monthlyYen: z.number().min(0),
+  overrides: z.array(lifeItemOverrideSchema),
 });
 
 // startYear年から「同棲後」の暮らし(共有categories)・配偶者の収入が反映される。
@@ -143,6 +156,16 @@ function normalizeIncomeEntry(raw: unknown, fallback: ScenarioConfig["income"]["
   };
 }
 
+function normalizeLifeItem(raw: unknown): ScenarioConfig["cohabitation"]["preFixed"][number] {
+  const r = isRecord(raw) ? raw : {};
+  return {
+    id: typeof r.id === "string" ? r.id : `li${Math.random().toString(36).slice(2)}`,
+    label: typeof r.label === "string" ? r.label : "",
+    monthlyYen: typeof r.monthlyYen === "number" ? r.monthlyYen : 0,
+    overrides: Array.isArray(r.overrides) ? (r.overrides as ScenarioConfig["cohabitation"]["preFixed"][number]["overrides"]) : [],
+  };
+}
+
 function normalizeKid(raw: unknown): ScenarioConfig["family"]["kids"][number] {
   const r = isRecord(raw) ? raw : {};
   return {
@@ -178,8 +201,8 @@ export function normalizeScenarioConfig(raw: unknown): ScenarioConfig {
     cohabitation: {
       startYear: typeof cohabitation.startYear === "number" ? cohabitation.startYear : d.cohabitation.startYear,
       moveInBonusYen: typeof cohabitation.moveInBonusYen === "number" ? cohabitation.moveInBonusYen : d.cohabitation.moveInBonusYen,
-      preFixed: Array.isArray(cohabitation.preFixed) ? (cohabitation.preFixed as ScenarioConfig["cohabitation"]["preFixed"]) : [],
-      preVariable: Array.isArray(cohabitation.preVariable) ? (cohabitation.preVariable as ScenarioConfig["cohabitation"]["preVariable"]) : [],
+      preFixed: Array.isArray(cohabitation.preFixed) ? cohabitation.preFixed.map(normalizeLifeItem) : [],
+      preVariable: Array.isArray(cohabitation.preVariable) ? cohabitation.preVariable.map(normalizeLifeItem) : [],
     },
     education: isRecord(r.education) ? (r.education as ScenarioConfig["education"]) : d.education,
     wedding: (() => {

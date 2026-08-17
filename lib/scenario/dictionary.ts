@@ -15,7 +15,7 @@ export const DICT = {
     totalSavings: "総貯蓄",
     settingsBtn: "シミュレーション設定",
     scenarios: "シナリオ管理",
-    expandAll: "すべて展開",
+    expandAll: "展開する",
     collapseAll: "すべて折りたたむ",
     save: "保存",
     close: "閉じる",

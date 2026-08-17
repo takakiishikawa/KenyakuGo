@@ -54,7 +54,6 @@ export const DICT = {
     spouseNo: "なし",
     children: "子ども",
     addChild: "子どもを追加",
-    birthYear: "生まれ年",
     ageThisYear: "今年{age}歳",
 
     // 設定モーダル: 収入タブ
@@ -75,7 +74,6 @@ export const DICT = {
     unspecified: "指定なし",
     leaveParentLabel: "産休・育休",
     leaveParentNone: "なし",
-    leaveParentHusband: "本人",
     leaveParentWife: "配偶者",
     leaveExtensionYears: "延長育休",
     leaveExtensionYearsUnit: "年",
@@ -193,7 +191,6 @@ export const DICT = {
     spouseNo: "No",
     children: "Children",
     addChild: "Add a child",
-    birthYear: "Birth year",
     ageThisYear: "(turns {age} this year)",
 
     husbandIncome: "Your take-home",
@@ -213,7 +210,6 @@ export const DICT = {
     unspecified: "Unset",
     leaveParentLabel: "Parental leave",
     leaveParentNone: "None",
-    leaveParentHusband: "You",
     leaveParentWife: "Spouse",
     leaveExtensionYears: "Extended leave",
     leaveExtensionYearsUnit: "yr",

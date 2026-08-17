@@ -397,9 +397,6 @@ export function ScenarioSettingsDialog({
               {draft.family.kids.map((kid, kidIdx) => (
                 <div key={kidIdx} className="rounded-lg border p-3 flex flex-col gap-2.5" style={{ borderColor: DC.trackAlt }}>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm" style={{ color: DC.textSecondary }}>
-                      {t(lang, "birthYear")}
-                    </span>
                     <Input
                       type="number"
                       value={kid.birthYear}
@@ -428,6 +425,7 @@ export function ScenarioSettingsDialog({
                     </button>
                   </div>
 
+                  {draft.family.spouse && (
                   <div className="flex flex-col gap-1.5 pt-2 border-t" style={{ borderColor: DC.trackAlt }}>
                     <span className="text-xs font-semibold flex items-center gap-1" style={{ color: DC.textPrimary }}>
                       {t(lang, "leaveParentLabel")}
@@ -437,7 +435,6 @@ export function ScenarioSettingsDialog({
                       {(
                         [
                           { v: "none" as const, l: t(lang, "leaveParentNone") },
-                          { v: "husband" as const, l: t(lang, "leaveParentHusband") },
                           { v: "wife" as const, l: t(lang, "leaveParentWife") },
                         ]
                       ).map((o) => (
@@ -482,6 +479,7 @@ export function ScenarioSettingsDialog({
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
               ))}
             </div>

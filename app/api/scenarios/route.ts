@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthDb } from "@/lib/supabase/auth-db";
 import { getJpyToVndRate } from "@/lib/exchange-rate";
-import { scenarioConfigSchema, DEFAULT_SCENARIO_CONFIG } from "@/lib/scenario/types";
+import { scenarioConfigSchema, normalizeScenarioConfig, DEFAULT_SCENARIO_CONFIG } from "@/lib/scenario/types";
 
 // シナリオ一覧 + 為替レート(暮らしのVND予算をJPYへ換算するため)を1回で返す。
 // 「暮らし」の実額自体は /api/categories, /api/categories/overrides を別途叩く
@@ -23,7 +23,14 @@ export async function GET() {
     return NextResponse.json({ error: scenariosRes.error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ scenarios: scenariosRes.data ?? [], vndPerJpy });
+  // 収入モデル・cohabitation等を後から追加したため、古い形のまま保存されている
+  // シナリオがあってもクラッシュしないよう、返す前にデフォルト値で補完する。
+  const scenarios = (scenariosRes.data ?? []).map((s) => ({
+    ...s,
+    config: normalizeScenarioConfig(s.config),
+  }));
+
+  return NextResponse.json({ scenarios, vndPerJpy });
 }
 
 export async function POST(req: NextRequest) {

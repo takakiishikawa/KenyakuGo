@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthDb } from "@/lib/supabase/auth-db";
-import { scenarioConfigSchema } from "@/lib/scenario/types";
+import { scenarioConfigSchema, normalizeScenarioConfig } from "@/lib/scenario/types";
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const result = await getAuthDb();
@@ -28,7 +28,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    return NextResponse.json(data);
+    return NextResponse.json({ ...data, config: normalizeScenarioConfig(data.config) });
   }
 
   const updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -60,7 +60,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json({ ...data, config: normalizeScenarioConfig(data.config) });
 }
 
 export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {

@@ -100,6 +100,69 @@ export interface Scenario {
   updated_at: string;
 }
 
+// 収入モデル(額面→手取り月/ボーナス)・cohabitation・leavePeriods を後から追加した
+// ため、それより前に保存されたシナリオはこれらのキーを欠いた古い形のJSONBのまま
+// DBに残っている。normalizeScenarioConfig はそれを読み込む際にデフォルト値で
+// 補完し、compute.ts が undefined 参照でクラッシュしないようにする
+// (「/simulation This page couldn't load」の原因だった)。
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
+function normalizeIncomeEntry(raw: unknown, fallback: ScenarioConfig["income"]["husband"]): ScenarioConfig["income"]["husband"] {
+  const r = isRecord(raw) ? raw : {};
+  // 旧形式: { amountYen, raisePercent } (額面の月額のみ) → 手取り月額として引き継ぐ。
+  if (typeof r.amountYen === "number" && typeof r.netMonthlyYen !== "number") {
+    return {
+      netMonthlyYen: r.amountYen,
+      netBonusYen: 0,
+      raisePercent: typeof r.raisePercent === "number" ? r.raisePercent : fallback.raisePercent,
+      leavePeriods: [],
+    };
+  }
+  return {
+    netMonthlyYen: typeof r.netMonthlyYen === "number" ? r.netMonthlyYen : fallback.netMonthlyYen,
+    netBonusYen: typeof r.netBonusYen === "number" ? r.netBonusYen : fallback.netBonusYen,
+    raisePercent: typeof r.raisePercent === "number" ? r.raisePercent : fallback.raisePercent,
+    leavePeriods: Array.isArray(r.leavePeriods) ? (r.leavePeriods as ScenarioConfig["income"]["husband"]["leavePeriods"]) : [],
+  };
+}
+
+export function normalizeScenarioConfig(raw: unknown): ScenarioConfig {
+  const r = isRecord(raw) ? raw : {};
+  const d = DEFAULT_SCENARIO_CONFIG;
+  const family = isRecord(r.family) ? r.family : {};
+  const income = isRecord(r.income) ? r.income : {};
+  const side = isRecord(income.side) ? income.side : {};
+  const cohabitation = isRecord(r.cohabitation) ? r.cohabitation : {};
+  const savings = isRecord(r.savings) ? r.savings : {};
+
+  return {
+    family: {
+      spouse: typeof family.spouse === "boolean" ? family.spouse : d.family.spouse,
+      kids: Array.isArray(family.kids) ? (family.kids as ScenarioConfig["family"]["kids"]) : d.family.kids,
+    },
+    income: {
+      husband: normalizeIncomeEntry(income.husband, d.income.husband),
+      wife: normalizeIncomeEntry(income.wife, d.income.wife),
+      side: { amountYen: typeof side.amountYen === "number" ? side.amountYen : d.income.side.amountYen },
+    },
+    cohabitation: {
+      startYear: typeof cohabitation.startYear === "number" ? cohabitation.startYear : d.cohabitation.startYear,
+      moveInBonusYen: typeof cohabitation.moveInBonusYen === "number" ? cohabitation.moveInBonusYen : d.cohabitation.moveInBonusYen,
+      preFixed: Array.isArray(cohabitation.preFixed) ? (cohabitation.preFixed as ScenarioConfig["cohabitation"]["preFixed"]) : [],
+      preVariable: Array.isArray(cohabitation.preVariable) ? (cohabitation.preVariable as ScenarioConfig["cohabitation"]["preVariable"]) : [],
+    },
+    education: isRecord(r.education) ? (r.education as ScenarioConfig["education"]) : d.education,
+    events: Array.isArray(r.events) ? (r.events as ScenarioConfig["events"]) : d.events,
+    savings: {
+      returnRatePercent: typeof savings.returnRatePercent === "number" ? savings.returnRatePercent : d.savings.returnRatePercent,
+      investRatioPercent: typeof savings.investRatioPercent === "number" ? savings.investRatioPercent : d.savings.investRatioPercent,
+    },
+    inflationRatePercent: typeof r.inflationRatePercent === "number" ? r.inflationRatePercent : d.inflationRatePercent,
+  };
+}
+
 export const DEFAULT_SCENARIO_CONFIG: ScenarioConfig = {
   family: { spouse: true, kids: [] },
   income: {

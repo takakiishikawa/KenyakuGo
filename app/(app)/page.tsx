@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
+import { Inbox, TrendingDown, TrendingUp } from "lucide-react";
 import { getCategoryColors, getCategoryColorTint } from "@/lib/category-colors";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { makeFormatAmount } from "@/lib/currency";
@@ -172,6 +172,9 @@ function VariableCategoryCard({
   );
 }
 
+// Claude Design通り、固定費カードはアイコン+名前+金額のみのシンプルな1行
+// (進捗バー・%表示は無し — 固定費は毎月ほぼ一定額なので、実績/予算比較の
+// 表示は不要と判断)。
 function FixedCategoryCard({
   cat,
   onClick,
@@ -183,55 +186,30 @@ function FixedCategoryCard({
   formatAmount: (vnd: number) => string;
   lang: Lang;
 }) {
-  const pctNum = cat.budget > 0 ? Math.round((cat.actual / cat.budget) * 100) : null;
-  const over = cat.budget > 0 && cat.actual > cat.budget;
-  const near = pctNum !== null && pctNum >= 80 && !over;
-  const pctColor = over ? "var(--color-danger)" : near ? "var(--color-warning)" : "var(--color-text-secondary)";
-  const barColor = over ? "var(--color-danger)" : "var(--color-text-secondary)";
+  const amount = cat.actual > 0 ? cat.actual : cat.budget;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="text-left rounded-[13px] border p-[11px_14px] transition-all hover:bg-muted/40 active:scale-[0.98] active:bg-muted/60 cursor-pointer"
+      className="flex items-center gap-2.5 text-left rounded-[13px] border p-[11px_14px] transition-all hover:bg-muted/40 active:scale-[0.98] active:bg-muted/60 cursor-pointer"
       style={{ borderColor: "var(--color-border-default)", backgroundColor: "var(--color-surface-subtle)" }}
     >
-      <div className="flex items-center justify-between gap-2 mb-1.5">
-        <div className="flex items-center gap-2 min-w-0">
-          <div
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[9px]"
-            style={{ backgroundColor: "var(--kg-track)" }}
-          >
-            {(() => {
-              const Icon = getCategoryIcon(cat.name);
-              return <Icon size={14} style={{ color: "#6B5D45" }} />;
-            })()}
-          </div>
-          <span className="text-[13.5px] font-semibold truncate" style={{ color: "var(--color-text-primary)" }}>
-            {catLabel(lang, cat.name)}
-          </span>
-        </div>
-        {pctNum !== null && (
-          <span className="font-num text-[13px] font-bold shrink-0" style={{ color: pctColor }}>
-            {pctNum}%
-          </span>
-        )}
+      <div
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[9px]"
+        style={{ backgroundColor: "var(--kg-track)" }}
+      >
+        {(() => {
+          const Icon = getCategoryIcon(cat.name);
+          return <Icon size={14} style={{ color: "#6B5D45" }} />;
+        })()}
       </div>
-      <span className="text-[12.5px]" style={{ color: "var(--color-text-secondary)" }}>
-        <span className="font-num font-semibold" style={{ color: "var(--color-text-primary)" }}>
-          {formatAmount(cat.actual)}
-        </span>
-        {cat.budget > 0 && <span className="font-num"> / {formatAmount(cat.budget)}</span>}
+      <span className="text-[13px] font-semibold truncate flex-1 min-w-0" style={{ color: "var(--color-text-primary)" }}>
+        {catLabel(lang, cat.name)}
       </span>
-      <div className="mt-1.5">
-        <ProgressBar
-          actual={cat.actual}
-          budget={cat.budget}
-          todayPct={0}
-          showToday={false}
-          fillColor={barColor}
-        />
-      </div>
+      <span className="font-num text-[13px] font-bold shrink-0" style={{ color: "var(--color-text-primary)" }}>
+        {formatAmount(amount)}
+      </span>
     </button>
   );
 }
@@ -341,33 +319,10 @@ export default function Dashboard() {
     : [];
 
   const positive = (data?.savingsImpactVnd ?? 0) >= 0;
-  const variablePct =
-    data && data.variableTotalBudget > 0
-      ? Math.round((data.variableTotalActual / data.variableTotalBudget) * 100)
-      : 0;
-  const fixedPct =
-    data && data.fixedTotalBudget > 0
-      ? Math.round((data.fixedTotalActual / data.fixedTotalBudget) * 100)
-      : 0;
 
   return (
     <div>
       <div className="mt-6 flex flex-col gap-4">
-        {uncategorizedCount > 0 && (
-          <a
-            href="/transactions"
-            className="inline-flex w-fit items-center gap-2 rounded-full px-3.5 py-2 text-xs font-medium transition-all hover:brightness-95 active:scale-[0.98]"
-            style={{
-              backgroundColor: "var(--color-warning-subtle)",
-              color: "var(--color-warning)",
-            }}
-          >
-            <AlertTriangle size={13} className="shrink-0" />
-            {uncategorizedCount} transaction{uncategorizedCount === 1 ? "" : "s"} need review
-            <span className="underline">Review →</span>
-          </a>
-        )}
-
         <Card
           className="p-6 rounded-2xl animate-fade-up"
           style={{
@@ -377,47 +332,55 @@ export default function Dashboard() {
             boxShadow: CARD_SHADOW,
           }}
         >
-          {!data ? (
-            <Skeleton className="h-8 w-64 rounded-lg" />
-          ) : !hasBudgets ? (
-            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              Set a monthly budget for each category in Simulation settings → Life to see this month&apos;s forecast.
-            </p>
-          ) : data.forecastVnd === null ? (
-            <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-              No transactions yet this month.
-            </p>
-          ) : (
-            <div>
-              <p
-                className="text-xs font-semibold uppercase tracking-[0.06em] mb-2"
-                style={{ color: "var(--color-text-subtle)" }}
-              >
-                This month&apos;s forecast
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            {!data ? (
+              <Skeleton className="h-8 w-64 rounded-lg" />
+            ) : !hasBudgets ? (
+              <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                Set a monthly budget for each category in Simulation settings → Life to see this month&apos;s forecast.
               </p>
-              <p
-                className="font-display text-[38px] font-bold leading-none tracking-[-0.01em]"
-                style={{ color: "var(--color-text-primary)" }}
-              >
-                {formatAmount(data.forecastVnd)}
+            ) : data.forecastVnd === null ? (
+              <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
+                No transactions yet this month.
               </p>
-              <div className="flex items-center gap-2 mt-2.5">
-                {positive ? (
-                  <TrendingDown size={16} style={{ color: "var(--color-success)" }} />
-                ) : (
-                  <TrendingUp size={16} style={{ color: "var(--color-danger)" }} />
-                )}
-                <span
-                  className="text-sm font-medium"
-                  style={{ color: positive ? "var(--color-success)" : "var(--color-danger)" }}
+            ) : (
+              <div>
+                <p
+                  className="text-xs font-semibold uppercase tracking-[0.06em] mb-2"
+                  style={{ color: "var(--color-text-subtle)" }}
                 >
-                  {positive
-                    ? `On pace to come in ${formatAmount(data.savingsImpactVnd ?? 0)} under budget`
-                    : `On pace to go ${formatAmount(Math.abs(data.savingsImpactVnd ?? 0))} over budget`}
-                </span>
+                  This month&apos;s forecast
+                </p>
+                <div className="flex items-baseline gap-3.5 flex-wrap">
+                  <p
+                    className="font-display text-[38px] font-bold leading-none tracking-[-0.01em]"
+                    style={{ color: "var(--color-text-primary)" }}
+                  >
+                    {formatAmount(data.forecastVnd)}
+                  </p>
+                  <span
+                    className="flex items-center gap-1.5 text-sm font-medium"
+                    style={{ color: positive ? "var(--color-success)" : "var(--color-danger)" }}
+                  >
+                    {positive ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
+                    {positive
+                      ? `${formatAmount(data.savingsImpactVnd ?? 0)} under budget`
+                      : `${formatAmount(Math.abs(data.savingsImpactVnd ?? 0))} over budget`}
+                  </span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+            {uncategorizedCount > 0 && (
+              <a
+                href="/transactions"
+                className="flex items-center gap-2 rounded-[10px] px-3.5 py-2 text-xs font-semibold shrink-0 transition-all hover:brightness-95 active:scale-[0.98]"
+                style={{ backgroundColor: "#F7E1EA", border: "1px solid #F0C7D8", color: "#8C3A5E" }}
+              >
+                <Inbox size={14} className="shrink-0" />
+                {uncategorizedCount} to review →
+              </a>
+            )}
+          </div>
         </Card>
 
         <Card
@@ -430,18 +393,14 @@ export default function Dashboard() {
           }}
         >
           <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-            <div className="flex flex-col gap-0.5 shrink-0">
-              <span className="font-display text-[19px] font-semibold" style={{ color: "var(--color-text-primary)" }}>
-                Variable Costs
-              </span>
-              {data && data.variableTotalBudget > 0 && (
-                <span className="text-[11.5px]" style={{ color: "var(--color-text-subtle)" }}>
-                  On-track {todayPct}% (day {data.dayOfMonth}/{data.daysInMonth})
-                </span>
-              )}
-            </div>
+            <span className="font-display text-[19px] font-semibold shrink-0" style={{ color: "var(--color-text-primary)" }}>
+              Variable Costs
+            </span>
             {data && data.variableTotalBudget > 0 && (
-              <div className="flex-1 min-w-24 max-w-md">
+              <div
+                className="flex-1 min-w-24"
+                title={`On-track ${todayPct}% (day ${data.dayOfMonth}/${data.daysInMonth})`}
+              >
                 <ProgressBar
                   actual={data.variableTotalActual}
                   budget={data.variableTotalBudget}
@@ -455,7 +414,7 @@ export default function Dashboard() {
                 <b className="font-num" style={{ color: "var(--color-text-primary)" }}>
                   {formatAmount(data.variableTotalActual)}
                 </b>{" "}
-                / {formatAmount(data.variableTotalBudget)} &middot; {variablePct}%
+                / {formatAmount(data.variableTotalBudget)}
               </span>
             )}
           </div>
@@ -502,9 +461,9 @@ export default function Dashboard() {
             {data && data.fixedTotalBudget > 0 && (
               <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
                 <b className="font-num" style={{ color: "var(--color-text-primary)" }}>
-                  {formatAmount(data.fixedTotalActual)}
+                  {formatAmount(data.fixedTotalActual > 0 ? data.fixedTotalActual : data.fixedTotalBudget)}
                 </b>{" "}
-                / {formatAmount(data.fixedTotalBudget)} &middot; {fixedPct}%
+                / month
               </span>
             )}
           </div>

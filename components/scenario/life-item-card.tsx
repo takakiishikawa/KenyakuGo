@@ -7,6 +7,8 @@ import { t, tf, catLabel, type Lang } from "@/lib/scenario/dictionary";
 import { getCategoryColorTint, getCategoryHex } from "@/lib/category-colors";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { UNDELETABLE_CATEGORIES } from "@/lib/constants";
+import { formatJPY, formatVND } from "@/lib/format";
+import type { DisplayCurrency } from "@/components/currency-switch";
 import type { ScenarioConfig } from "@/lib/scenario/types";
 import {
   Button,
@@ -76,18 +78,22 @@ function overrideLabel(o: LifeItemOverride, isActive: boolean, lang: Lang): stri
   return isActive ? `${t(lang, "now")}: ${range}` : range;
 }
 
-function formatYenPlain(n: number): string {
-  return `¥${Math.round(n).toLocaleString()}`;
+function formatYenPlain(n: number, currency: DisplayCurrency, vndPerJpy: number): string {
+  return currency === "JPY" ? formatJPY(n) : formatVND(n * vndPerJpy);
 }
 
 function ScheduleLifeOverridePopover({
   categoryLabel,
   onSchedule,
   lang,
+  currency,
+  vndPerJpy,
 }: {
   categoryLabel: string;
   onSchedule: (month: string, endMonth: string | null, amountYen: number) => void;
   lang: Lang;
+  currency: DisplayCurrency;
+  vndPerJpy: number;
 }) {
   const monthOptions = getUpcomingMonths(12, lang);
   const [open, setOpen] = useState(false);
@@ -102,7 +108,9 @@ function ScheduleLifeOverridePopover({
 
   const handleSave = () => {
     const val = parseInt(amountInput.replace(/[^0-9]/g, ""), 10);
-    onSchedule(month, mode === "period" ? endMonth : null, isNaN(val) ? 0 : val);
+    const displayAmount = isNaN(val) ? 0 : val;
+    const amountYen = currency === "JPY" ? displayAmount : Math.round(displayAmount / vndPerJpy);
+    onSchedule(month, mode === "period" ? endMonth : null, amountYen);
     setAmountInput("");
     setOpen(false);
   };
@@ -185,7 +193,7 @@ function ScheduleLifeOverridePopover({
         <Input
           type="text"
           inputMode="numeric"
-          value={amountInput.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+          value={amountInput.replace(/\B(?=(\d{3})+(?!\d))/g, currency === "VND" ? "." : ",")}
           onChange={(e) => setAmountInput(e.target.value.replace(/[^0-9]/g, ""))}
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSave();
@@ -212,6 +220,8 @@ export function LifeItemCard({
   onDeleteOverride,
   onDelete,
   lang,
+  currency,
+  vndPerJpy,
 }: {
   category: CategoryForLifeItem;
   preAmount: PreCategoryAmount;
@@ -222,8 +232,14 @@ export function LifeItemCard({
   // (実カテゴリを削除するので、同棲後の一覧からも消える)。
   onDelete?: () => void;
   lang: Lang;
+  currency: DisplayCurrency;
+  vndPerJpy: number;
 }) {
-  const [amountText, setAmountText] = useState(String(preAmount.monthlyYen));
+  // 値は常に円建てで持つが、表示・入力は選択中の通貨に合わせて円⇔VNDを変換する。
+  const toDisplay = (yen: number) => (currency === "JPY" ? yen : Math.round(yen * vndPerJpy));
+  const toYen = (display: number) => (currency === "JPY" ? display : Math.round(display / vndPerJpy));
+  const sep = currency === "VND" ? "." : ",";
+  const [amountText, setAmountText] = useState(String(toDisplay(preAmount.monthlyYen)));
   const Icon = getCategoryIcon(category.name);
   // 固定費は同棲後(CategoryBudgetCard)と同じく、カテゴリ固有色ではなく
   // 統一の落ち着いた色にする(以前は同棲前だけカテゴリ色になっていて食い違っていた)。
@@ -232,12 +248,14 @@ export function LifeItemCard({
   const label = catLabel(lang, category.name);
 
   useEffect(() => {
-    setAmountText(String(preAmount.monthlyYen));
-  }, [preAmount.monthlyYen]);
+    setAmountText(String(toDisplay(preAmount.monthlyYen)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preAmount.monthlyYen, currency, vndPerJpy]);
 
   const saveAmount = () => {
     const digits = amountText.replace(/[^0-9]/g, "");
-    const val = digits === "" ? 0 : Number(digits);
+    const displayVal = digits === "" ? 0 : Number(digits);
+    const val = toYen(displayVal);
     if (val !== preAmount.monthlyYen) onAmountChange(val);
   };
 
@@ -260,7 +278,7 @@ export function LifeItemCard({
         <Input
           type="text"
           inputMode="numeric"
-          value={amountText.replace(/[^0-9]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+          value={amountText.replace(/[^0-9]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, sep)}
           onChange={(e) => setAmountText(e.target.value.replace(/[^0-9]/g, ""))}
           onBlur={saveAmount}
           onKeyDown={(e) => {
@@ -274,6 +292,8 @@ export function LifeItemCard({
           categoryLabel={label}
           onSchedule={onSchedule}
           lang={lang}
+          currency={currency}
+          vndPerJpy={vndPerJpy}
         />
         {onDelete && !(UNDELETABLE_CATEGORIES as readonly string[]).includes(category.name) && (
           <button
@@ -301,7 +321,7 @@ export function LifeItemCard({
                   border: `1px solid ${DC.cardBorder}`,
                 }}
               >
-                {overrideLabel(o, isActive, lang)} · {formatYenPlain(o.amountYen)}
+                {overrideLabel(o, isActive, lang)} · {formatYenPlain(o.amountYen, currency, vndPerJpy)}
                 <button type="button" onClick={() => onDeleteOverride(o.id)} className="opacity-60 hover:opacity-100 transition-opacity">
                   <X size={10} />
                 </button>

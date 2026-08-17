@@ -52,35 +52,46 @@ function ageLabel(lang: Lang, birthYear: number, includeYear = true): string {
   return tf(lang, "ageThisYear", { age });
 }
 
-// 千区切りカンマを表示しながら、値自体は数値で保持するyen入力。
+// シナリオの金額は内部的に常に円建てで持つが、表示・入力は選択中の通貨
+// (currency)に合わせて円⇔VNDを変換する(以前は通貨をVNDにしていても
+// フォームの値が円のまま表示されていたバグがあった)。千区切りの記号も
+// 通貨に合わせる(円=カンマ、VND=ピリオド、他の場所のwithThousands()と同じ規約)。
 function YenInput({
   value,
   onChange,
   onCommit,
   className,
+  currency,
+  vndPerJpy,
 }: {
   value: number;
   onChange: (n: number) => void;
   onCommit?: () => void;
   className?: string;
+  currency: DisplayCurrency;
+  vndPerJpy: number;
 }) {
+  const toDisplay = (yen: number) => (currency === "JPY" ? yen : Math.round(yen * vndPerJpy));
+  const toYen = (display: number) => (currency === "JPY" ? display : Math.round(display / vndPerJpy));
+  const sep = currency === "VND" ? "." : ",";
   const digitsOnly = (s: string) => s.replace(/[^0-9]/g, "");
-  const withCommas = (s: string) => s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  const [text, setText] = useState(digitsOnly(String(value)));
+  const withSep = (s: string) => s.replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+  const [text, setText] = useState(digitsOnly(String(toDisplay(value))));
 
   useEffect(() => {
-    setText(digitsOnly(String(value)));
-  }, [value]);
+    setText(digitsOnly(String(toDisplay(value))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, currency, vndPerJpy]);
 
   return (
     <Input
       type="text"
       inputMode="numeric"
-      value={withCommas(text)}
+      value={withSep(text)}
       onChange={(e) => {
         const digits = digitsOnly(e.target.value);
         setText(digits);
-        onChange(digits === "" ? 0 : Number(digits));
+        onChange(digits === "" ? 0 : toYen(Number(digits)));
       }}
       onBlur={onCommit}
       onKeyDown={(e) => {
@@ -242,10 +253,9 @@ export function ScenarioSettingsDialog({
                       }}
                       onCommit={() => commit(draft)}
                       className="h-7 w-24 text-xs text-right font-num"
+                      currency={currency}
+                      vndPerJpy={vndPerJpy}
                     />
-                    <span className="text-xs shrink-0" style={{ color: DC.textSecondary }}>
-                      {t(lang, "yenPerYear")}
-                    </span>
                   </div>
                 );
               })}
@@ -363,10 +373,9 @@ export function ScenarioSettingsDialog({
                       onChange={(n) => setDraft({ ...draft, cohabitation: { ...draft.cohabitation, moveInBonusYen: n } })}
                       onCommit={() => commit(draft)}
                       className="h-8 w-28 text-xs text-right font-num"
+                      currency={currency}
+                      vndPerJpy={vndPerJpy}
                     />
-                    <span className="text-xs" style={{ color: DC.textSecondary }}>
-                      {t(lang, "yenPerYear")}
-                    </span>
                   </div>
                 </div>
               )}
@@ -508,10 +517,9 @@ export function ScenarioSettingsDialog({
                       }
                       onCommit={() => commit(draft)}
                       className="h-8 w-28 text-sm text-right font-num"
+                      currency={currency}
+                      vndPerJpy={vndPerJpy}
                     />
-                    <span className="text-xs" style={{ color: DC.textSecondary }}>
-                      {t(lang, "yenPerMonth")}
-                    </span>
                     <Input
                       type="number"
                       value={draft.income[row.key].raisePercent}
@@ -565,10 +573,9 @@ export function ScenarioSettingsDialog({
                           }}
                           onCommit={() => commit(draft)}
                           className="h-8 w-28 text-sm text-right font-num"
+                          currency={currency}
+                          vndPerJpy={vndPerJpy}
                         />
-                        <span className="text-xs" style={{ color: DC.textSecondary }}>
-                          {t(lang, "yenUnit")}
-                        </span>
                         <Select
                           value={String(bonus.month)}
                           onValueChange={(v) => {
@@ -624,10 +631,9 @@ export function ScenarioSettingsDialog({
                     onChange={(n) => setDraft({ ...draft, income: { ...draft.income, side: { ...draft.income.side, amountYen: n } } })}
                     onCommit={() => commit(draft)}
                     className="h-8 w-28 text-sm text-right font-num"
+                    currency={currency}
+                    vndPerJpy={vndPerJpy}
                   />
-                  <span className="text-xs" style={{ color: DC.textSecondary }}>
-                    {t(lang, "yenPerMonth")}
-                  </span>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap pl-1">
                   <span className="text-sm shrink-0" style={{ color: DC.textSecondary }}>
@@ -801,6 +807,8 @@ export function ScenarioSettingsDialog({
                             category={cat}
                             preAmount={preAmount}
                             lang={lang}
+                            currency={currency}
+                            vndPerJpy={vndPerJpy}
                             onAmountChange={(monthlyYen) =>
                               commit({
                                 ...draft,
@@ -859,6 +867,8 @@ export function ScenarioSettingsDialog({
                           value={addCatBudget === "" ? 0 : Number(addCatBudget)}
                           onChange={(n) => setAddCatBudget(n === 0 ? "" : String(n))}
                           className="h-8 text-sm w-24 text-right font-num"
+                          currency={currency}
+                          vndPerJpy={vndPerJpy}
                         />
                         <Button
                           size="sm"
@@ -904,6 +914,8 @@ export function ScenarioSettingsDialog({
                           value={addCatBudget === "" ? 0 : Number(addCatBudget)}
                           onChange={(n) => setAddCatBudget(n === 0 ? "" : String(n))}
                           className="h-8 text-sm w-24 text-right font-num"
+                          currency={currency}
+                          vndPerJpy={vndPerJpy}
                         />
                         <Button
                           size="sm"
@@ -975,10 +987,9 @@ export function ScenarioSettingsDialog({
                         onChange={(n) => setDraft({ ...draft, wedding: { ...draft.wedding, amountYen: n } })}
                         onCommit={() => commit(draft)}
                         className="h-8 w-28 text-sm text-right font-num"
+                        currency={currency}
+                        vndPerJpy={vndPerJpy}
                       />
-                      <span className="text-xs" style={{ color: DC.textSecondary }}>
-                        {t(lang, "yenPerYear")}
-                      </span>
                     </div>
                   </div>
 
@@ -1010,10 +1021,9 @@ export function ScenarioSettingsDialog({
                         onChange={(n) => setDraft({ ...draft, travel: { ...draft.travel, amountYen: n } })}
                         onCommit={() => commit(draft)}
                         className="h-8 w-28 text-sm text-right font-num"
+                        currency={currency}
+                        vndPerJpy={vndPerJpy}
                       />
-                      <span className="text-xs" style={{ color: DC.textSecondary }}>
-                        {t(lang, "yenPerYear")}
-                      </span>
                     </div>
                   </div>
 
@@ -1069,10 +1079,9 @@ export function ScenarioSettingsDialog({
                     onChange={(n) => setDraft({ ...draft, savings: { ...draft.savings, initialCashYen: n } })}
                     onCommit={() => commit(draft)}
                     className="h-8 w-32 text-sm text-right font-num"
+                    currency={currency}
+                    vndPerJpy={vndPerJpy}
                   />
-                  <span className="text-xs" style={{ color: DC.textSecondary }}>
-                    {t(lang, "yenUnit")}
-                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm w-28" style={{ color: DC.textSecondary }}>
@@ -1083,10 +1092,9 @@ export function ScenarioSettingsDialog({
                     onChange={(n) => setDraft({ ...draft, savings: { ...draft.savings, initialInvestYen: n } })}
                     onCommit={() => commit(draft)}
                     className="h-8 w-32 text-sm text-right font-num"
+                    currency={currency}
+                    vndPerJpy={vndPerJpy}
                   />
-                  <span className="text-xs" style={{ color: DC.textSecondary }}>
-                    {t(lang, "yenUnit")}
-                  </span>
                 </div>
               </div>
             </div>

@@ -108,13 +108,12 @@ export function ScenarioTable({
                       key={i}
                       className="text-right whitespace-nowrap"
                       style={{
-                        backgroundColor: isCurrent ? DC.primaryTint : DC.headerBg,
-                        color: isCurrent ? DC.primaryHover : DC.textPrimary,
+                        backgroundColor: isCurrent ? DC.track : DC.headerBg,
+                        color: DC.textPrimary,
                         fontSize: 11.5,
                         fontWeight: 700,
                         padding: "11px 14px",
                         borderBottom: `1px solid ${DC.cardBorder}`,
-                        boxShadow: isCurrent ? `inset 0 2px 0 ${DC.primary}` : undefined,
                       }}
                     >
                       {label}
@@ -180,7 +179,7 @@ export function ScenarioTable({
                           fontSize: 12.5,
                           fontWeight: row.bold ? 700 : row.depth === 0 ? 600 : 400,
                           color: cell.negative ? DC.danger : DC.textPrimary,
-                          backgroundColor: isCurrent ? DC.primaryTint : undefined,
+                          backgroundColor: isCurrent ? DC.track : undefined,
                           borderBottom: `1px solid ${DC.trackAlt}`,
                         }}
                       >
@@ -194,7 +193,7 @@ export function ScenarioTable({
                               marginTop: 1,
                             }}
                           >
-                            ({cell.delta.fmt})
+                            {cell.delta.fmt}
                           </div>
                         )}
                       </td>

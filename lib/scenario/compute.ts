@@ -38,6 +38,23 @@ function netAnnualForYear(
   return monthlyNet * 12 * multiplier + bonusNet;
 }
 
+// 月次表示専用: その月の手取り(月給ぶん+その月が対象のボーナス)。ボーナスは
+// 年換算で均等按分せず、指定した月にそのまま計上する(要望: 「ボーナスを6月・
+// 12月だけに設定したのに月次テーブルに反映されていない」への対応)。
+function netMonthYen(
+  entry: IncomeEntry,
+  year: number,
+  month: number,
+  yearsFromStart: number,
+  parentKey: "husband" | "wife",
+  kids: Kid[],
+): number {
+  const raiseFactor = Math.pow(1 + entry.raisePercent / 100, yearsFromStart);
+  const monthlyNet = entry.netMonthlyYen * raiseFactor * leaveMultiplierForYear(parentKey, kids, year);
+  const bonusThisMonth = entry.netBonuses.filter((b) => b.month === month).reduce((s, b) => s + b.amountYen, 0) * raiseFactor;
+  return monthlyNet + bonusThisMonth;
+}
+
 export const SIMULATION_YEARS_AHEAD = 15;
 
 export interface CategoryForScenario {
@@ -474,8 +491,21 @@ export function expandMonthly(
   const row = yearRows.find((y) => y.year === focusYear) ?? yearRows[0];
   if (!row) return [];
   const divide = (v: number) => v / 12;
+  // netAnnualForYear/computeScenarioYearsと同じ前提(シナリオは常に「今年」を
+  // startYearとして計算している)で、その年の昇給・産休育休の複利年数を求める。
+  const yearsFromStart = focusYear - new Date().getFullYear();
+  const cohabitingThisYear = focusYear >= config.cohabitation.startYear;
+  // 収入合計のうち、本人/配偶者/副業/子育て支援/投資益の按分では説明が付かない
+  // 残り(同棲時の一時収入等)は、従来通り年額を均等按分して埋め合わせる。
+  const otherIncomeAnnualYen =
+    row.incomeTotalYen - row.husbandYen - row.wifeYen - row.sideYen - row.allowanceYen - row.investProfitYen;
   return Array.from({ length: 12 }, (_, idx) => {
     const m = idx + 1;
+    const husbandYenThisMonth = netMonthYen(config.income.husband, focusYear, m, yearsFromStart, "husband", config.family.kids);
+    const wifeYenThisMonth =
+      config.family.spouse && cohabitingThisYear
+        ? netMonthYen(config.income.wife, focusYear, m, yearsFromStart, "wife", config.family.kids)
+        : 0;
     // 結婚式はその月にまとめて計上。旅行は特定の月を持たないので年額を均等按分する。
     const weddingThisMonth =
       config.wedding.amountYen > 0 && config.wedding.year === focusYear && config.wedding.month === m ? config.wedding.amountYen : 0;
@@ -504,13 +534,19 @@ export function expandMonthly(
 
     const nonEventExpense = fixedTotalYen + variableTotalYen + divide(row.educationTotalYen);
     const expenseTotalYen = nonEventExpense + eventsThisMonth;
-    const incomeTotalYen = divide(row.incomeTotalYen);
+    const incomeTotalYen =
+      husbandYenThisMonth +
+      wifeYenThisMonth +
+      divide(row.sideYen) +
+      divide(row.allowanceYen) +
+      divide(row.investProfitYen) +
+      divide(otherIncomeAnnualYen);
     const netFlowYen = incomeTotalYen - expenseTotalYen;
     const remainingMonths = 12 - m;
     return {
       yearLabel: `${focusYear}/${String(m).padStart(2, "0")}`,
-      husbandYen: divide(row.husbandYen),
-      wifeYen: divide(row.wifeYen),
+      husbandYen: husbandYenThisMonth,
+      wifeYen: wifeYenThisMonth,
       sideYen: divide(row.sideYen),
       allowanceYen: divide(row.allowanceYen),
       investProfitYen: divide(row.investProfitYen),

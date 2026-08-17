@@ -6,6 +6,7 @@ import { DC } from "@/lib/scenario/design-colors";
 import { t, tf, catLabel, type Lang } from "@/lib/scenario/dictionary";
 import { getCategoryColorTint, getCategoryHex } from "@/lib/category-colors";
 import { getCategoryIcon } from "@/lib/category-icons";
+import { UNDELETABLE_CATEGORIES } from "@/lib/constants";
 import type { ScenarioConfig } from "@/lib/scenario/types";
 import {
   Button,
@@ -31,6 +32,7 @@ type LifeItemOverride = PreCategoryAmount["overrides"][number];
 export interface CategoryForLifeItem {
   id: string;
   name: string;
+  is_fixed: boolean;
 }
 
 function monthKeyLocal(d: Date): string {
@@ -208,6 +210,7 @@ export function LifeItemCard({
   onAmountChange,
   onSchedule,
   onDeleteOverride,
+  onDelete,
   lang,
 }: {
   category: CategoryForLifeItem;
@@ -215,11 +218,17 @@ export function LifeItemCard({
   onAmountChange: (monthlyYen: number) => void;
   onSchedule: (month: string, endMonth: string | null, amountYen: number) => void;
   onDeleteOverride: (overrideId: string) => void;
+  // 同棲前・同棲後で操作を完全に揃えるため、カテゴリの削除もここから行える
+  // (実カテゴリを削除するので、同棲後の一覧からも消える)。
+  onDelete?: () => void;
   lang: Lang;
 }) {
   const [amountText, setAmountText] = useState(String(preAmount.monthlyYen));
   const Icon = getCategoryIcon(category.name);
-  const hex = getCategoryHex(category.name);
+  // 固定費は同棲後(CategoryBudgetCard)と同じく、カテゴリ固有色ではなく
+  // 統一の落ち着いた色にする(以前は同棲前だけカテゴリ色になっていて食い違っていた)。
+  const iconColor = category.is_fixed ? "#6B5D45" : getCategoryHex(category.name);
+  const iconBg = category.is_fixed ? DC.track : getCategoryColorTint(category.name);
   const label = catLabel(lang, category.name);
 
   useEffect(() => {
@@ -241,9 +250,9 @@ export function LifeItemCard({
       <div className="flex items-center gap-2.5">
         <div
           className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg"
-          style={{ backgroundColor: getCategoryColorTint(category.name) }}
+          style={{ backgroundColor: iconBg }}
         >
-          <Icon size={14} style={{ color: hex }} />
+          <Icon size={14} style={{ color: iconColor }} />
         </div>
         <span className="text-[13.5px] font-semibold truncate min-w-0 flex-1" style={{ color: DC.textPrimary }}>
           {label}
@@ -266,6 +275,17 @@ export function LifeItemCard({
           onSchedule={onSchedule}
           lang={lang}
         />
+        {onDelete && !(UNDELETABLE_CATEGORIES as readonly string[]).includes(category.name) && (
+          <button
+            type="button"
+            onClick={onDelete}
+            title={t(lang, "delete")}
+            className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 shrink-0"
+            style={{ color: DC.textFaint }}
+          >
+            <X size={13} />
+          </button>
+        )}
       </div>
       {sortedOverrides.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pl-10">

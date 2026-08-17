@@ -840,9 +840,39 @@ export function ScenarioSettingsDialog({
                                 },
                               })
                             }
+                            onDelete={() => onCategoryDelete(cat.id)}
                           />
                         );
                       })}
+
+                      <div
+                        className="flex items-center gap-2 rounded-xl border border-dashed py-3 px-3.5"
+                        style={{ borderColor: DC.cardBorder }}
+                      >
+                        <Input
+                          value={addCatName}
+                          onChange={(e) => setAddCatName(e.target.value)}
+                          placeholder={t(lang, "newCategoryName")}
+                          className="h-8 text-sm flex-1"
+                        />
+                        <YenInput
+                          value={addCatBudget === "" ? 0 : Number(addCatBudget)}
+                          onChange={(n) => setAddCatBudget(n === 0 ? "" : String(n))}
+                          className="h-8 text-sm w-24 text-right font-num"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            const val = parseInt(addCatBudget, 10);
+                            if (!addCatName.trim()) return;
+                            await onCategoryAdd(addCatName.trim(), isNaN(val) ? 0 : val, lifeSub === "fixed");
+                            setAddCatName("");
+                            setAddCatBudget("");
+                          }}
+                        >
+                          <Plus size={13} />
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">

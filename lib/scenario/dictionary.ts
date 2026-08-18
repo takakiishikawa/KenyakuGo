@@ -151,6 +151,14 @@ export const DICT = {
     txChooseCategory: "カテゴリを選択",
     txNoMatch: "「{query}」に一致する取引がありません",
     txNoTransactions: "取引がありません",
+
+    // ダッシュボード: 投資記録
+    investRecordBtn: "投資を記録",
+    investAmountLabel: "投資額",
+    investDateLabel: "日付",
+    investTotalLabel: "累計投資額",
+    investSaved: "投資を記録しました",
+    investSaveFailed: "保存に失敗しました",
   },
   en: {
     dashboard: "Dashboard",
@@ -295,6 +303,14 @@ export const DICT = {
     txChooseCategory: "Choose category",
     txNoMatch: 'No transactions match "{query}"',
     txNoTransactions: "No transactions yet",
+
+    // Dashboard: investment record
+    investRecordBtn: "Record investment",
+    investAmountLabel: "Amount",
+    investDateLabel: "Date",
+    investTotalLabel: "Total invested",
+    investSaved: "Investment recorded",
+    investSaveFailed: "Failed to save",
   },
 } as const;
 

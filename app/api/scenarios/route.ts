@@ -9,18 +9,21 @@ import { scenarioConfigSchema, normalizeScenarioConfig, DEFAULT_SCENARIO_CONFIG 
 // (Budgetページと同じ既存エンドポイントをそのまま流用)。今年ぶんは実績
 // (actualByCategoryVnd: 年初来累計、actualByCategoryMonthVnd: 月別)も返し、
 // compute.ts側で「今年は予算だけでなく実績も踏まえたprojection」に使う。
+// investmentEntriesは、ダッシュボードの「投資を記録」で登録した実際の投資記録
+// (経過済みの月の「投資」実額に使う。まだ何も無ければ¥0のまま)。
 export async function GET() {
   const result = await getAuthDb();
   if (result instanceof NextResponse) return result;
   const { db } = result;
 
-  const [scenariosRes, vndPerJpy, actualSpend] = await Promise.all([
+  const [scenariosRes, vndPerJpy, actualSpend, investmentsRes] = await Promise.all([
     db
       .from("scenarios")
       .select("id, name, is_primary, config, created_at, updated_at")
       .order("created_at", { ascending: true }),
     getJpyToVndRate(),
     computeActualSpendThisYear(db),
+    db.from("investment_entries").select("amount_vnd, invested_on").order("invested_on", { ascending: true }),
   ]);
 
   if (scenariosRes.error) {
@@ -34,11 +37,17 @@ export async function GET() {
     config: normalizeScenarioConfig(s.config),
   }));
 
+  const investmentEntries = (investmentsRes.data ?? []).map((e) => ({
+    amountVnd: e.amount_vnd as number,
+    investedOn: e.invested_on as string,
+  }));
+
   return NextResponse.json({
     scenarios,
     vndPerJpy,
     actualByCategoryVnd: actualSpend.byCategory,
     actualByCategoryMonthVnd: actualSpend.byCategoryMonth,
+    investmentEntries,
   });
 }
 

@@ -1,21 +1,26 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Inbox, List, TrendingDown, TrendingUp } from "lucide-react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { Inbox, List, PiggyBank, TrendingDown, TrendingUp } from "lucide-react";
 import { getCategoryColors, getCategoryColorTint } from "@/lib/category-colors";
 import { getCategoryIcon } from "@/lib/category-icons";
-import { makeFormatAmount } from "@/lib/currency";
+import { makeFormatAmount, toDisplayAmount, toVndAmount, withThousands } from "@/lib/currency";
 import { usePreferences } from "@/lib/preferences";
-import { catLabel, type Lang } from "@/lib/scenario/dictionary";
+import { catLabel, t, type Lang } from "@/lib/scenario/dictionary";
 import { NoteTag } from "@/components/note-tag";
 import { SpecialExpenseToggle } from "@/components/special-expense-toggle";
+import type { DisplayCurrency } from "@/components/currency-switch";
 import {
+  Button,
   Card,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DatePicker,
+  Input,
   Skeleton,
+  toast,
 } from "@takaki/go-design-system";
 
 interface CategoryEntry {
@@ -240,11 +245,101 @@ function FixedCategoryCard({
   );
 }
 
+interface InvestmentEntry {
+  id: string;
+  amount_vnd: number;
+  invested_on: string;
+  note: string | null;
+}
+
+function toDateInputValue(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// 「現金→投資」へお金を動かした記録を残すダイアログ。Simulationの月次表示側で
+// 「経過済みの月は実際の投資額をそのまま使う」の元データになる。
+function InvestmentDialog({
+  open,
+  onOpenChange,
+  currency,
+  lang,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  currency: DisplayCurrency;
+  lang: Lang;
+  onSaved: () => void;
+}) {
+  const [amountInput, setAmountInput] = useState("");
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    const val = parseInt(amountInput.replace(/[^0-9]/g, ""), 10);
+    if (isNaN(val) || val <= 0 || !date) return;
+    const amountVnd = toVndAmount(val, currency);
+    setSaving(true);
+    const res = await fetch("/api/investments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amountVnd, investedOn: toDateInputValue(date) }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      toast.error(t(lang, "investSaveFailed"));
+      return;
+    }
+    toast.success(t(lang, "investSaved"));
+    setAmountInput("");
+    setDate(new Date());
+    onOpenChange(false);
+    onSaved();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm p-0 overflow-hidden">
+        <DialogHeader className="px-5 py-4 border-b">
+          <DialogTitle>{t(lang, "investRecordBtn")}</DialogTitle>
+        </DialogHeader>
+        <div className="px-5 py-4 flex flex-col gap-3.5">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold" style={{ color: "var(--color-text-secondary)" }}>
+              {t(lang, "investAmountLabel")}
+            </span>
+            <Input
+              type="text"
+              inputMode="numeric"
+              autoFocus
+              value={withThousands(amountInput, currency)}
+              onChange={(e) => setAmountInput(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder={`0 (${currency})`}
+              className="h-9 font-num"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold" style={{ color: "var(--color-text-secondary)" }}>
+              {t(lang, "investDateLabel")}
+            </span>
+            <DatePicker value={date} onChange={setDate} toDate={new Date()} />
+          </div>
+          <Button onClick={handleSave} disabled={saving || !amountInput || !date}>
+            {t(lang, "investRecordBtn")}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Dashboard() {
   const { currency, lang } = usePreferences();
   const formatAmount = makeFormatAmount(currency);
   const [data, setData] = useState<DashboardData | null>(null);
   const [uncategorizedCount, setUncategorizedCount] = useState(0);
+  const [investments, setInvestments] = useState<InvestmentEntry[]>([]);
+  const [investDialogOpen, setInvestDialogOpen] = useState(false);
   const [detail, setDetail] = useState<{
     categoryName: string;
     txs: TxItem[] | null;
@@ -262,9 +357,20 @@ export default function Dashboard() {
     }
   }, []);
 
+  const fetchInvestments = useCallback(async () => {
+    const res = await fetch("/api/investments");
+    if (res.ok) setInvestments(await res.json());
+  }, []);
+
   useEffect(() => {
     fetchDashboard();
-  }, [fetchDashboard]);
+    fetchInvestments();
+  }, [fetchDashboard, fetchInvestments]);
+
+  const totalInvestedVnd = useMemo(
+    () => investments.reduce((s, e) => s + e.amount_vnd, 0),
+    [investments],
+  );
 
   const openCategory = useCallback(async (categoryName: string) => {
     setDetail({ categoryName, txs: null });
@@ -415,9 +521,32 @@ export default function Dashboard() {
                   {uncategorizedCount} to review →
                 </a>
               )}
+              <button
+                type="button"
+                onClick={() => setInvestDialogOpen(true)}
+                title={t(lang, "investRecordBtn")}
+                className="flex items-center gap-2 rounded-[10px] px-3.5 py-2 text-xs font-semibold transition-all hover:brightness-95 active:scale-[0.98]"
+                style={{ backgroundColor: "var(--kg-track)", color: "var(--color-text-secondary)" }}
+              >
+                <PiggyBank size={14} className="shrink-0" />
+                {t(lang, "investRecordBtn")}
+                {totalInvestedVnd > 0 && (
+                  <span className="font-num" style={{ color: "var(--color-text-primary)" }}>
+                    · {formatAmount(totalInvestedVnd)}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         </Card>
+
+        <InvestmentDialog
+          open={investDialogOpen}
+          onOpenChange={setInvestDialogOpen}
+          currency={currency}
+          lang={lang}
+          onSaved={fetchInvestments}
+        />
 
         <Card
           className="p-6 rounded-2xl overflow-hidden animate-fade-up"

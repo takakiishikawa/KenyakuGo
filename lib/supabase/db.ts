@@ -47,6 +47,15 @@ export interface Wish {
   updated_at: string;
 }
 
+// 実際に投資した金額の記録(ダッシュボードの「投資を記録」ボタンから登録)
+export interface InvestmentEntry {
+  id: string;
+  amount_vnd: number;
+  invested_on: string;
+  note: string | null;
+  created_at: string;
+}
+
 export interface Subscription {
   store: string;
   category: string;

@@ -480,6 +480,12 @@ export function computeScenarioYears(
   });
 }
 
+// ダッシュボードの「投資を記録」で登録した、実際の投資記録の1件。
+export interface InvestmentEntryInput {
+  amountVnd: number;
+  investedOn: string; // "YYYY-MM-DD"
+}
+
 // 年次の1行を、指定年の12ヶ月ぶんに単純按分して展開する。イベントだけは
 // 実際の月(event.month)にそのまま計上する(design原案は6月固定だったが、
 // イベントは月を持っているのでそちらを使う方が正確)。
@@ -487,10 +493,19 @@ export function expandMonthly(
   yearRows: ScenarioYearRow[],
   config: ScenarioConfig,
   focusYear: number,
+  vndPerJpy: number = 1,
+  // 今年ぶんの月次表示専用: 経過済みの月は、想定利率でのprojectionではなく
+  // 実際に記録した投資額(累計)をそのまま「投資」に使う(未記録ならまだ¥0の
+  // まま)。差額は「現金」側で吸収する(現金→投資へお金が動く、という
+  // 実際のお金の動きに合わせるため)。
+  investmentEntries: InvestmentEntryInput[] = [],
 ): ScenarioRow[] {
   const row = yearRows.find((y) => y.year === focusYear) ?? yearRows[0];
   if (!row) return [];
   const divide = (v: number) => v / 12;
+  const nowYearForInvest = new Date().getFullYear();
+  const nowMonthForInvest = new Date().getMonth() + 1;
+  const isCurrentYearView = focusYear === nowYearForInvest;
   // netAnnualForYear/computeScenarioYearsと同じ前提(シナリオは常に「今年」を
   // startYearとして計算している)で、その年の昇給・産休育休の複利年数を求める。
   const yearsFromStart = focusYear - new Date().getFullYear();
@@ -543,6 +558,19 @@ export function expandMonthly(
       divide(otherIncomeAnnualYen);
     const netFlowYen = incomeTotalYen - expenseTotalYen;
     const remainingMonths = 12 - m;
+    const savingsCumTotalYen = row.savingsCumTotalYen - (row.netFlowYen * remainingMonths) / 12;
+
+    let cashCumYen = row.cashCumYen - (row.netFlowYen * remainingMonths) / 12;
+    let investBalYen = row.investBalYen;
+    if (isCurrentYearView && m <= nowMonthForInvest) {
+      const cutoff = `${focusYear}-${String(m).padStart(2, "0")}-31`;
+      const realInvestVnd = investmentEntries
+        .filter((e) => e.investedOn <= cutoff)
+        .reduce((s, e) => s + e.amountVnd, 0);
+      investBalYen = vndPerJpy > 0 ? realInvestVnd / vndPerJpy : 0;
+      cashCumYen = savingsCumTotalYen - investBalYen;
+    }
+
     return {
       yearLabel: `${focusYear}/${String(m).padStart(2, "0")}`,
       husbandYen: husbandYenThisMonth,
@@ -559,10 +587,10 @@ export function expandMonthly(
       eventsTotalYen: eventsThisMonth,
       expenseTotalYen,
       netFlowYen,
-      cashCumYen: row.cashCumYen - (row.netFlowYen * remainingMonths) / 12,
-      investBalYen: row.investBalYen,
+      cashCumYen,
+      investBalYen,
       profitCumYen: row.profitCumYen,
-      savingsCumTotalYen: row.savingsCumTotalYen - (row.netFlowYen * remainingMonths) / 12,
+      savingsCumTotalYen,
     };
   });
 }

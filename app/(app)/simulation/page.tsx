@@ -17,6 +17,7 @@ import {
   toRows,
   SIMULATION_YEARS_AHEAD,
   type ScenarioRow,
+  type InvestmentEntryInput,
 } from "@/lib/scenario/compute";
 import { buildChartSeries, buildCompareChartSeries, chartKindLabel, CHART_KINDS, type ChartKind } from "@/lib/scenario/chart";
 import { buildSingleTableRows, buildCompareTableRows } from "@/lib/scenario/table-rows";
@@ -39,6 +40,7 @@ export default function SimulationPage() {
   const [vndPerJpy, setVndPerJpy] = useState(162);
   const [actualByCategoryVnd, setActualByCategoryVnd] = useState<Record<string, number>>({});
   const [actualByCategoryMonthVnd, setActualByCategoryMonthVnd] = useState<Record<string, Record<string, number>>>({});
+  const [investmentEntries, setInvestmentEntries] = useState<InvestmentEntryInput[]>([]);
   const [categories, setCategories] = useState<CategoryForCard[]>([]);
   const [overrides, setOverrides] = useState<CategoryBudgetOverride[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,16 +64,19 @@ export default function SimulationPage() {
       vndPerJpy: rate,
       actualByCategoryVnd: actual,
       actualByCategoryMonthVnd: actualByMonth,
+      investmentEntries: investments,
     } = (await r.json()) as {
       scenarios: Scenario[];
       vndPerJpy: number;
       actualByCategoryVnd: Record<string, number>;
       actualByCategoryMonthVnd: Record<string, Record<string, number>>;
+      investmentEntries: InvestmentEntryInput[];
     };
     setScenarios(list);
     setVndPerJpy(rate);
     setActualByCategoryVnd(actual ?? {});
     setActualByCategoryMonthVnd(actualByMonth ?? {});
+    setInvestmentEntries(investments ?? []);
   }, []);
 
   const fetchCategories = useCallback(async () => {
@@ -130,8 +135,10 @@ export default function SimulationPage() {
   );
   const rowsForView: ScenarioRow[] = useMemo(() => {
     if (!primary) return [];
-    return timeMode === "yearly" ? toRows(primaryYearRows) : expandMonthly(primaryYearRows, primary.config, focusYear);
-  }, [primary, primaryYearRows, timeMode, focusYear]);
+    return timeMode === "yearly"
+      ? toRows(primaryYearRows)
+      : expandMonthly(primaryYearRows, primary.config, focusYear, vndPerJpy, investmentEntries);
+  }, [primary, primaryYearRows, timeMode, focusYear, vndPerJpy, investmentEntries]);
 
   const compareRows = useMemo(() => {
     return scenarios.map((s) => {
@@ -144,10 +151,21 @@ export default function SimulationPage() {
         actualByCategoryVnd,
         actualByCategoryMonthVnd,
       );
-      const rows = timeMode === "yearly" ? toRows(yearRows) : expandMonthly(yearRows, s.config, focusYear);
+      const rows =
+        timeMode === "yearly" ? toRows(yearRows) : expandMonthly(yearRows, s.config, focusYear, vndPerJpy, investmentEntries);
       return { id: s.id, name: s.name, rows };
     });
-  }, [scenarios, categories, overrides, vndPerJpy, actualByCategoryVnd, actualByCategoryMonthVnd, timeMode, focusYear]);
+  }, [
+    scenarios,
+    categories,
+    overrides,
+    vndPerJpy,
+    actualByCategoryVnd,
+    actualByCategoryMonthVnd,
+    timeMode,
+    focusYear,
+    investmentEntries,
+  ]);
 
   const formatAmount = useCallback((yen: number) => formatYen(yen, currency, vndPerJpy), [currency, vndPerJpy]);
 

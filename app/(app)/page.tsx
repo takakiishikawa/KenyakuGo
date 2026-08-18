@@ -6,7 +6,7 @@ import { getCategoryColors, getCategoryColorTint } from "@/lib/category-colors";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { makeFormatAmount, toDisplayAmount, toVndAmount, withThousands } from "@/lib/currency";
 import { usePreferences } from "@/lib/preferences";
-import { catLabel, t, type Lang } from "@/lib/scenario/dictionary";
+import { catLabel, t, tf, type Lang } from "@/lib/scenario/dictionary";
 import { NoteTag } from "@/components/note-tag";
 import { SpecialExpenseToggle } from "@/components/special-expense-toggle";
 import type { DisplayCurrency } from "@/components/currency-switch";
@@ -469,11 +469,11 @@ export default function Dashboard() {
               <Skeleton className="h-8 w-64 rounded-lg" />
             ) : !hasBudgets ? (
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                Set a monthly budget for each category in Simulation settings → Life to see this month&apos;s forecast.
+                {t(lang, "dashNoBudgetForecast")}
               </p>
             ) : data.forecastVnd === null ? (
               <p className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                No transactions yet this month.
+                {t(lang, "dashNoTransactionsThisMonth")}
               </p>
             ) : (
               <div>
@@ -481,7 +481,7 @@ export default function Dashboard() {
                   className="text-xs font-semibold uppercase tracking-[0.06em] mb-2"
                   style={{ color: "var(--color-text-subtle)" }}
                 >
-                  This month&apos;s forecast
+                  {t(lang, "dashMonthForecast")}
                 </p>
                 <div className="flex items-baseline gap-3.5 flex-wrap">
                   <p
@@ -496,8 +496,8 @@ export default function Dashboard() {
                   >
                     {positive ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
                     {positive
-                      ? `${formatAmount(data.savingsImpactVnd ?? 0)} under budget`
-                      : `${formatAmount(Math.abs(data.savingsImpactVnd ?? 0))} over budget`}
+                      ? `${formatAmount(data.savingsImpactVnd ?? 0)} ${t(lang, "dashUnderBudget")}`
+                      : `${formatAmount(Math.abs(data.savingsImpactVnd ?? 0))} ${t(lang, "dashOverBudget")}`}
                   </span>
                 </div>
               </div>
@@ -505,7 +505,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 shrink-0">
               <a
                 href="/transactions"
-                title="Transactions"
+                title={t(lang, "dashTransactionsTitle")}
                 className="flex items-center justify-center h-9 w-9 rounded-[10px] transition-all hover:brightness-95 active:scale-[0.98]"
                 style={{ backgroundColor: "var(--kg-track)", color: "var(--color-text-secondary)" }}
               >
@@ -518,7 +518,7 @@ export default function Dashboard() {
                   style={{ backgroundColor: "#F7E1EA", border: "1px solid #F0C7D8", color: "#8C3A5E" }}
                 >
                   <Inbox size={14} className="shrink-0" />
-                  {uncategorizedCount} to review →
+                  {tf(lang, "dashToReview", { count: uncategorizedCount })}
                 </a>
               )}
               <button
@@ -559,12 +559,12 @@ export default function Dashboard() {
         >
           <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
             <span className="font-display text-[19px] font-semibold shrink-0" style={{ color: "var(--color-text-primary)" }}>
-              Variable Costs
+              {t(lang, "dashVariableCosts")}
             </span>
             {data && data.variableTotalBudget > 0 && (
               <div
                 className="flex-1 min-w-24"
-                title={`On-track ${todayPct}% (day ${data.dayOfMonth}/${data.daysInMonth})`}
+                title={tf(lang, "dashOnTrack", { pct: todayPct, day: data.dayOfMonth, days: data.daysInMonth })}
               >
                 <ProgressBar
                   actual={data.variableTotalActual}
@@ -592,7 +592,7 @@ export default function Dashboard() {
             </div>
           ) : sortedVariable.length === 0 ? (
             <p className="py-6 text-sm text-center" style={{ color: "var(--color-text-secondary)" }}>
-              No variable cost categories yet. Add some in Simulation settings → Life.
+              {t(lang, "dashNoVariableCategories")}
             </p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -621,14 +621,14 @@ export default function Dashboard() {
         >
           <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
             <span className="font-display text-[19px] font-semibold" style={{ color: "var(--color-text-primary)" }}>
-              Fixed Costs
+              {t(lang, "dashFixedCosts")}
             </span>
             {data && data.fixedTotalBudget > 0 && (
               <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
                 <b className="font-num" style={{ color: "var(--color-text-primary)" }}>
                   {formatAmount(data.fixedTotalActual > 0 ? data.fixedTotalActual : data.fixedTotalBudget)}
                 </b>{" "}
-                / month
+                {t(lang, "dashPerMonth")}
               </span>
             )}
           </div>
@@ -640,7 +640,7 @@ export default function Dashboard() {
             </div>
           ) : sortedFixed.length === 0 ? (
             <p className="py-6 text-sm text-center" style={{ color: "var(--color-text-secondary)" }}>
-              No fixed cost categories yet. Add some in Simulation settings → Life.
+              {t(lang, "dashNoFixedCategories")}
             </p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -670,7 +670,7 @@ export default function Dashboard() {
             <DialogTitle className="flex items-center gap-2">
               {detail?.categoryName && catLabel(lang, detail.categoryName)}
               <span className="text-sm font-normal" style={{ color: "var(--color-text-secondary)" }}>
-                This month
+                {t(lang, "dashThisMonth")}
               </span>
             </DialogTitle>
           </DialogHeader>
@@ -683,7 +683,7 @@ export default function Dashboard() {
               </div>
             ) : detail && detail.txs.length === 0 ? (
               <p className="text-center py-10 text-sm" style={{ color: "var(--color-text-secondary)" }}>
-                No spending in this category this month.
+                {t(lang, "dashNoSpendingThisMonth")}
               </p>
             ) : (
               <>
@@ -696,7 +696,7 @@ export default function Dashboard() {
                       <div className="min-w-0">
                         <p className="text-sm truncate" style={{ color: "var(--color-text-primary)" }}>{t.store}</p>
                         <p className="text-xs" style={{ color: "var(--color-text-secondary)" }}>
-                          {new Date(t.date).toLocaleDateString("en-US", {
+                          {new Date(t.date).toLocaleDateString(lang === "ja" ? "ja-JP" : "en-US", {
                             month: "short",
                             day: "numeric",
                           })}

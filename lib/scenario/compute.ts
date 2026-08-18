@@ -6,6 +6,20 @@ import type { ScenarioConfig } from "./types";
 type IncomeEntry = ScenarioConfig["income"]["husband"];
 type Kid = ScenarioConfig["family"]["kids"][number];
 
+// piggybank.special_entries(Transactionsの特別支出トグル・旧Simulationと共有の
+// 実データ)の1件。「特別支出」「特別収入」タブは、シナリオ専用の別データを
+// 持たずこの実データと連動する。
+export interface SpecialEntryInput {
+  month: string; // "YYYY-MM"
+  kind: "income" | "expense";
+  amount: number;
+  currency: "JPY" | "VND";
+}
+
+function specialEntryYen(e: SpecialEntryInput, vndPerJpy: number): number {
+  return e.currency === "JPY" ? e.amount : vndPerJpy > 0 ? e.amount / vndPerJpy : 0;
+}
+
 // 産休・育休(基本): 出生年(age===0)は対象親の収入を65%として計算する(法定の
 // 産休67%・育休67〜80%/50%の細かい再現はせず、ざっくり中間の65%で近似)。
 // 延長育休: 年数を指定すると、対象期間の翌年からその年数ぶん(age 1〜
@@ -80,6 +94,7 @@ export interface ScenarioYearRow {
   sideYen: number;
   allowanceYen: number;
   investProfitYen: number;
+  specialIncomeYen: number;
   incomeTotalYen: number;
   fixedByCategory: ScenarioCategoryValue[];
   fixedTotalYen: number;
@@ -96,6 +111,9 @@ export interface ScenarioYearRow {
   netFlowYen: number;
   cashCumYen: number;
   investBalYen: number;
+  // この年の1月時点(=前年末)の運用残高。月次表示で、年内の投資残高の増え方を
+  // 均等按分ではなく期首→期末の線形補間にするために使う(年次の行にのみ持たせる)。
+  investBalStartYen?: number;
   profitCumYen: number;
   savingsCumTotalYen: number;
 }
@@ -278,6 +296,8 @@ export function computeScenarioYears(
   // 表示で、経過済みの月は実績そのものを、未経過の月は予算ベースを使うために使う
   // (要望: 月次表示で過去月にも年換算の平均値しか出ていなかった、への対応)。
   actualByCategoryMonthVnd: Record<string, Record<string, number>> = {},
+  // piggybank.special_entries(特別支出・特別収入の実データ)。
+  specialEntries: SpecialEntryInput[] = [],
 ): ScenarioYearRow[] {
   const nowYear = new Date().getFullYear();
   const nowMonth = new Date().getMonth() + 1;
@@ -325,7 +345,10 @@ export function computeScenarioYears(
     // 今年の新規積立分(investDelta)自体には今年ぶんの運用益を付けない
     // (積立配分が投資益にも依存する循環を避けるための簡略化)。
     const investProfitYen = investBal * (config.savings.returnRatePercent / 100);
-    const incomeTotalYen = husbandYen + wifeYen + sideYen + allowanceYen + moveInBonusYen + investProfitYen;
+    const specialIncomeYen = specialEntries
+      .filter((e) => e.kind === "income" && e.month.startsWith(`${year}-`))
+      .reduce((s, e) => s + specialEntryYen(e, vndPerJpy), 0);
+    const incomeTotalYen = husbandYen + wifeYen + sideYen + allowanceYen + moveInBonusYen + investProfitYen + specialIncomeYen;
 
     // 固定費・変動費は、同棲前後どちらの年でも同じカテゴリ(piggybank.categories)を
     // 使う。月額の出どころだけ、同棲後は実カテゴリの予算、同棲前は
@@ -429,8 +452,11 @@ export function computeScenarioYears(
       config.travel.amountYen > 0 && year >= config.travel.startYear
         ? config.travel.amountYen * Math.pow(1 + config.inflationRatePercent / 100, year - config.travel.startYear)
         : 0;
-    const customEventsYen = config.events.filter((e) => e.year === year).reduce((s, e) => s + e.amountYen, 0);
-    const eventsTotalYen = weddingYen + travelYen + customEventsYen;
+    // 特別支出はspecial_entries(実データ)と連動する。
+    const specialExpenseYen = specialEntries
+      .filter((e) => e.kind === "expense" && e.month.startsWith(`${year}-`))
+      .reduce((s, e) => s + specialEntryYen(e, vndPerJpy), 0);
+    const eventsTotalYen = weddingYen + travelYen + specialExpenseYen;
 
     const expenseTotalYen = fixedTotalYen + variableTotalYen + educationTotalYen + eventsTotalYen;
     // netFlowYen(表示用)は投資益を含む総収入から計算する。ただし積立配分
@@ -448,6 +474,7 @@ export function computeScenarioYears(
     } else {
       cashDelta = earnedNetFlowYen;
     }
+    const investBalStartYen = investBal;
     investBal = investBal + investDelta + investProfitYen;
     investPrincipalCum += investDelta;
     cashCum += cashDelta;
@@ -461,6 +488,7 @@ export function computeScenarioYears(
       sideYen,
       allowanceYen,
       investProfitYen,
+      specialIncomeYen,
       incomeTotalYen,
       fixedByCategory,
       fixedTotalYen,
@@ -474,6 +502,7 @@ export function computeScenarioYears(
       netFlowYen,
       cashCumYen: cashCum,
       investBalYen: investBal,
+      investBalStartYen,
       profitCumYen,
       savingsCumTotalYen,
     };
@@ -499,6 +528,9 @@ export function expandMonthly(
   // まま)。差額は「現金」側で吸収する(現金→投資へお金が動く、という
   // 実際のお金の動きに合わせるため)。
   investmentEntries: InvestmentEntryInput[] = [],
+  // 特別支出・特別収入(special_entries)。年次と違い、月次表示ではその月
+  // (YYYY-MM)に一致するものだけをそのまま計上する(年内の均等按分はしない)。
+  specialEntries: SpecialEntryInput[] = [],
 ): ScenarioRow[] {
   const row = yearRows.find((y) => y.year === focusYear) ?? yearRows[0];
   if (!row) return [];
@@ -506,14 +538,30 @@ export function expandMonthly(
   const nowYearForInvest = new Date().getFullYear();
   const nowMonthForInvest = new Date().getMonth() + 1;
   const isCurrentYearView = focusYear === nowYearForInvest;
+  // 「今」時点(今月末まで)の実際の投資額累計。今年の未経過月を、ここから年末の
+  // projectionまで線形に増やしていくための起点にする。
+  const realInvestAtNowYen = isCurrentYearView
+    ? (() => {
+        const cutoff = `${nowYearForInvest}-${String(nowMonthForInvest).padStart(2, "0")}-31`;
+        const totalVnd = investmentEntries.filter((e) => e.investedOn <= cutoff).reduce((s, e) => s + e.amountVnd, 0);
+        return vndPerJpy > 0 ? totalVnd / vndPerJpy : 0;
+      })()
+    : 0;
   // netAnnualForYear/computeScenarioYearsと同じ前提(シナリオは常に「今年」を
   // startYearとして計算している)で、その年の昇給・産休育休の複利年数を求める。
   const yearsFromStart = focusYear - new Date().getFullYear();
   const cohabitingThisYear = focusYear >= config.cohabitation.startYear;
-  // 収入合計のうち、本人/配偶者/副業/子育て支援/投資益の按分では説明が付かない
-  // 残り(同棲時の一時収入等)は、従来通り年額を均等按分して埋め合わせる。
+  // 収入合計のうち、本人/配偶者/副業/子育て支援/投資益/特別収入の按分では
+  // 説明が付かない残り(同棲時の一時収入等)は、従来通り年額を均等按分して
+  // 埋め合わせる。
   const otherIncomeAnnualYen =
-    row.incomeTotalYen - row.husbandYen - row.wifeYen - row.sideYen - row.allowanceYen - row.investProfitYen;
+    row.incomeTotalYen -
+    row.husbandYen -
+    row.wifeYen -
+    row.sideYen -
+    row.allowanceYen -
+    row.investProfitYen -
+    row.specialIncomeYen;
   return Array.from({ length: 12 }, (_, idx) => {
     const m = idx + 1;
     const husbandYenThisMonth = netMonthYen(config.income.husband, focusYear, m, yearsFromStart, "husband", config.family.kids);
@@ -528,10 +576,14 @@ export function expandMonthly(
       config.travel.amountYen > 0 && focusYear >= config.travel.startYear
         ? config.travel.amountYen * Math.pow(1 + config.inflationRatePercent / 100, focusYear - config.travel.startYear)
         : 0;
-    const customEventsThisMonth = config.events
-      .filter((e) => e.year === focusYear && e.month === m)
-      .reduce((s, e) => s + e.amountYen, 0);
-    const eventsThisMonth = weddingThisMonth + divide(travelThisYear) + customEventsThisMonth;
+    const monthKey = `${focusYear}-${String(m).padStart(2, "0")}`;
+    const specialExpenseThisMonth = specialEntries
+      .filter((e) => e.kind === "expense" && e.month === monthKey)
+      .reduce((s, e) => s + specialEntryYen(e, vndPerJpy), 0);
+    const specialIncomeThisMonth = specialEntries
+      .filter((e) => e.kind === "income" && e.month === monthKey)
+      .reduce((s, e) => s + specialEntryYen(e, vndPerJpy), 0);
+    const eventsThisMonth = weddingThisMonth + divide(travelThisYear) + specialExpenseThisMonth;
 
     // 今年ぶんは、経過月=実績・未経過月=予算の月次内訳(fixedByCategoryMonthly等)が
     // あればそれを使う。無ければ(他の年、または同棲前フェーズ)従来通り年額を
@@ -555,21 +607,33 @@ export function expandMonthly(
       divide(row.sideYen) +
       divide(row.allowanceYen) +
       divide(row.investProfitYen) +
+      specialIncomeThisMonth +
       divide(otherIncomeAnnualYen);
     const netFlowYen = incomeTotalYen - expenseTotalYen;
     const remainingMonths = 12 - m;
     const savingsCumTotalYen = row.savingsCumTotalYen - (row.netFlowYen * remainingMonths) / 12;
 
-    let cashCumYen = row.cashCumYen - (row.netFlowYen * remainingMonths) / 12;
-    let investBalYen = row.investBalYen;
+    // 投資残高は「均等按分」ではなく、月を追うごとに増えていくように出す。
+    // - 今年の経過済み月: その月までの実際の投資額の累計をそのまま使う。
+    // - 今年の未経過月: 「今」の実際の投資額から、年末の想定projectionまで
+    //   残り月数で線形に増やしていく(急に年末額へ飛ぶのを避ける)。
+    // - それ以外の年: その年の期首残高→期末残高を12ヶ月で線形に増やす。
+    let investBalYen: number;
     if (isCurrentYearView && m <= nowMonthForInvest) {
       const cutoff = `${focusYear}-${String(m).padStart(2, "0")}-31`;
       const realInvestVnd = investmentEntries
         .filter((e) => e.investedOn <= cutoff)
         .reduce((s, e) => s + e.amountVnd, 0);
       investBalYen = vndPerJpy > 0 ? realInvestVnd / vndPerJpy : 0;
-      cashCumYen = savingsCumTotalYen - investBalYen;
+    } else if (isCurrentYearView) {
+      const remainingFromNow = 12 - nowMonthForInvest;
+      const progress = remainingFromNow > 0 ? (m - nowMonthForInvest) / remainingFromNow : 1;
+      investBalYen = realInvestAtNowYen + (row.investBalYen - realInvestAtNowYen) * progress;
+    } else {
+      const startYen = row.investBalStartYen ?? 0;
+      investBalYen = startYen + (row.investBalYen - startYen) * (m / 12);
     }
+    const cashCumYen = savingsCumTotalYen - investBalYen;
 
     return {
       yearLabel: `${focusYear}/${String(m).padStart(2, "0")}`,
@@ -578,6 +642,7 @@ export function expandMonthly(
       sideYen: divide(row.sideYen),
       allowanceYen: divide(row.allowanceYen),
       investProfitYen: divide(row.investProfitYen),
+      specialIncomeYen: specialIncomeThisMonth,
       incomeTotalYen,
       fixedByCategory,
       fixedTotalYen,

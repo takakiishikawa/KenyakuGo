@@ -3,6 +3,25 @@ import { z } from "zod";
 import { getAuthDb } from "@/lib/supabase/auth-db";
 import type { SpecialEntry } from "@/lib/simulation";
 
+// 新Simulationの「特別支出」「特別収入」タブが、旧Simulation・Transactionsの
+// 特別支出トグルと同じ実データ(special_entries)を読めるようにする一覧取得。
+export async function GET() {
+  const result = await getAuthDb();
+  if (result instanceof NextResponse) return result;
+  const { db } = result;
+
+  const { data, error } = await db
+    .from("special_entries")
+    .select("id, month, kind, name, amount, currency, source")
+    .order("month", { ascending: true });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json((data ?? []) as SpecialEntry[]);
+}
+
 const CreateSchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/, "month must be YYYY-MM"),
   kind: z.enum(["income", "expense"]),

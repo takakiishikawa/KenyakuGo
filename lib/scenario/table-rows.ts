@@ -57,6 +57,12 @@ export function buildSingleTableRows(
     push({ key: "income.side", depth: 1, label: t(lang, "side"), cells: rows.map((r) => cell(r.sideYen, fmt)) });
     push({ key: "income.allowance", depth: 1, label: t(lang, "childAllowance"), cells: rows.map((r) => cell(r.allowanceYen, fmt)) });
     push({ key: "income.investProfit", depth: 1, label: t(lang, "investProfit"), cells: rows.map((r) => cell(r.investProfitYen, fmt)) });
+    push({
+      key: "income.specialIncome",
+      depth: 1,
+      label: t(lang, "specialIncomeLabel"),
+      cells: rows.map((r) => cell(r.specialIncomeYen, fmt)),
+    });
   }
 
   push({
@@ -163,6 +169,12 @@ export function buildCompareTableRows(
         depth: 2,
         label: t(lang, "investProfit"),
         cells: scn.rows.map((r) => cell(r.investProfitYen, fmt)),
+      });
+      push({
+        key: `${ik}.specialIncome`,
+        depth: 2,
+        label: t(lang, "specialIncomeLabel"),
+        cells: scn.rows.map((r) => cell(r.specialIncomeYen, fmt)),
       });
     }
 

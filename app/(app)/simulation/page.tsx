@@ -25,6 +25,7 @@ import { t, tf } from "@/lib/scenario/dictionary";
 import { DC } from "@/lib/scenario/design-colors";
 import type { Scenario, ScenarioConfig } from "@/lib/scenario/types";
 import type { DisplayCurrency } from "@/components/currency-switch";
+import type { SpecialEntry } from "@/lib/simulation";
 
 const CUR_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: SIMULATION_YEARS_AHEAD + 1 }, (_, i) => CUR_YEAR + i);
@@ -41,6 +42,7 @@ export default function SimulationPage() {
   const [actualByCategoryVnd, setActualByCategoryVnd] = useState<Record<string, number>>({});
   const [actualByCategoryMonthVnd, setActualByCategoryMonthVnd] = useState<Record<string, Record<string, number>>>({});
   const [investmentEntries, setInvestmentEntries] = useState<InvestmentEntryInput[]>([]);
+  const [specialEntries, setSpecialEntries] = useState<SpecialEntry[]>([]);
   const [categories, setCategories] = useState<CategoryForCard[]>([]);
   const [overrides, setOverrides] = useState<CategoryBudgetOverride[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,13 +90,18 @@ export default function SimulationPage() {
     if (overridesRes.ok) setOverrides(await overridesRes.json());
   }, []);
 
+  const fetchSpecialEntries = useCallback(async () => {
+    const r = await fetch("/api/simulation/special-entries");
+    if (r.ok) setSpecialEntries(await r.json());
+  }, []);
+
   useEffect(() => {
     (async () => {
       setLoading(true);
-      await Promise.all([fetchScenarios(), fetchCategories()]);
+      await Promise.all([fetchScenarios(), fetchCategories(), fetchSpecialEntries()]);
       setLoading(false);
     })();
-  }, [fetchScenarios, fetchCategories]);
+  }, [fetchScenarios, fetchCategories, fetchSpecialEntries]);
 
   const primary = useMemo(
     () => scenarios.find((s) => s.is_primary) ?? scenarios[0],
@@ -129,16 +136,25 @@ export default function SimulationPage() {
   const primaryYearRows = useMemo(
     () =>
       primary
-        ? computeScenarioYears(primary.config, categories, overrides, vndPerJpy, CUR_YEAR, actualByCategoryVnd, actualByCategoryMonthVnd)
+        ? computeScenarioYears(
+            primary.config,
+            categories,
+            overrides,
+            vndPerJpy,
+            CUR_YEAR,
+            actualByCategoryVnd,
+            actualByCategoryMonthVnd,
+            specialEntries,
+          )
         : [],
-    [primary, categories, overrides, vndPerJpy, actualByCategoryVnd, actualByCategoryMonthVnd],
+    [primary, categories, overrides, vndPerJpy, actualByCategoryVnd, actualByCategoryMonthVnd, specialEntries],
   );
   const rowsForView: ScenarioRow[] = useMemo(() => {
     if (!primary) return [];
     return timeMode === "yearly"
       ? toRows(primaryYearRows)
-      : expandMonthly(primaryYearRows, primary.config, focusYear, vndPerJpy, investmentEntries);
-  }, [primary, primaryYearRows, timeMode, focusYear, vndPerJpy, investmentEntries]);
+      : expandMonthly(primaryYearRows, primary.config, focusYear, vndPerJpy, investmentEntries, specialEntries);
+  }, [primary, primaryYearRows, timeMode, focusYear, vndPerJpy, investmentEntries, specialEntries]);
 
   const compareRows = useMemo(() => {
     return scenarios.map((s) => {
@@ -150,9 +166,12 @@ export default function SimulationPage() {
         CUR_YEAR,
         actualByCategoryVnd,
         actualByCategoryMonthVnd,
+        specialEntries,
       );
       const rows =
-        timeMode === "yearly" ? toRows(yearRows) : expandMonthly(yearRows, s.config, focusYear, vndPerJpy, investmentEntries);
+        timeMode === "yearly"
+          ? toRows(yearRows)
+          : expandMonthly(yearRows, s.config, focusYear, vndPerJpy, investmentEntries, specialEntries);
       return { id: s.id, name: s.name, rows };
     });
   }, [
@@ -165,6 +184,7 @@ export default function SimulationPage() {
     timeMode,
     focusYear,
     investmentEntries,
+    specialEntries,
   ]);
 
   const formatAmount = useCallback((yen: number) => formatYen(yen, currency, vndPerJpy), [currency, vndPerJpy]);
@@ -293,6 +313,28 @@ export default function SimulationPage() {
       await fetchCategories();
     },
     [fetchCategories],
+  );
+
+  // --- 特別支出・特別収入(special_entries、Transactions/旧Simulationと共有) ---
+  const onAddSpecialEntry = useCallback(
+    async (kind: "income" | "expense", month: string, name: string, amount: number, currency: "JPY" | "VND") => {
+      const res = await fetch("/api/simulation/special-entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month, kind, name, amount, currency }),
+      });
+      if (res.ok) await fetchSpecialEntries();
+      else toast.error("Could not add");
+    },
+    [fetchSpecialEntries],
+  );
+
+  const onDeleteSpecialEntry = useCallback(
+    async (id: string) => {
+      await fetch(`/api/simulation/special-entries/${id}`, { method: "DELETE" });
+      await fetchSpecialEntries();
+    },
+    [fetchSpecialEntries],
   );
 
   if (loading || !primary || !editTarget) {
@@ -461,6 +503,9 @@ export default function SimulationPage() {
         onCategoryDelete={onCategoryDelete}
         onScheduleOverride={onScheduleOverride}
         onDeleteOverride={onDeleteOverride}
+        specialEntries={specialEntries}
+        onAddSpecialEntry={onAddSpecialEntry}
+        onDeleteSpecialEntry={onDeleteSpecialEntry}
         lang={lang}
         currency={currency}
         vndPerJpy={vndPerJpy}

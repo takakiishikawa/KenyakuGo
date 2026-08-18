@@ -114,6 +114,7 @@ export function ScenarioTable({
                         fontWeight: 700,
                         padding: "11px 14px",
                         borderBottom: `1px solid ${DC.cardBorder}`,
+                        boxShadow: isCurrent ? `inset 0 0 0 1.5px ${DC.primary}` : undefined,
                       }}
                     >
                       {label}
@@ -179,8 +180,9 @@ export function ScenarioTable({
                           fontSize: 12.5,
                           fontWeight: row.bold ? 700 : row.depth === 0 ? 600 : 400,
                           color: cell.negative ? DC.danger : DC.textPrimary,
-                          backgroundColor: isCurrent ? DC.track : undefined,
+                          backgroundColor: isCurrent ? DC.trackAlt : undefined,
                           borderBottom: `1px solid ${DC.trackAlt}`,
+                          boxShadow: isCurrent ? `inset 0 0 0 1.5px ${DC.primary}` : undefined,
                         }}
                       >
                         {cell.fmt}

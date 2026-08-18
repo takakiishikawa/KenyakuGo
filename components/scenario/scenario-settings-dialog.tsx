@@ -24,6 +24,7 @@ import { EDU_STAGES } from "@/lib/scenario/education-costs";
 import { t, tf, type Lang } from "@/lib/scenario/dictionary";
 import { DC } from "@/lib/scenario/design-colors";
 import type { Scenario, ScenarioConfig } from "@/lib/scenario/types";
+import type { SpecialEntry } from "@/lib/simulation";
 import { HelpTip } from "./help-tip";
 
 const CUR_YEAR = new Date().getFullYear();
@@ -32,7 +33,7 @@ const MONTH_LABELS_JA = ["1月", "2月", "3月", "4月", "5月", "6月", "7月",
 const MONTH_LABELS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 type ConfigTab = "family" | "income" | "spending" | "savingsTab";
-type SpendingSub = "life" | "education" | "events";
+type SpendingSub = "life" | "education" | "events" | "specialExpense";
 type LifeSub = "fixed" | "variable";
 
 function cloneConfig(config: ScenarioConfig): ScenarioConfig {
@@ -102,6 +103,121 @@ function YenInput({
   );
 }
 
+// 特別支出・特別収入(piggybank.special_entries、Transactionsの特別支出トグル・
+// 旧Simulationと共有の実データ)の一覧+追加フォーム。シナリオ専用の別データは
+// 持たず、このコンポーネントは常に実データを直接読み書きする。
+function SpecialEntrySection({
+  kind,
+  title,
+  entries,
+  onAdd,
+  onDelete,
+  lang,
+  currency,
+  monthLabels,
+}: {
+  kind: "income" | "expense";
+  title: string;
+  entries: SpecialEntry[];
+  onAdd: (kind: "income" | "expense", month: string, name: string, amount: number, currency: "JPY" | "VND") => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+  lang: Lang;
+  currency: DisplayCurrency;
+  monthLabels: string[];
+}) {
+  const [name, setName] = useState("");
+  const [amountText, setAmountText] = useState("");
+  const [year, setYear] = useState(CUR_YEAR);
+  const [month, setMonth] = useState(1);
+  const [saving, setSaving] = useState(false);
+
+  const filtered = entries.filter((e) => e.kind === kind).sort((a, b) => a.month.localeCompare(b.month));
+  const sep = currency === "VND" ? "." : ",";
+
+  const handleAdd = async () => {
+    const digits = amountText.replace(/[^0-9]/g, "");
+    const val = digits === "" ? 0 : Number(digits);
+    if (!name.trim() || val <= 0) return;
+    setSaving(true);
+    await onAdd(kind, `${year}-${String(month).padStart(2, "0")}`, name.trim(), val, currency);
+    setSaving(false);
+    setName("");
+    setAmountText("");
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-sm font-semibold" style={{ color: DC.textPrimary }}>
+        {title}
+      </span>
+      {filtered.map((e) => (
+        <div key={e.id} className="flex items-center gap-1.5 flex-wrap rounded-lg border p-2" style={{ borderColor: DC.trackAlt }}>
+          <span className="flex-1 min-w-24 text-sm truncate" style={{ color: DC.textPrimary }}>
+            {e.name}
+          </span>
+          <span className="text-sm font-num" style={{ color: DC.textSecondary }}>
+            {e.currency === "JPY" ? formatJPY(e.amount) : formatVND(e.amount)}
+          </span>
+          <span className="text-xs" style={{ color: DC.textSecondary }}>
+            {e.month}
+          </span>
+          <button
+            type="button"
+            onClick={() => onDelete(e.id)}
+            className="p-1 rounded transition-all hover:bg-muted"
+            style={{ color: DC.textFaint }}
+          >
+            <X size={13} />
+          </button>
+        </div>
+      ))}
+      <div className="flex items-center gap-1.5 flex-wrap rounded-lg border border-dashed p-2" style={{ borderColor: DC.cardBorder }}>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t(lang, "newEventLabel")}
+          className="h-8 text-sm flex-1 min-w-24"
+        />
+        <Input
+          type="text"
+          inputMode="numeric"
+          value={amountText.replace(/\B(?=(\d{3})+(?!\d))/g, sep)}
+          onChange={(e) => setAmountText(e.target.value.replace(/[^0-9]/g, ""))}
+          placeholder="0"
+          className="h-8 w-28 text-sm text-right font-num"
+        />
+        <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+          <SelectTrigger className="h-8 text-sm w-24">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {YEAR_OPTIONS.map((y) => (
+              <SelectItem key={y} value={String(y)}>
+                {y}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
+          <SelectTrigger className="h-8 text-sm w-20">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Array.from({ length: 12 }, (_, m) => m + 1).map((m) => (
+              <SelectItem key={m} value={String(m)}>
+                {monthLabels[m - 1]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button size="sm" onClick={handleAdd} disabled={saving || !name.trim() || !amountText}>
+          <Plus size={13} />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function ScenarioSettingsDialog({
   open,
   onOpenChange,
@@ -119,6 +235,9 @@ export function ScenarioSettingsDialog({
   onCategoryDelete,
   onScheduleOverride,
   onDeleteOverride,
+  specialEntries,
+  onAddSpecialEntry,
+  onDeleteSpecialEntry,
   lang,
   currency,
   vndPerJpy,
@@ -142,6 +261,9 @@ export function ScenarioSettingsDialog({
   onCategoryDelete: (id: string) => Promise<void>;
   onScheduleOverride: (categoryId: string, month: string, endMonth: string | null, budget: number) => Promise<void>;
   onDeleteOverride: (categoryId: string, overrideId: string) => Promise<void>;
+  specialEntries: SpecialEntry[];
+  onAddSpecialEntry: (kind: "income" | "expense", month: string, name: string, amount: number, currency: "JPY" | "VND") => Promise<void>;
+  onDeleteSpecialEntry: (id: string) => Promise<void>;
   lang: Lang;
   currency: DisplayCurrency;
   vndPerJpy: number;
@@ -149,7 +271,11 @@ export function ScenarioSettingsDialog({
   const [configTab, setConfigTab] = useState<ConfigTab>("family");
   const [spendingSub, setSpendingSub] = useState<SpendingSub>("life");
   const [lifeSub, setLifeSub] = useState<LifeSub>("fixed");
-  const [lifePhase, setLifePhase] = useState<"pre" | "post">("pre");
+  // 同棲後(post)がデフォルト: 実際のスケジュール設定(category_budget_overrides)は
+  // 同棲後のカテゴリカードにしか無く、同棲前は別枠の空の予約リストを持つため、
+  // 同棲前をデフォルトにすると「設定していたスケジュールが消えたように見える」
+  // (実際は消えていない、同棲後タブに表示される)。
+  const [lifePhase, setLifePhase] = useState<"pre" | "post">("post");
   const [draft, setDraft] = useState<ScenarioConfig>(() => cloneConfig(scenario.config));
   const [savePromptOpen, setSavePromptOpen] = useState(false);
   const [newScenarioName, setNewScenarioName] = useState("");
@@ -712,6 +838,7 @@ export function ScenarioSettingsDialog({
                     { k: "life" as const, l: t(lang, "life") },
                     { k: "education" as const, l: t(lang, "education") },
                     { k: "events" as const, l: t(lang, "events") },
+                    { k: "specialExpense" as const, l: t(lang, "specialExpenseTab") },
                   ]
                 ).map((s) => (
                   <button
@@ -1027,6 +1154,31 @@ export function ScenarioSettingsDialog({
                     </div>
                   </div>
 
+                </div>
+              )}
+
+              {spendingSub === "specialExpense" && (
+                <div className="flex flex-col gap-4">
+                  <SpecialEntrySection
+                    kind="expense"
+                    title={t(lang, "specialExpenseTab")}
+                    entries={specialEntries}
+                    onAdd={onAddSpecialEntry}
+                    onDelete={onDeleteSpecialEntry}
+                    lang={lang}
+                    currency={currency}
+                    monthLabels={monthLabels}
+                  />
+                  <SpecialEntrySection
+                    kind="income"
+                    title={t(lang, "specialIncomeLabel")}
+                    entries={specialEntries}
+                    onAdd={onAddSpecialEntry}
+                    onDelete={onDeleteSpecialEntry}
+                    lang={lang}
+                    currency={currency}
+                    monthLabels={monthLabels}
+                  />
                 </div>
               )}
             </div>

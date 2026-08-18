@@ -114,6 +114,8 @@ export const scenarioConfigSchema = z.object({
   education: z.record(z.string(), z.record(z.string(), z.number())),
   wedding: weddingEventSchema,
   travel: travelEventSchema,
+  // 特別支出・特別収入は piggybank.special_entries(Transactionsの特別支出トグル・
+  // 旧Simulationと共有の実データ)と連動するため、ここでは持たない。
   events: z.array(eventSchema),
   savings: z.object({
     returnRatePercent: z.number(),

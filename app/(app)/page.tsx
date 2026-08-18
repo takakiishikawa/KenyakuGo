@@ -70,12 +70,14 @@ function ProgressBar({
   todayPct,
   showToday,
   fillColor,
+  lang = "en",
 }: {
   actual: number;
   budget: number;
   todayPct: number;
   showToday: boolean;
   fillColor?: string;
+  lang?: Lang;
 }) {
   const pct = budget > 0 ? Math.min(100, Math.round((actual / budget) * 100)) : 0;
   const over = budget > 0 && actual > budget;
@@ -100,7 +102,7 @@ function ProgressBar({
         <div
           className="absolute top-[-4px] h-4 w-0.5 rounded-sm z-10"
           style={{ left: `${Math.min(100, todayPct)}%`, backgroundColor: "var(--color-text-primary)" }}
-          title={`On-track line (${Math.round(todayPct)}%)`}
+          title={tf(lang, "dashOnTrackLine", { pct: Math.round(todayPct) })}
         />
       )}
       {alert && !over && (
@@ -571,6 +573,7 @@ export default function Dashboard() {
                   budget={data.variableTotalBudget}
                   todayPct={todayPct}
                   showToday={true}
+                  lang={lang}
                 />
               </div>
             )}
@@ -702,10 +705,11 @@ export default function Dashboard() {
                           })}
                         </p>
                       </div>
-                      <NoteTag value={t.note} onSave={(v) => handleSaveNote(t.id, v)} />
+                      <NoteTag value={t.note} onSave={(v) => handleSaveNote(t.id, v)} lang={lang} />
                       <SpecialExpenseToggle
                         active={t.special_entry_id !== null}
                         onToggle={(v) => handleToggleSpecialExpense(t.id, v)}
+                        lang={lang}
                       />
                       <span className="font-num text-sm shrink-0" style={{ color: "var(--color-text-primary)" }}>
                         {formatAmount(t.amount)}
@@ -715,7 +719,7 @@ export default function Dashboard() {
                 </ul>
                 {detail && detail.txs && detail.txs.length > 0 && (
                   <div className="mt-3 pt-3 border-t flex items-center justify-between" style={{ borderColor: "var(--color-border-default)" }}>
-                    <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>Total</span>
+                    <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>{t(lang, "dashTotal")}</span>
                     <span className="font-num font-semibold" style={{ color: "var(--color-text-primary)" }}>
                       {formatAmount(
                         detail.txs

@@ -1,6 +1,7 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
+import { t, type Lang } from "@/lib/scenario/dictionary";
 
 // One-click toggle for flagging a one-off/exceptional transaction (e.g. a
 // security deposit) as a special expense. This excludes it from the
@@ -9,9 +10,11 @@ import { Sparkles } from "lucide-react";
 export function SpecialExpenseToggle({
   active,
   onToggle,
+  lang = "en",
 }: {
   active: boolean;
   onToggle: (next: boolean) => void;
+  lang?: Lang;
 }) {
   if (active) {
     return (
@@ -21,12 +24,12 @@ export function SpecialExpenseToggle({
           e.stopPropagation();
           onToggle(false);
         }}
-        title="Special expense — excluded from dashboard, tracked in Simulation. Click to undo"
+        title={t(lang, "specialExpenseActiveTitle")}
         className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 transition-all hover:opacity-80 active:scale-95 active:opacity-70 cursor-pointer"
         style={{ backgroundColor: "var(--color-primary-subtle)", color: "var(--color-primary-hover)" }}
       >
         <Sparkles size={11} />
-        Special expense
+        {t(lang, "specialExpenseLabel")}
       </button>
     );
   }
@@ -38,11 +41,11 @@ export function SpecialExpenseToggle({
         e.stopPropagation();
         onToggle(true);
       }}
-      title="Mark as special expense — excludes from dashboard, tracked in Simulation"
+      title={t(lang, "specialExpenseInactiveTitle")}
       className="text-[11px] font-medium px-1.5 py-0.5 rounded-full shrink-0 opacity-0 transition-all group-hover:opacity-100 hover:bg-muted active:scale-95 cursor-pointer"
       style={{ color: "var(--color-text-subtle)" }}
     >
-      Special expense
+      {t(lang, "specialExpenseLabel")}
     </button>
   );
 }

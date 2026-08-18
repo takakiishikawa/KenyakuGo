@@ -7,6 +7,7 @@ import { PiggyBank, LayoutGrid, Target, LogOut, LogIn } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@takaki/go-design-system";
 import { usePreferences } from "@/lib/preferences";
+import { t } from "@/lib/scenario/dictionary";
 
 // hoverしたら各メニュー名・プロダクト名がツールチップで見えるように、
 // レール上の全アイテムを共通のラッパーで包む(既存の title 属性による素の
@@ -26,8 +27,8 @@ function SidebarTooltip({ label, children }: { label: string; children: React.Re
 // 固定76px幅レール。go-design-systemのSidebar/SidebarProvider(展開/省略の
 // 切り替え機構)はあえて使わず、デザイン通りの見た目に最適化したプレーンな実装にする。
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", icon: LayoutGrid },
-  { href: "/simulation", label: "Simulation", icon: Target },
+  { href: "/", labelKey: "dashboard" as const, icon: LayoutGrid },
+  { href: "/simulation", labelKey: "simulation" as const, icon: Target },
 ];
 
 const DARK_BG = "#20242A";
@@ -92,10 +93,10 @@ export function PiggyBankSidebar() {
         </SidebarTooltip>
 
         <div className="flex flex-col gap-1.5 flex-1">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          {NAV_ITEMS.map(({ href, labelKey, icon: Icon }) => {
             const active = isActive(href);
             return (
-              <SidebarTooltip key={href} label={label}>
+              <SidebarTooltip key={href} label={t(lang, labelKey)}>
                 <Link
                   href={href}
                   className="w-12 h-[42px] rounded-[10px] flex items-center justify-center cursor-pointer transition-all hover:brightness-110 active:scale-95"
@@ -108,7 +109,7 @@ export function PiggyBankSidebar() {
           })}
         </div>
 
-        <SidebarTooltip label={lang === "ja" ? "言語を切り替え" : "Switch language"}>
+        <SidebarTooltip label={t(lang, "sidebarSwitchLang")}>
           <button
             type="button"
             onClick={toggleLang}
@@ -118,7 +119,7 @@ export function PiggyBankSidebar() {
             {lang.toUpperCase()}
           </button>
         </SidebarTooltip>
-        <SidebarTooltip label={currency === "JPY" ? "Japanese Yen" : "Vietnamese Dong"}>
+        <SidebarTooltip label={currency === "JPY" ? t(lang, "sidebarJpy") : t(lang, "sidebarVnd")}>
           <button
             type="button"
             onClick={toggleCurrency}
@@ -130,7 +131,7 @@ export function PiggyBankSidebar() {
         </SidebarTooltip>
 
         {user ? (
-          <SidebarTooltip label="Log out">
+          <SidebarTooltip label={t(lang, "sidebarLogout")}>
             <button
               type="button"
               onClick={handleSignOut}
@@ -141,7 +142,7 @@ export function PiggyBankSidebar() {
             </button>
           </SidebarTooltip>
         ) : (
-          <SidebarTooltip label="Sign in">
+          <SidebarTooltip label={t(lang, "sidebarSignIn")}>
             <button
               type="button"
               onClick={handleSignIn}

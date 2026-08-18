@@ -173,6 +173,7 @@ export const DICT = {
     dashTransactionsTitle: "取引",
     dashToReview: "{count}件を確認 →",
     dashOnTrack: "順調 {pct}% ({day}日目/{days}日中)",
+    dashOnTrackLine: "順調ライン ({pct}%)",
     dashVariableCosts: "変動費",
     dashFixedCosts: "固定費",
     dashPerMonth: "/ 月",
@@ -181,6 +182,20 @@ export const DICT = {
     dashThisMonth: "今月",
     dashNoSpendingThisMonth: "今月はこのカテゴリの支出がありません。",
     dashTotal: "合計",
+
+    // 共有コンポーネント: NoteTag・SpecialExpenseToggle
+    noteAdd: "+ メモ",
+    notePlaceholder: "例: ルームメイトと折半",
+    specialExpenseLabel: "特別支出",
+    specialExpenseActiveTitle: "特別支出(ダッシュボード対象外・シミュレーションで集計)。クリックで解除",
+    specialExpenseInactiveTitle: "特別支出としてマーク(ダッシュボード対象外・シミュレーションで集計)",
+
+    // サイドバー
+    sidebarSwitchLang: "言語を切り替え",
+    sidebarJpy: "日本円",
+    sidebarVnd: "ベトナムドン",
+    sidebarLogout: "ログアウト",
+    sidebarSignIn: "サインイン",
   },
   en: {
     dashboard: "Dashboard",
@@ -347,6 +362,7 @@ export const DICT = {
     dashTransactionsTitle: "Transactions",
     dashToReview: "{count} to review →",
     dashOnTrack: "On-track {pct}% (day {day}/{days})",
+    dashOnTrackLine: "On-track line ({pct}%)",
     dashVariableCosts: "Variable Costs",
     dashFixedCosts: "Fixed Costs",
     dashPerMonth: "/ month",
@@ -355,6 +371,20 @@ export const DICT = {
     dashThisMonth: "This month",
     dashNoSpendingThisMonth: "No spending in this category this month.",
     dashTotal: "Total",
+
+    // Shared components: NoteTag, SpecialExpenseToggle
+    noteAdd: "+ Note",
+    notePlaceholder: "e.g. half for roommate",
+    specialExpenseLabel: "Special expense",
+    specialExpenseActiveTitle: "Special expense — excluded from dashboard, tracked in Simulation. Click to undo",
+    specialExpenseInactiveTitle: "Mark as special expense — excludes from dashboard, tracked in Simulation",
+
+    // Sidebar
+    sidebarSwitchLang: "Switch language",
+    sidebarJpy: "Japanese Yen",
+    sidebarVnd: "Vietnamese Dong",
+    sidebarLogout: "Log out",
+    sidebarSignIn: "Sign in",
   },
 } as const;
 

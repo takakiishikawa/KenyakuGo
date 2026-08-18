@@ -282,10 +282,11 @@ function TransactionsPageInner() {
                   <CategoryBadgeInline category={tx.category} lang={lang} />
                 )}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <NoteTag value={tx.note} onSave={(v) => handleSaveNote(tx.id, v)} />
+                  <NoteTag value={tx.note} onSave={(v) => handleSaveNote(tx.id, v)} lang={lang} />
                   <SpecialExpenseToggle
                     active={tx.special_entry_id !== null}
                     onToggle={(v) => handleToggleSpecialExpense(tx.id, v)}
+                    lang={lang}
                   />
                 </div>
               </div>

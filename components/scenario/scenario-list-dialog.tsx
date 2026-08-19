@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Plus, Trash2, X } from "lucide-react";
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input } from "@takaki/go-design-system";
 import type { Scenario } from "@/lib/scenario/types";
 import type { CategoryForCard } from "@/components/category-budget-card";
@@ -78,17 +78,14 @@ function ScenarioRow({
         </>
       ) : (
         <>
-          <span className="flex-1 text-sm font-semibold truncate" style={{ color: DC.textPrimary }}>
-            {scenario.name}
-          </span>
           <button
             type="button"
             onClick={() => setEditing(true)}
-            title={t(lang, "rename")}
-            className="p-1 rounded transition-all hover:bg-muted"
-            style={{ color: DC.textFaint }}
+            title={t(lang, "clickToRename")}
+            className="flex-1 text-sm font-semibold truncate min-w-0 text-left cursor-pointer transition-all hover:underline decoration-dotted underline-offset-2 active:opacity-70"
+            style={{ color: DC.textPrimary }}
           >
-            <Pencil size={12} />
+            {scenario.name}
           </button>
           {scenario.is_primary ? (
             <span className="text-[10.5px] font-bold" style={{ color: DC.primary }}>
@@ -185,24 +182,21 @@ function CategoryMasterRow({
         </>
       ) : (
         <>
-          <span className="flex-1 text-sm font-semibold truncate" style={{ color: DC.textPrimary }}>
-            {catLabel(lang, cat.name)}
-          </span>
           <button
             type="button"
             onClick={() => setEditing(true)}
-            title={t(lang, "rename")}
-            className="p-1 rounded transition-all hover:bg-muted"
-            style={{ color: DC.textFaint }}
+            title={t(lang, "clickToRename")}
+            className="flex-1 text-sm font-semibold truncate min-w-0 text-left cursor-pointer transition-all hover:underline decoration-dotted underline-offset-2 active:opacity-70"
+            style={{ color: DC.textPrimary }}
           >
-            <Pencil size={12} />
+            {catLabel(lang, cat.name)}
           </button>
           <button
             type="button"
             onClick={() => onDelete(cat.id)}
             disabled={!canDelete}
             title={!canDelete ? t(lang, "deleteLastError") : t(lang, "delete")}
-            className="p-1 rounded transition-all hover:bg-muted active:scale-90 disabled:opacity-30 disabled:pointer-events-none"
+            className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70 disabled:opacity-30 disabled:pointer-events-none"
             style={{ color: DC.textFaint }}
           >
             <Trash2 size={13} />
@@ -260,7 +254,7 @@ export function ScenarioListDialog({
           <DialogTitle>{t(lang, "manageDialogTitle")}</DialogTitle>
         </DialogHeader>
 
-        <div className="px-5 pt-3 flex items-center justify-between flex-wrap gap-2">
+        <div className="px-5 pt-3 flex flex-col gap-2">
           <div className="flex gap-0.5 p-0.5 rounded-lg w-fit" style={{ backgroundColor: DC.track }}>
             {(
               [

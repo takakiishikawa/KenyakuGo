@@ -337,8 +337,11 @@ export function ScenarioSettingsDialog({
   const [incomeSub, setIncomeSub] = useState<IncomeSub>("salary");
   const [spendingSub, setSpendingSub] = useState<SpendingSub>("life");
   const [lifeSub, setLifeSub] = useState<LifeSub>("fixed");
-  // 同棲前(pre)がデフォルト。
-  const [lifePhase, setLifePhase] = useState<"pre" | "post">("pre");
+  // 同棲後(post)がデフォルト: 実際のスケジュール設定(category_budget_overrides)は
+  // 同棲後のカテゴリカードにしか無く、同棲前は別枠の空の予約リストを持つため、
+  // 同棲前をデフォルトにすると「設定していたスケジュールが消えたように見える」
+  // (実際は消えていない、同棲後タブに表示される)。
+  const [lifePhase, setLifePhase] = useState<"pre" | "post">("post");
   const [draft, setDraft] = useState<ScenarioConfig>(() => cloneConfig(scenario.config));
   const [savePromptOpen, setSavePromptOpen] = useState(false);
   const [newScenarioName, setNewScenarioName] = useState("");

@@ -154,13 +154,18 @@ export function buildChartSeries(
         ]),
       };
     case "savings":
+      // テーブルの貯蓄内訳(現金・投資(元本のみ)・含み損益)と同じ3行に分ける。
+      // 投資の残高(investBalYen)には含み損益ぶんも入っているので、そのまま
+      // 積み上げると含み損益が二重計上されてしまうため、ここで元本ぶんだけを
+      // 「投資」として切り出す。
       return {
         years,
         stacked: true,
         total: { label: t(lang, "totalSavings"), values: rows.map((r) => r.savingsCumTotalYen) },
         series: [
           { label: t(lang, "cash"), color: "#8A8172", values: rows.map((r) => r.cashCumYen) },
-          { label: t(lang, "invest"), color: "#4C6B8A", values: rows.map((r) => r.investBalYen) },
+          { label: t(lang, "invest"), color: "#4C6B8A", values: rows.map((r) => r.investBalYen - r.profitCumYen) },
+          { label: t(lang, "investProfit"), color: "#16A34A", values: rows.map((r) => r.profitCumYen) },
         ],
       };
   }

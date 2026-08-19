@@ -153,9 +153,16 @@ export function buildSingleTableRows(
     push({ key: "income.husband", depth: 1, label: t(lang, "husband"), cells: rows.map((r) => cell(r.husbandYen, fmt)) });
     push({ key: "income.wife", depth: 1, label: t(lang, "wife"), cells: rows.map((r) => cell(r.wifeYen, fmt)) });
     push({ key: "income.side", depth: 1, label: t(lang, "side"), cells: rows.map((r) => cell(r.sideYen, fmt)) });
-    // 投資益は収入の内訳には出さず、貯蓄→投資の行にその期間の増分として表示する
-    // (収入の内訳に混ざっていると「収支」と「運用の増減」が紛らわしいため)。
     push({ key: "income.allowance", depth: 1, label: t(lang, "childAllowance"), cells: rows.map((r) => cell(r.allowanceYen, fmt)) });
+    // 投資益(その期間の含み益の増分)。以前は内訳に出さず総収入にだけ含めていた
+    // ため、他の内訳が全部¥0の月でも「総収入 ≠ 本人給与等の合計」になり、
+    // 差額の理由が分からず不具合に見えてしまっていた。ここに出す。
+    push({
+      key: "income.investProfit",
+      depth: 1,
+      label: t(lang, "investProfit"),
+      cells: rows.map((r) => cell(r.investProfitYen, fmt)),
+    });
     // 同棲時の一時収入はテーブル上では特別収入の行に合算する(設定モーダルでは
     // 引き続き別項目のまま)。incomeTotalYenの計算にも含まれているので、行を
     // 消すだけだと「内訳の合計 ≠ 総収入」に戻ってしまう(以前あったバグ)ため、
@@ -306,6 +313,12 @@ export function buildCompareTableRows(
       push({ key: `${ik}.wife`, depth: 2, label: t(lang, "wife"), cells: scn.rows.map((r) => cell(r.wifeYen, fmt)) });
       push({ key: `${ik}.side`, depth: 2, label: t(lang, "side"), cells: scn.rows.map((r) => cell(r.sideYen, fmt)) });
       push({ key: `${ik}.allowance`, depth: 2, label: t(lang, "childAllowance"), cells: scn.rows.map((r) => cell(r.allowanceYen, fmt)) });
+      push({
+        key: `${ik}.investProfit`,
+        depth: 2,
+        label: t(lang, "investProfit"),
+        cells: scn.rows.map((r) => cell(r.investProfitYen, fmt)),
+      });
       // 同棲時の一時収入はテーブル上では特別収入の行に合算する(設定モーダルでは
       // 引き続き別項目のまま)。
       const ikSpecial = `${ik}.specialIncome`;

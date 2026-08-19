@@ -779,6 +779,8 @@ export function ScenarioSettingsDialog({
                     </span>
                     {draft.income[row.key].netBonuses.map((bonus, bIdx) => (
                       <div key={bonus.id} className="flex items-center gap-1.5 flex-wrap">
+                        {/* 月額の値と横位置を揃えるため、「月額」ラベルと同じ幅の空スペーサーを置く */}
+                        <span className="w-14 shrink-0" aria-hidden />
                         <YenInput
                           value={bonus.amountYen}
                           onChange={(n) => {

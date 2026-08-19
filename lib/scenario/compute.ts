@@ -24,6 +24,22 @@ export function specialEntryYen(e: SpecialEntryInput, vndPerJpy: number): number
 // (年次・月次どちらの積立判定でも共通のルールとして使う)。
 const MIN_CASH_TO_INVEST_YEN = 100_000;
 
+// 現金の上限額(config.savings.cashCapYen、0は「上限なし」)。investRatioPercentの
+// 配分とは別に、これを超える見込みの現金は超過ぶん全額を投資に回す
+// (「300万円を超えたら全部投資に回す」という要望への対応)。年次・月次
+// どちらの積立判定でも共通で使う。
+function applyCashCap(
+  cashBeforeYen: number,
+  cashDeltaYen: number,
+  investDeltaYen: number,
+  cashCapYen: number,
+): { cashDeltaYen: number; investDeltaYen: number } {
+  if (cashCapYen <= 0) return { cashDeltaYen, investDeltaYen };
+  const excessYen = cashBeforeYen + cashDeltaYen - cashCapYen;
+  if (excessYen <= 0) return { cashDeltaYen, investDeltaYen };
+  return { cashDeltaYen: cashDeltaYen - excessYen, investDeltaYen: investDeltaYen + excessYen };
+}
+
 // 産休・育休(基本): 出生年(age===0)は対象親の収入を65%として計算する(法定の
 // 産休67%・育休67〜80%/50%の細かい再現はせず、ざっくり中間の65%で近似)。
 // 延長育休: 年数を指定すると、対象期間の翌年からその年数ぶん(age 1〜
@@ -533,6 +549,12 @@ export function computeScenarioYears(
     } else {
       cashDelta = earnedNetFlowYen;
     }
+    ({ cashDeltaYen: cashDelta, investDeltaYen: investDelta } = applyCashCap(
+      cashCum,
+      cashDelta,
+      investDelta,
+      config.savings.cashCapYen,
+    ));
     const investBalStartYen = investBal;
     const investPrincipalCumStartYen = investPrincipalCum;
     investBal = investBal + investDelta + investProfitYen;
@@ -746,11 +768,18 @@ export function expandMonthly(
     } else {
       const earnedNetFlowYen = netFlowYen - investProfitYenThisMonth;
       const cashIfNoInvestYen = simCashCumYen + earnedNetFlowYen;
-      const investDelta =
+      let investDelta =
         earnedNetFlowYen >= 0 && cashIfNoInvestYen >= MIN_CASH_TO_INVEST_YEN
           ? (earnedNetFlowYen * config.savings.investRatioPercent) / 100
           : 0;
-      simCashCumYen = simCashCumYen + earnedNetFlowYen - investDelta;
+      let cashDelta = earnedNetFlowYen - investDelta;
+      ({ cashDeltaYen: cashDelta, investDeltaYen: investDelta } = applyCashCap(
+        simCashCumYen,
+        cashDelta,
+        investDelta,
+        config.savings.cashCapYen,
+      ));
+      simCashCumYen = simCashCumYen + cashDelta;
       simInvestBalYen = simInvestBalYen + investDelta + investProfitYenThisMonth;
       simInvestPrincipalCumYen = simInvestPrincipalCumYen + investDelta;
       investBalYen = simInvestBalYen;

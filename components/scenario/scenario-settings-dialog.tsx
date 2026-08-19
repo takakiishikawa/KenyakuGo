@@ -1281,6 +1281,20 @@ export function ScenarioSettingsDialog({
                   {t(lang, "investRatioUnit")}
                 </span>
               </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm w-28 flex items-center gap-1" style={{ color: DC.textSecondary }}>
+                  {t(lang, "cashCap")}
+                  <HelpTip text={t(lang, "cashCapHelp")} />
+                </span>
+                <YenInput
+                  value={draft.savings.cashCapYen}
+                  onChange={(n) => setDraft({ ...draft, savings: { ...draft.savings, cashCapYen: n } })}
+                  onCommit={() => commit(draft)}
+                  className="h-8 w-32 text-sm text-right font-num"
+                  currency={currency}
+                  vndPerJpy={vndPerJpy}
+                />
+              </div>
 
               <div className="flex flex-col gap-1.5 pt-1 border-t" style={{ borderColor: DC.trackAlt }}>
                 <span className="text-sm font-semibold pt-2" style={{ color: DC.textPrimary }}>

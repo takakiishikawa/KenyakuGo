@@ -127,6 +127,9 @@ export const scenarioConfigSchema = z.object({
     // シナリオの開始年(1月時点)の現金・投資の残高。以降の年はここからの増減で計算する。
     initialCashYen: z.number().min(0),
     initialInvestYen: z.number().min(0),
+    // 現金の上限額。0は「上限なし」。これを超える見込みの現金は、
+    // investRatioPercentの配分とは別に、超過ぶん全額を投資に回す。
+    cashCapYen: z.number().min(0),
   }),
   inflationRatePercent: z.number(),
 });
@@ -274,6 +277,7 @@ export function normalizeScenarioConfig(raw: unknown): ScenarioConfig {
       investRatioPercent: typeof savings.investRatioPercent === "number" ? savings.investRatioPercent : d.savings.investRatioPercent,
       initialCashYen: typeof savings.initialCashYen === "number" ? savings.initialCashYen : d.savings.initialCashYen,
       initialInvestYen: typeof savings.initialInvestYen === "number" ? savings.initialInvestYen : d.savings.initialInvestYen,
+      cashCapYen: typeof savings.cashCapYen === "number" ? savings.cashCapYen : d.savings.cashCapYen,
     },
     inflationRatePercent: typeof r.inflationRatePercent === "number" ? r.inflationRatePercent : d.inflationRatePercent,
   };
@@ -291,6 +295,6 @@ export const DEFAULT_SCENARIO_CONFIG: ScenarioConfig = {
   wedding: { enabled: false, year: new Date().getFullYear() + 1, month: 10, amountYen: 2_500_000 },
   travel: { enabled: false, amountYen: 400_000, startYear: new Date().getFullYear() + 1, timesPerYear: 1 },
   events: [],
-  savings: { returnRatePercent: 5, investRatioPercent: 60, initialCashYen: 0, initialInvestYen: 0 },
+  savings: { returnRatePercent: 5, investRatioPercent: 60, initialCashYen: 0, initialInvestYen: 0, cashCapYen: 0 },
   inflationRatePercent: 1,
 };

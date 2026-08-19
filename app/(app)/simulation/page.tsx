@@ -486,12 +486,20 @@ export default function SimulationPage() {
 
       {isSingle &&
         timeMode === "monthly" &&
+        rowsForView.length > 0 &&
         (() => {
-          // 月次表示中でも、このサマリーカードは「その年ぶんの総貯蓄」を出す
-          // (月次展開の12月ぶんの行(近似値)ではなく、年次のcomputeScenarioYears
-          // が直接出した年間値を使う。ラベルも「2026/12」ではなく「2026」)。
-          const yearRow = primaryYearRows.find((y) => y.year === focusYear);
-          if (!yearRow) return null;
+          // このサマリーカードは必ずテーブル(月次展開のrowsForView)と同じ数字から
+          // 作る。以前は年次のcomputeScenarioYearsが別途出す年間値を使っていたが、
+          // 年次と月次で計算式が微妙に食い違うたびに(期間限定スケジュール・実績の
+          // 端数月など)カードとテーブルの数字が食い違うバグを繰り返していたため、
+          // テーブルの最終月(12月、または表示中の最後の月)をそのまま累計貯蓄額の
+          // 出どころにする。年収支は12ヶ月ぶんを合計した値(=累計貯蓄額の増減と
+          // 一致するとは限らない。累計は「その時点の残高」、年収支は「その年だけの
+          // フロー」で、別の数字)。
+          const lastRow = rowsForView[rowsForView.length - 1];
+          const incomeTotalYen = rowsForView.reduce((s, r) => s + r.incomeTotalYen, 0);
+          const expenseTotalYen = rowsForView.reduce((s, r) => s + r.expenseTotalYen, 0);
+          const netFlowYen = incomeTotalYen - expenseTotalYen;
           return (
             <Card
               className="rounded-2xl px-5 py-4 flex flex-col gap-1"
@@ -502,11 +510,11 @@ export default function SimulationPage() {
               </span>
               <span className="flex items-baseline gap-2 flex-wrap">
                 <span className="font-display text-2xl font-bold" style={{ color: DC.textPrimary }}>
-                  {formatAmount(yearRow.savingsCumTotalYen)}
+                  {formatAmount(lastRow.savingsCumTotalYen)}
                 </span>
                 <span className="text-xs font-medium" style={{ color: DC.textSecondary }}>
-                  {t(lang, "annualNetFlowLabel")} {formatAmount(yearRow.incomeTotalYen)} − {formatAmount(yearRow.expenseTotalYen)} ={" "}
-                  {formatAmount(yearRow.netFlowYen)}
+                  {t(lang, "annualNetFlowLabel")} {formatAmount(incomeTotalYen)} − {formatAmount(expenseTotalYen)} ={" "}
+                  {formatAmount(netFlowYen)}
                 </span>
               </span>
             </Card>

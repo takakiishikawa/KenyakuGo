@@ -247,9 +247,14 @@ function categoryMonthlyActualOrBudgetYen(
   return Array.from({ length: 12 }, (_, idx) => {
     const m = idx + 1;
     if (m <= currentMonth) {
+      // 経過月は必ず実績を使う(その月の取引が1件も無いカテゴリはキー自体が
+      // 存在しないため undefined になるが、それは「実績0円」であって「不明だから
+      // 予算で埋める」ではない。ここをbudgetMonthlyYenにfallbackしていたのが、
+      // 年次合計(annualCategoryYen: 実績の総額を使う)と月次内訳の合計が
+      // 食い違う=貯蓄サマリーカードとテーブルの数字が食い違うバグの原因だった)。
       const key = `${nowYear}-${String(m).padStart(2, "0")}`;
-      const actualVnd = monthlyActualVnd?.[key];
-      if (typeof actualVnd === "number") return actualVnd / vndPerJpy;
+      const actualVnd = monthlyActualVnd?.[key] ?? 0;
+      return actualVnd / vndPerJpy;
     }
     return budgetMonthlyYen;
   });

@@ -66,7 +66,7 @@ export const DICT = {
     husbandIncome: "本人・手取り",
     wifeIncome: "配偶者・手取り",
     netMonthly: "月額",
-    netBonus: "ボーナス(年)",
+    netBonus: "ボーナス",
     yenPerMonth: "円/月",
     yenPerYear: "円/年",
     yenUnit: "円",

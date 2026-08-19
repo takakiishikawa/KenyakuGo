@@ -337,11 +337,12 @@ export function ScenarioSettingsDialog({
   const [incomeSub, setIncomeSub] = useState<IncomeSub>("salary");
   const [spendingSub, setSpendingSub] = useState<SpendingSub>("life");
   const [lifeSub, setLifeSub] = useState<LifeSub>("fixed");
-  // 同棲後(post)がデフォルト: 実際のスケジュール設定(category_budget_overrides)は
-  // 同棲後のカテゴリカードにしか無く、同棲前は別枠の空の予約リストを持つため、
-  // 同棲前をデフォルトにすると「設定していたスケジュールが消えたように見える」
-  // (実際は消えていない、同棲後タブに表示される)。
-  const [lifePhase, setLifePhase] = useState<"pre" | "post">("post");
+  // 同棲前(pre)がデフォルト(ユーザー指定)。実際のスケジュール設定
+  // (category_budget_overrides)は同棲後のカテゴリカードにしか無く、同棲前は
+  // 別枠の予約リストを持つため、両者で内容が食い違って見えることがあるが、
+  // それはタブの切り替えで正しいデータに移動しているだけで、実データの
+  // 消失ではない。
+  const [lifePhase, setLifePhase] = useState<"pre" | "post">("pre");
   const [draft, setDraft] = useState<ScenarioConfig>(() => cloneConfig(scenario.config));
   const [savePromptOpen, setSavePromptOpen] = useState(false);
   const [newScenarioName, setNewScenarioName] = useState("");
@@ -840,11 +841,10 @@ export function ScenarioSettingsDialog({
                         })
                       }
                       title={t(lang, "addBonus")}
-                      className="flex items-center justify-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95 w-fit"
+                      className="flex items-center justify-center p-1 rounded-md cursor-pointer transition-all hover:brightness-95 active:scale-95 w-fit"
                       style={{ backgroundColor: DC.track, color: DC.textSecondary }}
                     >
                       <Plus size={12} />
-                      {t(lang, "addBonus")}
                     </button>
                   </div>
                 </div>

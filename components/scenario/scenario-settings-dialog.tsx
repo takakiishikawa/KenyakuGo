@@ -687,17 +687,6 @@ export function ScenarioSettingsDialog({
 
           {configTab === "income" && (
             <div className="flex flex-col gap-3">
-              <div
-                className="flex flex-col gap-1 text-sm rounded-lg border px-2.5 py-2"
-                style={{ backgroundColor: DC.headerBg, borderColor: DC.cardBorder, color: DC.textSecondary }}
-              >
-                <span>{tf(lang, "grossAnnualHusband", { amount: formatYenPreview(husbandGrossAnnualYen) })}</span>
-                {draft.family.spouse && <span>{tf(lang, "grossAnnualWife", { amount: formatYenPreview(wifeGrossAnnualYen) })}</span>}
-                <span className="font-semibold" style={{ color: DC.textPrimary }}>
-                  {tf(lang, "grossAnnualHousehold", { amount: formatYenPreview(householdGrossAnnualYen) })}
-                </span>
-              </div>
-
               <div className="flex gap-0.5 p-0.5 rounded-lg w-fit" style={{ backgroundColor: DC.track }}>
                 {(
                   [
@@ -722,6 +711,20 @@ export function ScenarioSettingsDialog({
                 ))}
               </div>
 
+              {incomeSub === "salary" && (
+                <div
+                  className="flex flex-col gap-1 text-sm rounded-lg border px-2.5 py-2"
+                  style={{ backgroundColor: DC.headerBg, borderColor: DC.cardBorder, color: DC.textSecondary }}
+                >
+                  <span>{tf(lang, "grossAnnualHusband", { amount: formatYenPreview(husbandGrossAnnualYen) })}</span>
+                  {draft.family.spouse && (
+                    <span>{tf(lang, "grossAnnualWife", { amount: formatYenPreview(wifeGrossAnnualYen) })}</span>
+                  )}
+                  <span className="font-semibold" style={{ color: DC.textPrimary }}>
+                    {tf(lang, "grossAnnualHousehold", { amount: formatYenPreview(householdGrossAnnualYen) })}
+                  </span>
+                </div>
+              )}
               {incomeSub === "salary" &&
               (
                 [

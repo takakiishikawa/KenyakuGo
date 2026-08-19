@@ -468,9 +468,15 @@ export function computeScenarioYears(
     const netFlowYen = incomeTotalYen - expenseTotalYen;
     const earnedNetFlowYen = netFlowYen - investProfitYen;
 
+    // 現金の安全ライン: 投資に回した結果、手元の現金が¥100,000を下回るなら
+    // 投資はせず全額現金に残す(現金がマイナス/心もとない状態で積立を続ける
+    // のは不自然なため)。¥100,000以上残る見込みのときだけ、通常どおり
+    // investRatioPercentぶんを投資に回す。
+    const MIN_CASH_TO_INVEST_YEN = 100_000;
+    const cashIfNoInvestYen = cashCum + earnedNetFlowYen;
     let investDelta = 0;
     let cashDelta = 0;
-    if (earnedNetFlowYen >= 0) {
+    if (earnedNetFlowYen >= 0 && cashIfNoInvestYen >= MIN_CASH_TO_INVEST_YEN) {
       investDelta = (earnedNetFlowYen * config.savings.investRatioPercent) / 100;
       cashDelta = earnedNetFlowYen - investDelta;
     } else {

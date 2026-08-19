@@ -139,8 +139,8 @@ function VariableCategoryCard({
     <button
       type="button"
       onClick={onClick}
-      className="text-left rounded-[13px] border p-[11px_14px] transition-all hover:bg-muted/40 active:scale-[0.98] active:bg-muted/60 cursor-pointer"
-      style={{ borderColor: "var(--color-border-default)", backgroundColor: "var(--color-surface-subtle)" }}
+      className="text-left rounded-[13px] border p-[11px_14px] transition-all bg-[var(--color-surface-subtle)] hover:bg-muted/40 active:scale-[0.98] active:bg-muted/60 cursor-pointer"
+      style={{ borderColor: "var(--color-border-default)" }}
     >
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-2 min-w-0">
@@ -204,8 +204,8 @@ function FixedCategoryCard({
     <button
       type="button"
       onClick={onClick}
-      className="text-left rounded-[13px] border p-[11px_14px] transition-all hover:bg-muted/40 active:scale-[0.98] active:bg-muted/60 cursor-pointer"
-      style={{ borderColor: "var(--color-border-default)", backgroundColor: "var(--color-surface-subtle)" }}
+      className="text-left rounded-[13px] border p-[11px_14px] transition-all bg-[var(--color-surface-subtle)] hover:bg-muted/40 active:scale-[0.98] active:bg-muted/60 cursor-pointer"
+      style={{ borderColor: "var(--color-border-default)" }}
     >
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-2 min-w-0">

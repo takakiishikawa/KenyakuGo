@@ -1,24 +1,11 @@
 import type { ScenarioRow } from "./compute";
 import { catLabel, t, type Lang } from "./dictionary";
 
-export type ChartKind =
-  | "overview"
-  | "income"
-  | "life"
-  | "education"
-  | "events"
-  | "expenseTotal"
-  | "savings";
+// 教育・イベントは単独のグラフタブとしては出さない(暮らし・収入・支出ほど
+// 見る頻度が高くないため)。中身は支出グラフの内訳系列として引き続き見える。
+export type ChartKind = "overview" | "income" | "life" | "expenseTotal" | "savings";
 
-export const CHART_KINDS: ChartKind[] = [
-  "overview",
-  "income",
-  "expenseTotal",
-  "savings",
-  "life",
-  "education",
-  "events",
-];
+export const CHART_KINDS: ChartKind[] = ["overview", "income", "life", "expenseTotal", "savings"];
 
 export interface ChartSeries {
   label: string;
@@ -40,15 +27,17 @@ export function chartKindLabel(lang: Lang, kind: ChartKind): string {
       return t(lang, "incomeBreakdown");
     case "life":
       return t(lang, "lifeBreakdown");
-    case "education":
-      return t(lang, "educationBreakdown");
-    case "events":
-      return t(lang, "eventsBreakdown");
     case "expenseTotal":
       return t(lang, "expenseTotal");
     case "savings":
       return t(lang, "savingsBreakdown");
   }
+}
+
+// 年間を通じてずっと¥0の系列は、凡例・グラフ・tooltipに出しても意味が無い
+// (例: 副業収入を使っていない、特別支出が今年は無い等)ので取り除く。
+function dropAllZero(series: ChartSeries[]): ChartSeries[] {
+  return series.filter((s) => s.values.some((v) => v !== 0));
 }
 
 export function buildChartSeries(rows: ScenarioRow[], kind: ChartKind, lang: Lang): ChartBundle {
@@ -67,14 +56,18 @@ export function buildChartSeries(rows: ScenarioRow[], kind: ChartKind, lang: Lan
         ],
       };
     case "income":
+      // 設定モーダルの収入タブと同じ5項目(本人給与/配偶者給与/副業収入/公的支援/
+      // 特別収入)。年間を通じて¥0の項目は表示しない。
       return {
         years,
         stacked: true,
-        series: [
+        series: dropAllZero([
           { label: t(lang, "husband"), color: "#4C6B8A", values: rows.map((r) => r.husbandYen) },
           { label: t(lang, "wife"), color: "#8B5E83", values: rows.map((r) => r.wifeYen) },
           { label: t(lang, "side"), color: "#5C9E93", values: rows.map((r) => r.sideYen) },
-        ],
+          { label: t(lang, "childAllowance"), color: "#C9A227", values: rows.map((r) => r.allowanceYen) },
+          { label: t(lang, "specialIncomeLabel"), color: "#6B8F71", values: rows.map((r) => r.specialIncomeYen) },
+        ]),
       };
     case "life": {
       const fixedSeries = (first?.fixedByCategory ?? []).map((c) => ({
@@ -87,29 +80,22 @@ export function buildChartSeries(rows: ScenarioRow[], kind: ChartKind, lang: Lan
         color: c.color,
         values: rows.map((r) => r.variableByCategory.find((vc) => vc.id === c.id)?.valueYen ?? 0),
       }));
-      return { years, stacked: true, series: [...fixedSeries, ...varSeries] };
+      return { years, stacked: true, series: dropAllZero([...fixedSeries, ...varSeries]) };
     }
-    case "education":
-      return {
-        years,
-        stacked: false,
-        series: [{ label: t(lang, "education"), color: "#8C3A5E", values: rows.map((r) => r.educationTotalYen) }],
-      };
-    case "events":
-      return {
-        years,
-        stacked: false,
-        series: [{ label: t(lang, "events"), color: "#5C7A99", values: rows.map((r) => r.eventsTotalYen) }],
-      };
     case "expenseTotal":
+      // 設定モーダルの支出タブと同じ5項目(固定費/変動費/教育/イベント/特別支出)。
+      // イベントは結婚式・旅行のみ(特別支出は別系列にして二重計上を避ける)。
+      // 年間を通じて¥0の項目は表示しない。
       return {
         years,
         stacked: true,
-        series: [
-          { label: t(lang, "life"), color: "#B8621B", values: rows.map((r) => r.fixedTotalYen + r.variableTotalYen) },
+        series: dropAllZero([
+          { label: t(lang, "fixed"), color: "#B8621B", values: rows.map((r) => r.fixedTotalYen) },
+          { label: t(lang, "variable"), color: "#C77B3D", values: rows.map((r) => r.variableTotalYen) },
           { label: t(lang, "education"), color: "#8C3A5E", values: rows.map((r) => r.educationTotalYen) },
-          { label: t(lang, "events"), color: "#5C7A99", values: rows.map((r) => r.eventsTotalYen) },
-        ],
+          { label: t(lang, "events"), color: "#5C7A99", values: rows.map((r) => r.eventsTotalYen - r.specialExpenseYen) },
+          { label: t(lang, "specialExpenseLabel"), color: "#A66B8E", values: rows.map((r) => r.specialExpenseYen) },
+        ]),
       };
     case "savings":
       return {

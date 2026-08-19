@@ -186,15 +186,18 @@ export function ScenarioChart({
             <span className="font-semibold" style={{ color: DC.textSecondary }}>
               {years[hoverIdx]}
             </span>
-            {series.map((s, si) => (
-              <div key={s.label} className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-1.5">
-                  <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                  {s.label}
-                </span>
-                <span className="font-num font-semibold">{formatAmount(s.values[hoverIdx] ?? 0)}</span>
-              </div>
-            ))}
+            {series
+              // その月/年だけ¥0の系列は(他の月では値があっても)tooltipに出さない。
+              .filter((s) => (s.values[hoverIdx] ?? 0) !== 0)
+              .map((s) => (
+                <div key={s.label} className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                    {s.label}
+                  </span>
+                  <span className="font-num font-semibold">{formatAmount(s.values[hoverIdx] ?? 0)}</span>
+                </div>
+              ))}
           </div>
         )}
       </div>

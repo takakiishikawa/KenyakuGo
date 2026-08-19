@@ -239,7 +239,7 @@ function SpecialEntrySection({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={t(lang, "newEventLabel")}
-          className="h-8 text-sm flex-1 min-w-24"
+          className="h-8 text-sm w-40"
         />
         <Input
           type="text"

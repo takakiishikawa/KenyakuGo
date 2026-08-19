@@ -113,7 +113,10 @@ export function ScenarioTable({
                         fontSize: 11.5,
                         fontWeight: 700,
                         padding: "11px 14px",
-                        borderBottom: isCurrent ? `2px solid ${DC.primary}` : `1px solid ${DC.cardBorder}`,
+                        borderTop: isCurrent ? `1px solid ${DC.primary}` : undefined,
+                        borderLeft: isCurrent ? `1px solid ${DC.primary}` : undefined,
+                        borderRight: isCurrent ? `1px solid ${DC.primary}` : undefined,
+                        borderBottom: `1px solid ${DC.cardBorder}`,
                       }}
                     >
                       {label}

@@ -17,7 +17,7 @@ import {
 } from "@takaki/go-design-system";
 import type { DisplayCurrency } from "@/components/currency-switch";
 import { formatJPY, formatVND } from "@/lib/format";
-import { toVndAmount, withThousands as withThousandsVnd } from "@/lib/currency";
+import { toVndAmount, withThousands as withThousandsVnd, VND_PER_JPY } from "@/lib/currency";
 import type { CategoryBudgetOverride } from "@/lib/category-budget";
 import { CategoryBudgetCard, type CategoryForCard } from "@/components/category-budget-card";
 import { LifeItemCard } from "@/components/scenario/life-item-card";
@@ -107,6 +107,14 @@ function YenInput({
 // 特別支出・特別収入(piggybank.special_entries、Transactionsの特別支出トグル・
 // 旧Simulationと共有の実データ)の一覧+追加フォーム。シナリオ専用の別データは
 // 持たず、このコンポーネントは常に実データを直接読み書きする。
+// special_entriesは各行が円・VNDどちらかの通貨で保存されているため、そのまま
+// 出すと一覧内で通貨がバラバラに見えてしまう(以前のバグ)。表示は常に選択中の
+// 通貨(displayCurrency)に揃えて換算する。
+function formatSpecialAmount(amount: number, entryCurrency: "JPY" | "VND", displayCurrency: DisplayCurrency): string {
+  const yen = entryCurrency === "JPY" ? amount : amount / VND_PER_JPY;
+  return displayCurrency === "JPY" ? formatJPY(yen) : formatVND(yen * VND_PER_JPY);
+}
+
 function SpecialEntrySection({
   kind,
   title,
@@ -157,7 +165,7 @@ function SpecialEntrySection({
             {e.name}
           </span>
           <span className="text-sm font-num" style={{ color: DC.textSecondary }}>
-            {e.currency === "JPY" ? formatJPY(e.amount) : formatVND(e.amount)}
+            {formatSpecialAmount(e.amount, e.currency, currency)}
           </span>
           <span className="text-xs" style={{ color: DC.textSecondary }}>
             {e.month}

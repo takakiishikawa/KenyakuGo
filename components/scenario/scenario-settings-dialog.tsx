@@ -422,7 +422,7 @@ export function ScenarioSettingsDialog({
                             education[String(kidIdx)] = { ...(education[String(kidIdx)] ?? {}), [stage.key]: opt.amountYen };
                             commit({ ...draft, education });
                           }}
-                          className="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all border"
+                          className="px-2.5 py-1 rounded-full text-xs font-semibold cursor-pointer transition-all border hover:brightness-95 active:scale-95"
                           style={{
                             backgroundColor: amount === opt.amountYen ? DC.primary : DC.cardBg,
                             color: amount === opt.amountYen ? "#fff" : DC.textSecondary,
@@ -584,7 +584,7 @@ export function ScenarioSettingsDialog({
                       },
                     })
                   }
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                   style={{ backgroundColor: DC.track, color: DC.textSecondary }}
                 >
                   <Plus size={12} /> {t(lang, "addChild")}

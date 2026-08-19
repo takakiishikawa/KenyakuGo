@@ -636,8 +636,7 @@ export default function Dashboard() {
               <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>
                 <b className="font-num" style={{ color: "var(--color-text-primary)" }}>
                   {formatAmount(data.fixedTotalActual > 0 ? data.fixedTotalActual : data.fixedTotalBudget)}
-                </b>{" "}
-                {t(lang, "dashPerMonth")}
+                </b>
               </span>
             )}
           </div>

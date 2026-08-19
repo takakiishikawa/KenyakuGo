@@ -1,6 +1,9 @@
 import type { createDb } from "@/lib/supabase/db";
 import { monthKey } from "@/lib/budget";
-import { fetchOverridesUpTo, resolveBudgetsForMonth } from "@/lib/category-budget";
+import { fetchOverridesUpTo, resolveBudgetsForMonth, type CategoryBudgetOverride } from "@/lib/category-budget";
+import { VND_PER_JPY } from "@/lib/currency";
+import { resolveCategoryMonthlyYen } from "@/lib/scenario/compute";
+import { normalizeScenarioConfig } from "@/lib/scenario/types";
 
 type Db = ReturnType<typeof createDb>;
 
@@ -39,7 +42,7 @@ export async function computeMonthlyBudget(db: Db, now: Date = new Date()): Prom
   // この月以前で最新のものを実効予算として使う（effective-dated）。
   const targetMonth = monthKey(now.getFullYear(), now.getMonth());
 
-  const [catsRes, txRes, overrides] = await Promise.all([
+  const [catsRes, txRes, overrides, scenariosRes] = await Promise.all([
     db.from("categories").select("id, name, budget, is_fixed").order("created_at"),
     db
       .from("transactions")
@@ -48,10 +51,43 @@ export async function computeMonthlyBudget(db: Db, now: Date = new Date()): Prom
       .lte("date", monthEnd.toISOString())
       .eq("excluded_from_dashboard", false),
     fetchOverridesUpTo(db, targetMonth),
+    db.from("scenarios").select("id, is_primary, config").order("created_at", { ascending: true }),
   ]);
 
   const categories = (catsRes.data ?? []) as CategoryRow[];
-  const effectiveBudgets = resolveBudgetsForMonth(categories, overrides, targetMonth);
+
+  // ダッシュボードの予算は「実データの現在値」ではなく、シミュレーション設定
+  // (プライマリシナリオ)の金額を正とし、スケジュールがあればそれを当月に反映した
+  // ものを表示する(要望: シミュレーション設定 → スケジュール反映 → ダッシュボードは
+  // その当月の予算、という順番)。同棲開始年より前の年は「同棲前」の別額
+  // (config.cohabitation.preAmountByCategory)を、以降は実カテゴリのオーバーライドを
+  // シミュレーションの月次テーブルと同じ優先順位(resolveCategoryMonthlyYen)で解決する。
+  const scenarios = (scenariosRes.data ?? []) as { id: string; is_primary: boolean; config: unknown }[];
+  const primaryScenario = scenarios.find((s) => s.is_primary) ?? scenarios[0];
+  const config = primaryScenario ? normalizeScenarioConfig(primaryScenario.config) : null;
+  const cohabiting = config ? now.getFullYear() >= config.cohabitation.startYear : true;
+  const preAmountByCategory = config?.cohabitation.preAmountByCategory ?? {};
+  const overridesByCategory = new Map<string, CategoryBudgetOverride[]>();
+  for (const o of overrides) {
+    const arr = overridesByCategory.get(o.category_id);
+    if (arr) arr.push(o);
+    else overridesByCategory.set(o.category_id, [o]);
+  }
+  const effectiveBudgets = new Map<string, number>(
+    categories.map((c) => [
+      c.id,
+      Math.round(
+        resolveCategoryMonthlyYen(
+          c,
+          overridesByCategory.get(c.id) ?? [],
+          preAmountByCategory,
+          cohabiting,
+          targetMonth,
+          VND_PER_JPY,
+        ) * VND_PER_JPY,
+      ),
+    ]),
+  );
 
   const actualMap: Record<string, number> = {};
   for (const tx of txRes.data ?? []) {

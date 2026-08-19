@@ -237,6 +237,40 @@ function preCategoryMonthlyYen(
   return preLifeMonthlyYen(preAmt, year, inflationRatePercent, nowYear);
 }
 
+// 指定した月に「今、有効な予算」を1つのロジックで解決する。同棲後は実カテゴリの
+// オーバーライド(category_budget_overrides、期間限定 > 恒久変更 > 素の予算という
+// 優先順位はfindEffectiveOverrideと同じ)、同棲前はシナリオ内のpreAmountByCategoryを
+// 同じ優先順位で見る(月単位で判定するので、期間限定・恒久変更どちらも「その月から」
+// が正しく反映される — 年単位でしか見ていなかった旧ロジックだと、恒久変更の開始月が
+// 今年の途中でも年始から適用されたことにしてしまい、期間限定は影も形もテーブルに
+// 出ないバグになっていた)。ダッシュボード(当月の予算表示)とシミュレーションの
+// 月次テーブル(今年の未経過月)の両方から呼び、両者が同じ数字になることを保証する。
+export function resolveCategoryMonthlyYen(
+  category: { id: string; budget: number },
+  overridesForCategory: CategoryBudgetOverride[],
+  preAmountByCategory: Record<string, { monthlyYen: number; overrides: { month: string; endMonth: string | null; amountYen: number }[] }>,
+  cohabiting: boolean,
+  monthKeyStr: string,
+  vndPerJpy: number,
+): number {
+  const preAmt = cohabiting ? undefined : preAmountByCategory[category.id];
+  if (!preAmt) {
+    const winner = findEffectiveOverride(overridesForCategory, monthKeyStr);
+    return (winner ? winner.budget : category.budget) / vndPerJpy;
+  }
+  const periodMatches = preAmt.overrides.filter(
+    (o) => o.endMonth !== null && o.month <= monthKeyStr && monthKeyStr <= o.endMonth,
+  );
+  if (periodMatches.length > 0) {
+    return periodMatches.reduce((a, b) => (b.month > a.month ? b : a)).amountYen;
+  }
+  const persistentMatches = preAmt.overrides.filter((o) => o.endMonth === null && o.month <= monthKeyStr);
+  if (persistentMatches.length > 0) {
+    return persistentMatches.reduce((a, b) => (b.month > a.month ? b : a)).amountYen;
+  }
+  return preAmt.monthlyYen;
+}
+
 // 今年の月次表示専用: 経過済みの月(今月を含む)はその月の実績、未経過の月は
 // 予算ベース(同棲前後どちらのフェーズかに応じた月額)の月額をそのまま使う
 // 12ヶ月ぶんの配列を返す(要望: 「今年の月次表示で過去月にも実績ではなく
@@ -252,35 +286,21 @@ function categoryMonthlyActualOrBudgetYen(
   vndPerJpy: number,
   nowYear: number,
 ): number[] {
-  const budgetMonthlyYen = cohabiting
-    ? projectCategoryMonthlyYen(category, overridesForCategory, nowYear, inflationRatePercent, vndPerJpy, nowYear)
-    : preCategoryMonthlyYen(category, preAmountByCategory, overridesForCategory, nowYear, inflationRatePercent, vndPerJpy, nowYear);
   return Array.from({ length: 12 }, (_, idx) => {
     const m = idx + 1;
+    const key = `${nowYear}-${String(m).padStart(2, "0")}`;
     if (m <= currentMonth) {
       // 経過月は必ず実績を使う(その月の取引が1件も無いカテゴリはキー自体が
       // 存在しないため undefined になるが、それは「実績0円」であって「不明だから
       // 予算で埋める」ではない。ここをbudgetMonthlyYenにfallbackしていたのが、
       // 年次合計(annualCategoryYen: 実績の総額を使う)と月次内訳の合計が
       // 食い違う=貯蓄サマリーカードとテーブルの数字が食い違うバグの原因だった)。
-      const key = `${nowYear}-${String(m).padStart(2, "0")}`;
       const actualVnd = monthlyActualVnd?.[key] ?? 0;
       return actualVnd / vndPerJpy;
     }
-    // 未経過月: 期間限定(end_month指定)のスケジュールがその月をカバーして
-    // いれば、恒久変更より優先して使う(ダッシュボード/予算ページの
-    // resolveBudgetsForMonthと同じ優先順位: 期間限定 > 恒久変更 > 素の予算)。
-    // projectCategoryMonthlyYenは恒久変更しか見ていない(15年先の投影に
-    // 一時的な変更を持ち込まないための仕様)ため、それだけでは今年の期間限定
-    // スケジュールがテーブルに反映されないバグになっていた。
-    if (cohabiting) {
-      const key = `${nowYear}-${String(m).padStart(2, "0")}`;
-      const winner = findEffectiveOverride(overridesForCategory, key);
-      if (winner && winner.end_month !== null) {
-        return winner.budget / vndPerJpy;
-      }
-    }
-    return budgetMonthlyYen;
+    // 未経過月は、その月における「今、有効な予算」をresolveCategoryMonthlyYenで
+    // 月単位に解決する(期間限定・恒久変更どちらもその開始月から正しく反映される)。
+    return resolveCategoryMonthlyYen(category, overridesForCategory, preAmountByCategory, cohabiting, key, vndPerJpy);
   });
 }
 

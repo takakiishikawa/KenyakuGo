@@ -131,9 +131,11 @@ function VariableCategoryCard({
   const pctNum = cat.budget > 0 ? Math.round((cat.actual / cat.budget) * 100) : null;
   const over = cat.budget > 0 && cat.actual > cat.budget;
   const near = pctNum !== null && pctNum >= 80 && !over;
-  const { text: catColor } = getCategoryColors(cat.name);
   const pctColor = over ? "var(--color-danger)" : near ? "var(--color-warning)" : "var(--color-text-secondary)";
-  const barColor = over ? "var(--color-danger)" : catColor;
+  // プログレスバーはカテゴリごとの色ではなく、進捗状況(通常/80%超/100%超)に
+  // 応じた共通の配色にする(以前はカテゴリごとにバーの色が違ってカラフル
+  // すぎるという指摘があったため、カード間で統一)。
+  const barColor = over ? "var(--color-danger)" : near ? "var(--color-warning)" : "var(--color-primary)";
 
   return (
     <button
@@ -198,7 +200,9 @@ function FixedCategoryCard({
   const over = cat.budget > 0 && cat.actual > cat.budget;
   const near = pctNum !== null && pctNum >= 80 && !over;
   const pctColor = over ? "var(--color-danger)" : near ? "var(--color-warning)" : "var(--color-text-secondary)";
-  const barColor = over ? "var(--color-danger)" : "#6B5D45";
+  // プログレスバーは変動費カードと同じ、進捗状況に応じた共通配色にする
+  // (以前は固定費だけ常に茶色固定で、変動費側と方針が食い違っていた)。
+  const barColor = over ? "var(--color-danger)" : near ? "var(--color-warning)" : "var(--color-primary)";
 
   return (
     <button
@@ -211,12 +215,9 @@ function FixedCategoryCard({
         <div className="flex items-center gap-2 min-w-0">
           <div
             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[9px]"
-            style={{ backgroundColor: "var(--kg-track)" }}
+            style={{ backgroundColor: getCategoryColorTint(cat.name) }}
           >
-            {(() => {
-              const Icon = getCategoryIcon(cat.name);
-              return <Icon size={14} style={{ color: "#6B5D45" }} />;
-            })()}
+            <CategoryIcon name={cat.name} />
           </div>
           <span className="text-[13.5px] font-semibold truncate" style={{ color: "var(--color-text-primary)" }}>
             {catLabel(lang, cat.name)}

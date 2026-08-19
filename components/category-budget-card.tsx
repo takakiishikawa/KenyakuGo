@@ -140,7 +140,7 @@ function ScheduleOverridePopover({
               key={m.key}
               type="button"
               onClick={() => setMode(m.key)}
-              className="flex-1 h-7 text-[11px] font-semibold transition-all"
+              className="flex-1 h-7 text-[11px] font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
               style={{
                 backgroundColor: mode === m.key ? DC.primary : "transparent",
                 color: mode === m.key ? "#fff" : DC.textSecondary,
@@ -332,7 +332,7 @@ export function CategoryBudgetCard({
               type="button"
               onClick={() => setEditingName(true)}
               title={t(lang, "clickToRename")}
-              className="text-[13.5px] font-semibold truncate min-w-0 flex-1 text-left cursor-pointer hover:underline decoration-dotted underline-offset-2"
+              className="text-[13.5px] font-semibold truncate min-w-0 flex-1 text-left cursor-pointer transition-all hover:underline decoration-dotted underline-offset-2 active:opacity-70"
               style={{ color: DC.textPrimary }}
             >
               {catLabel(lang, cat.name)}
@@ -383,7 +383,7 @@ export function CategoryBudgetCard({
                 <button
                   type="button"
                   onClick={() => onDeleteOverride(cat.id, o.id)}
-                  className="opacity-60 hover:opacity-100 transition-opacity"
+                  className="opacity-60 hover:opacity-100 active:scale-90 cursor-pointer transition-all"
                 >
                   <X size={10} />
                 </button>

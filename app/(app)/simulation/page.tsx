@@ -525,13 +525,9 @@ export default function SimulationPage() {
         onDelete={deleteScenario}
         onRename={renameScenario}
         categories={categories}
-        overrides={overrides}
         onCategoryUpdate={onCategoryUpdate}
         onCategoryAdd={onCategoryAdd}
         onCategoryDelete={onCategoryDelete}
-        onScheduleOverride={onScheduleOverride}
-        onDeleteOverride={onDeleteOverride}
-        currency={currency}
         lang={lang}
       />
     </div>

@@ -630,7 +630,10 @@ export function ScenarioSettingsDialog({
 
           {configTab === "income" && (
             <div className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1 text-sm rounded-lg px-2.5 py-2" style={{ backgroundColor: DC.track, color: DC.textSecondary }}>
+              <div
+                className="flex flex-col gap-1 text-sm rounded-lg border px-2.5 py-2"
+                style={{ backgroundColor: DC.headerBg, borderColor: DC.cardBorder, color: DC.textSecondary }}
+              >
                 <span>{tf(lang, "grossAnnualHusband", { amount: formatYenPreview(husbandGrossAnnualYen) })}</span>
                 {draft.family.spouse && <span>{tf(lang, "grossAnnualWife", { amount: formatYenPreview(wifeGrossAnnualYen) })}</span>}
                 <span className="font-semibold" style={{ color: DC.textPrimary }}>

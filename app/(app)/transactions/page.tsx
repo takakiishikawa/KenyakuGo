@@ -86,6 +86,7 @@ function TransactionsPageInner() {
     searchParams.get("filter") === "needs_category" ? "needs_category" : "all",
   );
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
 
   const fetchCategories = useCallback(() => {
     fetch("/api/categories")
@@ -96,6 +97,7 @@ function TransactionsPageInner() {
   const fetchTransactions = useCallback(async () => {
     const res = await fetch("/api/transactions?period=all");
     setTransactions(await res.json());
+    setLoaded(true);
   }, []);
 
   useEffect(() => {
@@ -151,6 +153,14 @@ function TransactionsPageInner() {
   };
 
   const pendingCount = useMemo(() => transactions.filter(needsCategory).length, [transactions]);
+
+  // 未分類をすべて分類し終えるとUncategorizedタブごと消えるため、その状態のまま
+  // 残さず「すべて」タブへ自動でフォーカスを移す。
+  useEffect(() => {
+    if (loaded && catFilter === "needs_category" && pendingCount === 0) {
+      setCatFilter("all");
+    }
+  }, [loaded, catFilter, pendingCount]);
 
   // チップに出すカテゴリは、実際に取引で使われているものだけ(空のカテゴリまで
   // 全部並ぶと長くなりすぎるため)。
@@ -249,7 +259,7 @@ function TransactionsPageInner() {
                 className="group flex items-center gap-3 px-4.5 py-3 border-b last:border-b-0 flex-wrap"
                 style={{ borderColor: DC.trackAlt, backgroundColor: DC.cardBg }}
               >
-                <span className="w-14 shrink-0 text-[11.5px]" style={{ color: DC.textFaint }}>
+                <span className="w-[74px] shrink-0 whitespace-nowrap text-[11.5px]" style={{ color: DC.textFaint }}>
                   {formatDateShort(tx.date)}
                 </span>
                 <span className="flex-1 min-w-[120px] text-[13px] font-semibold truncate" style={{ color: DC.textPrimary }}>

@@ -145,7 +145,7 @@ function ScheduleLifeOverridePopover({
               key={m.key}
               type="button"
               onClick={() => setMode(m.key)}
-              className="flex-1 h-7 text-xs font-semibold transition-all"
+              className="flex-1 h-7 text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
               style={{
                 backgroundColor: mode === m.key ? DC.primary : "transparent",
                 color: mode === m.key ? "#fff" : DC.textSecondary,
@@ -323,7 +323,11 @@ export function LifeItemCard({
                 }}
               >
                 {overrideLabel(o, isActive, lang)} · {formatYenPlain(o.amountYen, currency, vndPerJpy)}
-                <button type="button" onClick={() => onDeleteOverride(o.id)} className="opacity-60 hover:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  onClick={() => onDeleteOverride(o.id)}
+                  className="opacity-60 hover:opacity-100 active:scale-90 cursor-pointer transition-all"
+                >
                   <X size={10} />
                 </button>
               </span>

@@ -138,7 +138,7 @@ export function ScenarioTable({
           <table style={{ width: tableWidth, borderCollapse: "separate", borderSpacing: 0, tableLayout: "fixed" }}>
             {colgroup}
             <tbody>
-              {rows.map((row) => (
+              {rows.map((row, rowIndex) => (
                 <tr key={row.key}>
                   <td
                     onClick={row.expandable ? () => onToggleRow(row.key) : undefined}
@@ -173,6 +173,7 @@ export function ScenarioTable({
                   </td>
                   {row.cells.map((cell, i) => {
                     const isCurrent = columnLabels[i] === currentColumnLabel;
+                    const isLastRow = rowIndex === rows.length - 1;
                     return (
                       <td
                         key={i}
@@ -183,7 +184,9 @@ export function ScenarioTable({
                           fontWeight: row.bold ? 700 : row.depth === 0 ? 600 : 400,
                           color: cell.negative ? DC.danger : DC.textPrimary,
                           backgroundColor: isCurrent ? "rgba(190,91,133,0.05)" : undefined,
-                          borderBottom: `1px solid ${DC.trackAlt}`,
+                          borderLeft: isCurrent ? `1px solid ${DC.primary}` : undefined,
+                          borderRight: isCurrent ? `1px solid ${DC.primary}` : undefined,
+                          borderBottom: isCurrent && isLastRow ? `1px solid ${DC.primary}` : `1px solid ${DC.trackAlt}`,
                         }}
                       >
                         {cell.fmt}

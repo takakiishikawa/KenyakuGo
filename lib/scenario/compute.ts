@@ -418,7 +418,9 @@ export function computeScenarioYears(
     const specialIncomeYen = specialEntries
       .filter((e) => e.kind === "income" && e.month.startsWith(`${year}-`))
       .reduce((s, e) => s + specialEntryYen(e, vndPerJpy), 0);
-    const incomeTotalYen = husbandYen + wifeYen + sideYen + allowanceYen + moveInBonusYen + investProfitYen + specialIncomeYen;
+    // 投資益は収入に含めない(実際に手元に入ってくるお金ではなく含み益のため)。
+    // 貯蓄の増減には引き続き反映する(下のinvestBalの計算)。
+    const incomeTotalYen = husbandYen + wifeYen + sideYen + allowanceYen + moveInBonusYen + specialIncomeYen;
 
     // 固定費・変動費は、同棲前後どちらの年でも同じカテゴリ(piggybank.categories)を
     // 使う。月額の出どころだけ、同棲後は実カテゴリの予算、同棲前は
@@ -529,12 +531,12 @@ export function computeScenarioYears(
     const eventsTotalYen = weddingYen + travelYen + specialExpenseYen;
 
     const expenseTotalYen = fixedTotalYen + variableTotalYen + educationTotalYen + eventsTotalYen;
-    // netFlowYen(表示用)は投資益を含む総収入から計算する。ただし積立配分
-    // (investRatioPercent)は「稼いだ」ぶんの黒字(投資益を除く)にのみ適用し、
-    // 投資益そのものは全額そのまま運用残高に再投資する(積立配分が投資益にも
-    // 依存する循環を避けつつ、収入-支出=貯蓄の増分が一致するようにするため)。
+    // netFlowYen(収支、表示用)は投資益を含まない総収入から計算する(投資益は
+    // 手元に入ってくるお金ではないため)。積立配分(investRatioPercent)は
+    // この「稼いだ」ぶんの黒字にのみ適用し、投資益そのものは全額そのまま
+    // 運用残高に再投資する。
     const netFlowYen = incomeTotalYen - expenseTotalYen;
-    const earnedNetFlowYen = netFlowYen - investProfitYen;
+    const earnedNetFlowYen = netFlowYen;
 
     // 現金の安全ライン: 投資に回した結果、手元の現金がMIN_CASH_TO_INVEST_YENを
     // 下回るなら投資はせず全額現金に残す(現金がマイナス/心もとない状態で
@@ -656,7 +658,6 @@ export function expandMonthly(
     row.sideYen -
     row.allowanceYen -
     row.moveInBonusYen -
-    row.investProfitYen -
     row.specialIncomeYen;
   // 貯蓄の累計は「年末の累計から、残り月数ぶんを年間平均netFlowで引く」という
   // 線形補間だったが、ボーナス月やイベント月のように月ごとのnetFlowが大きく
@@ -741,13 +742,13 @@ export function expandMonthly(
     // 利率を月割りで適用し、含み益を積み上げていく。
     const investProfitYenThisMonth = isElapsedReal ? 0 : simInvestBalYen * (config.savings.returnRatePercent / 100 / 12);
 
+    // 投資益は収入に含めない(実際に手元に入ってくるお金ではないため)。
     const incomeTotalYen =
       husbandYenThisMonth +
       wifeYenThisMonth +
       divide(row.sideYen) +
       divide(row.allowanceYen) +
       divide(row.moveInBonusYen) +
-      investProfitYenThisMonth +
       specialIncomeThisMonth +
       divide(otherIncomeAnnualYen);
     const netFlowYen = incomeTotalYen - expenseTotalYen;
@@ -767,7 +768,7 @@ export function expandMonthly(
       // 経過済み月は実績(=元本)そのものなので含み損益は0とする。
       profitCumYen = 0;
     } else {
-      const earnedNetFlowYen = netFlowYen - investProfitYenThisMonth;
+      const earnedNetFlowYen = netFlowYen;
       const cashIfNoInvestYen = simCashCumYen + earnedNetFlowYen;
       let investDelta =
         earnedNetFlowYen >= 0 && cashIfNoInvestYen >= MIN_CASH_TO_INVEST_YEN

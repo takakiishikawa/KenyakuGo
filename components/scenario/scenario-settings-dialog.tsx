@@ -502,8 +502,9 @@ export function ScenarioSettingsDialog({
                 onClick={() => setConfigTab(tab.key)}
                 className="px-3.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                 style={{
-                  backgroundColor: configTab === tab.key ? DC.textPrimary : "transparent",
-                  color: configTab === tab.key ? "#fff" : DC.textSecondary,
+                  backgroundColor: configTab === tab.key ? DC.cardBg : "transparent",
+                  color: DC.textPrimary,
+                  boxShadow: configTab === tab.key ? "0 1px 2px rgba(43,38,32,.08)" : undefined,
                 }}
               >
                 {tab.label}
@@ -528,8 +529,9 @@ export function ScenarioSettingsDialog({
                       onClick={() => commit({ ...draft, family: { ...draft.family, spouse: o.v } })}
                       className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                       style={{
-                        backgroundColor: draft.family.spouse === o.v ? DC.primary : "transparent",
-                        color: draft.family.spouse === o.v ? "#fff" : DC.textSecondary,
+                        backgroundColor: draft.family.spouse === o.v ? DC.cardBg : "transparent",
+                        color: DC.textPrimary,
+                        boxShadow: draft.family.spouse === o.v ? "0 1px 2px rgba(43,38,32,.08)" : undefined,
                       }}
                     >
                       {o.l}
@@ -654,8 +656,9 @@ export function ScenarioSettingsDialog({
                           }}
                           className="px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                           style={{
-                            backgroundColor: kid.leaveParent === o.v ? DC.primary : "transparent",
-                            color: kid.leaveParent === o.v ? "#fff" : DC.textSecondary,
+                            backgroundColor: kid.leaveParent === o.v ? DC.cardBg : "transparent",
+                            color: DC.textPrimary,
+                            boxShadow: kid.leaveParent === o.v ? "0 1px 2px rgba(43,38,32,.08)" : undefined,
                           }}
                         >
                           {o.l}
@@ -708,8 +711,9 @@ export function ScenarioSettingsDialog({
                     onClick={() => setIncomeSub(s.k)}
                     className="px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                     style={{
-                      backgroundColor: incomeSub === s.k ? DC.primary : "transparent",
-                      color: incomeSub === s.k ? "#fff" : DC.textPrimary,
+                      backgroundColor: incomeSub === s.k ? DC.cardBg : "transparent",
+                      color: DC.textPrimary,
+                      boxShadow: incomeSub === s.k ? "0 1px 2px rgba(43,38,32,.08)" : undefined,
                     }}
                   >
                     {s.l}
@@ -881,8 +885,9 @@ export function ScenarioSettingsDialog({
                           }}
                           className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                           style={{
-                            backgroundColor: sideOpen === o.v ? DC.primary : "transparent",
-                            color: sideOpen === o.v ? "#fff" : DC.textSecondary,
+                            backgroundColor: sideOpen === o.v ? DC.cardBg : "transparent",
+                            color: DC.textPrimary,
+                            boxShadow: sideOpen === o.v ? "0 1px 2px rgba(43,38,32,.08)" : undefined,
                           }}
                         >
                           {o.l}
@@ -999,8 +1004,9 @@ export function ScenarioSettingsDialog({
                     onClick={() => setSpendingSub(s.k)}
                     className="px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                     style={{
-                      backgroundColor: spendingSub === s.k ? DC.primary : "transparent",
-                      color: spendingSub === s.k ? "#fff" : DC.textPrimary,
+                      backgroundColor: spendingSub === s.k ? DC.cardBg : "transparent",
+                      color: DC.textPrimary,
+                      boxShadow: spendingSub === s.k ? "0 1px 2px rgba(43,38,32,.08)" : undefined,
                     }}
                   >
                     {s.l}
@@ -1023,8 +1029,9 @@ export function ScenarioSettingsDialog({
                         onClick={() => setLifeSub(s.k)}
                         className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                         style={{
-                          backgroundColor: lifeSub === s.k ? DC.primary : "transparent",
-                          color: lifeSub === s.k ? "#fff" : DC.textSecondary,
+                          backgroundColor: lifeSub === s.k ? DC.cardBg : "transparent",
+                          color: DC.textPrimary,
+                          boxShadow: lifeSub === s.k ? "0 1px 2px rgba(43,38,32,.08)" : undefined,
                         }}
                       >
                         {s.l}
@@ -1065,6 +1072,7 @@ export function ScenarioSettingsDialog({
                           style={{
                             backgroundColor: lifePhase === s.k ? DC.cardBg : "transparent",
                             color: DC.textPrimary,
+                            boxShadow: lifePhase === s.k ? "0 1px 2px rgba(43,38,32,.08)" : undefined,
                           }}
                         >
                           {s.l}

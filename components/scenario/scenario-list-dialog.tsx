@@ -268,8 +268,9 @@ export function ScenarioListDialog({
                 onClick={() => setTab(s.k)}
                 className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                 style={{
-                  backgroundColor: tab === s.k ? DC.textPrimary : "transparent",
-                  color: tab === s.k ? "#fff" : DC.textSecondary,
+                  backgroundColor: tab === s.k ? DC.cardBg : "transparent",
+                  color: DC.textPrimary,
+                  boxShadow: tab === s.k ? "0 1px 2px rgba(43,38,32,.08)" : undefined,
                 }}
               >
                 {s.l}
@@ -290,8 +291,9 @@ export function ScenarioListDialog({
                   onClick={() => setCatSub(s.k)}
                   className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                   style={{
-                    backgroundColor: catSub === s.k ? DC.primary : "transparent",
-                    color: catSub === s.k ? "#fff" : DC.textPrimary,
+                    backgroundColor: catSub === s.k ? DC.cardBg : "transparent",
+                    color: DC.textPrimary,
+                    boxShadow: catSub === s.k ? "0 1px 2px rgba(43,38,32,.08)" : undefined,
                   }}
                 >
                   {s.l}

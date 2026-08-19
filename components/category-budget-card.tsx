@@ -129,7 +129,7 @@ function ScheduleOverridePopover({
           {tf(lang, "scheduleChangeFor", { name: catLabel(lang, cat.name) })}
         </p>
 
-        <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: DC.cardBorder }}>
+        <div className="flex gap-0.5 p-0.5 rounded-lg" style={{ backgroundColor: DC.track }}>
           {(
             [
               { key: "persistent" as const, label: t(lang, "fromThisMonth") },
@@ -140,10 +140,11 @@ function ScheduleOverridePopover({
               key={m.key}
               type="button"
               onClick={() => setMode(m.key)}
-              className="flex-1 h-7 text-[11px] font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
+              className="flex-1 h-7 rounded-md text-[11px] font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
               style={{
-                backgroundColor: mode === m.key ? DC.primary : "transparent",
-                color: mode === m.key ? "#fff" : DC.textSecondary,
+                backgroundColor: mode === m.key ? DC.cardBg : "transparent",
+                color: DC.textPrimary,
+                boxShadow: mode === m.key ? "0 1px 2px rgba(43,38,32,.08)" : undefined,
               }}
             >
               {m.label}

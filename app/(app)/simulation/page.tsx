@@ -209,11 +209,12 @@ export default function SimulationPage() {
   // --- シナリオCRUD ---
   const setPrimaryScenario = async (id: string) => {
     setScenarios((prev) => prev.map((s) => ({ ...s, is_primary: s.id === id })));
-    await fetch(`/api/scenarios/${id}`, {
+    const res = await fetch(`/api/scenarios/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isPrimary: true }),
     });
+    if (!res.ok) toast.error("Could not switch scenario");
   };
 
   const deleteScenario = async (id: string) => {
@@ -222,25 +223,30 @@ export default function SimulationPage() {
     if (res.ok) {
       await fetchScenarios();
       if (editTargetId === id) setEditTargetId(null);
+      toast.success("Scenario deleted");
+    } else {
+      toast.error("Could not delete scenario");
     }
   };
 
   const renameScenario = async (id: string, name: string) => {
     setScenarios((prev) => prev.map((s) => (s.id === id ? { ...s, name } : s)));
-    await fetch(`/api/scenarios/${id}`, {
+    const res = await fetch(`/api/scenarios/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
     });
+    if (!res.ok) toast.error("Could not rename scenario");
   };
 
   const saveConfig = useCallback(async (scenarioId: string, config: ScenarioConfig) => {
     setScenarios((prev) => prev.map((s) => (s.id === scenarioId ? { ...s, config } : s)));
-    await fetch(`/api/scenarios/${scenarioId}`, {
+    const res = await fetch(`/api/scenarios/${scenarioId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ config }),
     });
+    if (!res.ok) toast.error("Could not save changes");
   }, []);
 
   const saveAsNew = useCallback(async (name: string, config: ScenarioConfig) => {
@@ -263,11 +269,12 @@ export default function SimulationPage() {
       patch: Partial<Pick<CategoryForCard, "name" | "budget" | "is_fixed" | "renewal_cycle_years" | "renewal_fee_months">>,
     ) => {
       setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
-      await fetch(`/api/categories/${id}`, {
+      const res = await fetch(`/api/categories/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });
+      if (!res.ok) toast.error("Could not save category");
     },
     [],
   );
@@ -279,36 +286,45 @@ export default function SimulationPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, budget, is_fixed: isFixed }),
       });
-      if (res.ok) await fetchCategories();
-      else toast.error("Could not add category");
+      if (res.ok) {
+        await fetchCategories();
+        toast.success(`Added "${name}"`);
+      } else {
+        toast.error("Could not add category");
+      }
     },
     [fetchCategories],
   );
 
   const onCategoryDelete = useCallback(
     async (id: string) => {
-      await fetch(`/api/categories/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
       await fetchCategories();
+      if (res.ok) toast.success("Category deleted");
+      else toast.error("Could not delete category");
     },
     [fetchCategories],
   );
 
   const onScheduleOverride = useCallback(
     async (categoryId: string, month: string, endMonth: string | null, budget: number) => {
-      await fetch(`/api/categories/${categoryId}/overrides`, {
+      const res = await fetch(`/api/categories/${categoryId}/overrides`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ month, end_month: endMonth, budget }),
       });
       await fetchCategories();
+      if (res.ok) toast.success("Schedule saved");
+      else toast.error("Could not save schedule");
     },
     [fetchCategories],
   );
 
   const onDeleteOverride = useCallback(
     async (categoryId: string, overrideId: string) => {
-      await fetch(`/api/categories/${categoryId}/overrides/${overrideId}`, { method: "DELETE" });
+      const res = await fetch(`/api/categories/${categoryId}/overrides/${overrideId}`, { method: "DELETE" });
       await fetchCategories();
+      if (!res.ok) toast.error("Could not delete schedule");
     },
     [fetchCategories],
   );
@@ -321,16 +337,21 @@ export default function SimulationPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ month, kind, name, amount, currency }),
       });
-      if (res.ok) await fetchSpecialEntries();
-      else toast.error("Could not add");
+      if (res.ok) {
+        await fetchSpecialEntries();
+        toast.success(`Added "${name}"`);
+      } else {
+        toast.error("Could not add");
+      }
     },
     [fetchSpecialEntries],
   );
 
   const onDeleteSpecialEntry = useCallback(
     async (id: string) => {
-      await fetch(`/api/simulation/special-entries/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/simulation/special-entries/${id}`, { method: "DELETE" });
       await fetchSpecialEntries();
+      if (!res.ok) toast.error("Could not delete");
     },
     [fetchSpecialEntries],
   );

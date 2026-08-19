@@ -131,11 +131,12 @@ function TransactionsPageInner() {
 
   const handleSaveNote = async (id: string, note: string | null) => {
     setTransactions((prev) => prev.map((tx) => (tx.id === id ? { ...tx, note } : tx)));
-    await fetch(`/api/transactions/${id}`, {
+    const res = await fetch(`/api/transactions/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ note }),
     });
+    if (!res.ok) toast.error("Failed to save note");
   };
 
   const handleToggleSpecialExpense = async (id: string, next: boolean) => {

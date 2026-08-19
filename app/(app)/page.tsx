@@ -397,11 +397,12 @@ export default function Dashboard() {
           ? { ...d, txs: d.txs.map((t) => (t.id === id ? { ...t, note } : t)) }
           : d,
       );
-      await fetch(`/api/transactions/${id}`, {
+      const res = await fetch(`/api/transactions/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ note }),
       });
+      if (!res.ok) toast.error("Failed to save note");
     },
     [],
   );
@@ -431,6 +432,9 @@ export default function Dashboard() {
               }
             : d,
         );
+        toast.success(next ? "Marked as special expense" : "Unmarked as special expense");
+      } else {
+        toast.error("Failed to save");
       }
       fetchDashboard();
     },

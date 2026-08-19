@@ -491,7 +491,7 @@ export function ScenarioSettingsDialog({
                 key={tab.key}
                 type="button"
                 onClick={() => setConfigTab(tab.key)}
-                className="px-3.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all"
+                className="px-3.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                 style={{
                   backgroundColor: configTab === tab.key ? DC.textPrimary : "transparent",
                   color: configTab === tab.key ? "#fff" : DC.textSecondary,
@@ -517,7 +517,7 @@ export function ScenarioSettingsDialog({
                       key={String(o.v)}
                       type="button"
                       onClick={() => commit({ ...draft, family: { ...draft.family, spouse: o.v } })}
-                      className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all"
+                      className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                       style={{
                         backgroundColor: draft.family.spouse === o.v ? DC.primary : "transparent",
                         color: draft.family.spouse === o.v ? "#fff" : DC.textSecondary,
@@ -643,7 +643,7 @@ export function ScenarioSettingsDialog({
                             kids[kidIdx] = { ...kids[kidIdx], leaveParent: o.v };
                             commit({ ...draft, family: { ...draft.family, kids } });
                           }}
-                          className="px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all"
+                          className="px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                           style={{
                             backgroundColor: kid.leaveParent === o.v ? DC.primary : "transparent",
                             color: kid.leaveParent === o.v ? "#fff" : DC.textSecondary,
@@ -708,7 +708,7 @@ export function ScenarioSettingsDialog({
                     key={s.k}
                     type="button"
                     onClick={() => setIncomeSub(s.k)}
-                    className="px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all"
+                    className="px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                     style={{
                       backgroundColor: incomeSub === s.k ? DC.primary : "transparent",
                       color: incomeSub === s.k ? "#fff" : DC.textPrimary,
@@ -953,7 +953,7 @@ export function ScenarioSettingsDialog({
                     key={s.k}
                     type="button"
                     onClick={() => setSpendingSub(s.k)}
-                    className="px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all"
+                    className="px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                     style={{
                       backgroundColor: spendingSub === s.k ? DC.primary : "transparent",
                       color: spendingSub === s.k ? "#fff" : DC.textPrimary,
@@ -977,7 +977,7 @@ export function ScenarioSettingsDialog({
                         key={s.k}
                         type="button"
                         onClick={() => setLifeSub(s.k)}
-                        className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer"
+                        className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                         style={{
                           backgroundColor: lifeSub === s.k ? DC.primary : "transparent",
                           color: lifeSub === s.k ? "#fff" : DC.textSecondary,
@@ -1017,7 +1017,7 @@ export function ScenarioSettingsDialog({
                           key={s.k}
                           type="button"
                           onClick={() => setLifePhase(s.k)}
-                          className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer"
+                          className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
                           style={{
                             backgroundColor: lifePhase === s.k ? DC.cardBg : "transparent",
                             color: DC.textPrimary,

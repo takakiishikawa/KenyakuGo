@@ -199,7 +199,7 @@ function TransactionsPageInner() {
           <button
             type="button"
             onClick={() => setCatFilter("needs_category")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all border"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all border hover:brightness-95 active:scale-95"
             style={
               catFilter === "needs_category"
                 ? { backgroundColor: DC.primaryHover, color: "#fff", borderColor: DC.primaryHover }
@@ -213,7 +213,7 @@ function TransactionsPageInner() {
         <button
           type="button"
           onClick={() => setCatFilter("all")}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all border"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all border hover:brightness-95 active:scale-95"
           style={
             catFilter === "all"
               ? { backgroundColor: DC.textPrimary, color: "#fff", borderColor: DC.textPrimary }
@@ -231,7 +231,7 @@ function TransactionsPageInner() {
               key={cat}
               type="button"
               onClick={() => setCatFilter(cat)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all border"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all border hover:brightness-95 active:scale-95"
               style={
                 active
                   ? { backgroundColor: DC.textPrimary, color: "#fff", borderColor: DC.textPrimary }

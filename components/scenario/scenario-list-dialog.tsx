@@ -266,8 +266,11 @@ export function ScenarioListDialog({
                 key={s.k}
                 type="button"
                 onClick={() => setTab(s.k)}
-                className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer"
-                style={{ backgroundColor: tab === s.k ? DC.cardBg : "transparent", color: DC.textPrimary }}
+                className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
+                style={{
+                  backgroundColor: tab === s.k ? DC.textPrimary : "transparent",
+                  color: tab === s.k ? "#fff" : DC.textSecondary,
+                }}
               >
                 {s.l}
               </button>
@@ -285,8 +288,11 @@ export function ScenarioListDialog({
                   key={s.k}
                   type="button"
                   onClick={() => setCatSub(s.k)}
-                  className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer"
-                  style={{ backgroundColor: catSub === s.k ? DC.cardBg : "transparent", color: DC.textPrimary }}
+                  className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
+                  style={{
+                    backgroundColor: catSub === s.k ? DC.primary : "transparent",
+                    color: catSub === s.k ? "#fff" : DC.textPrimary,
+                  }}
                 >
                   {s.l}
                 </button>

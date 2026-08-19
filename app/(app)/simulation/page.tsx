@@ -489,7 +489,7 @@ export default function SimulationPage() {
                   key={k}
                   type="button"
                   onClick={() => setChartKind(k)}
-                  className="px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer border transition-all"
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer border transition-all hover:brightness-95 active:scale-95"
                   style={{
                     backgroundColor: chartKind === k ? DC.textPrimary : DC.cardBg,
                     color: chartKind === k ? "#fff" : DC.textSecondary,
@@ -566,7 +566,7 @@ function SegmentedControl({
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
-          className="px-3.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all"
+          className="px-3.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
           style={{
             backgroundColor: value === o.value ? DC.cardBg : "transparent",
             color: DC.textPrimary,

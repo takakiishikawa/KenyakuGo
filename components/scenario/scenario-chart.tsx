@@ -28,7 +28,7 @@ export function ScenarioChart({
   const padR = 16;
   const padT = 16;
   const padB = 30;
-  const { years, series, stacked } = bundle;
+  const { years, series, stacked, total } = bundle;
   const n = years.length;
   const xStep = (W - padL - padR) / (n - 1 || 1);
   const xScale = (i: number) => padL + i * xStep;
@@ -186,18 +186,47 @@ export function ScenarioChart({
             <span className="font-semibold" style={{ color: DC.textSecondary }}>
               {years[hoverIdx]}
             </span>
+            {total && (
+              <div className="flex items-center justify-between gap-3 pb-1 mb-0.5 border-b" style={{ borderColor: DC.trackAlt }}>
+                <span className="font-semibold">{total.label}</span>
+                <span className="font-num font-semibold">{formatAmount(total.values[hoverIdx] ?? 0)}</span>
+              </div>
+            )}
             {series
               // その月/年だけ¥0の系列は(他の月では値があっても)tooltipに出さない。
               .filter((s) => (s.values[hoverIdx] ?? 0) !== 0)
-              .map((s) => (
-                <div key={s.label} className="flex items-center justify-between gap-3">
-                  <span className="flex items-center gap-1.5">
-                    <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
-                    {s.label}
-                  </span>
-                  <span className="font-num font-semibold">{formatAmount(s.values[hoverIdx] ?? 0)}</span>
-                </div>
-              ))}
+              .map((s) => {
+                const v = s.values[hoverIdx] ?? 0;
+                const positive = v >= 0;
+                const items = s.breakdown?.[hoverIdx];
+                return (
+                  <div key={s.label} className="flex flex-col gap-0.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="flex items-center gap-1.5">
+                        <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                        {s.label}
+                      </span>
+                      <span
+                        className="font-num font-semibold"
+                        style={s.signed ? { color: positive ? DC.success : DC.danger } : undefined}
+                      >
+                        {s.signed && positive ? "+" : ""}
+                        {formatAmount(v)}
+                      </span>
+                    </div>
+                    {items && items.length > 0 && (
+                      <div className="flex flex-col gap-0.5 pl-3.5">
+                        {items.map((it, ii) => (
+                          <div key={ii} className="flex items-center justify-between gap-3" style={{ color: DC.textFaint }}>
+                            <span className="truncate">{it.label}</span>
+                            <span className="font-num shrink-0">{formatAmount(it.amount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
           </div>
         )}
       </div>

@@ -201,8 +201,8 @@ export default function SimulationPage() {
 
   const chartBundle = useMemo(() => {
     if (compareMode === "compare") return buildCompareChartSeries(compareRows);
-    return buildChartSeries(rowsForView, chartKind, lang);
-  }, [compareMode, compareRows, rowsForView, chartKind, lang]);
+    return buildChartSeries(rowsForView, chartKind, lang, specialEntries, vndPerJpy);
+  }, [compareMode, compareRows, rowsForView, chartKind, lang, specialEntries, vndPerJpy]);
 
   const milestoneYears = [1, 3, 5, 10];
 

@@ -16,7 +16,7 @@ export interface SpecialEntryInput {
   currency: "JPY" | "VND";
 }
 
-function specialEntryYen(e: SpecialEntryInput, vndPerJpy: number): number {
+export function specialEntryYen(e: SpecialEntryInput, vndPerJpy: number): number {
   return e.currency === "JPY" ? e.amount : vndPerJpy > 0 ? e.amount / vndPerJpy : 0;
 }
 

@@ -1,5 +1,6 @@
-import type { ScenarioRow } from "./compute";
+import { specialEntryYen, type ScenarioRow } from "./compute";
 import { catLabel, t, type Lang } from "./dictionary";
+import type { SpecialEntry } from "@/lib/simulation";
 
 export interface TableCell {
   fmt: string;
@@ -32,12 +33,51 @@ function cellWithDelta(v: number, deltaV: number, fmt: (n: number) => string, is
   return { ...base, delta: { fmt: `${positive ? "+" : ""}${fmt(deltaV)}`, positive } };
 }
 
+// 年次の列(yearLabel="2026")はその年の全月、月次の列(yearLabel="2026/06")は
+// その月だけに一致するかどうかを判定する。
+function matchesPeriod(entryMonth: string, yearLabel: string): boolean {
+  return /^\d{4}\/\d{2}$/.test(yearLabel) ? entryMonth === yearLabel.replace("/", "-") : entryMonth.startsWith(`${yearLabel}-`);
+}
+
+// 特別収入・特別支出を、固定費/変動費のカテゴリ内訳と同じ見た目で「項目名」
+// 単位のサブ行として展開する。同じ名前(例: 「Repay」)の項目が同じ期間に
+// 複数あれば1行にまとめて合算する(名前が違えば別の行)。「展開する」を押しても
+// 自動では開かない(NO_AUTO_EXPAND_KEYS側で制御)。
+function specialSubRows(
+  rows: ScenarioRow[],
+  parentKey: string,
+  depth: number,
+  kind: "income" | "expense",
+  specialEntries: SpecialEntry[],
+  vndPerJpy: number,
+  fmt: (n: number) => string,
+): TableRow[] {
+  const matching = specialEntries.filter((e) => e.kind === kind);
+  const names = Array.from(new Set(matching.map((e) => e.name)));
+  return names.map((name) => ({
+    key: `${parentKey}.${name}`,
+    depth,
+    label: name,
+    bold: false,
+    expandable: false,
+    expanded: false,
+    cells: rows.map((r) => {
+      const total = matching
+        .filter((e) => e.name === name && matchesPeriod(e.month, r.yearLabel))
+        .reduce((s, e) => s + specialEntryYen(e, vndPerJpy), 0);
+      return cell(total, fmt);
+    }),
+  }));
+}
+
 // 3階層: 総収入/総支出/総貯蓄 → 内訳 → (支出のみ)カテゴリ単位。
 export function buildSingleTableRows(
   rows: ScenarioRow[],
   lang: Lang,
   isExpanded: (key: string) => boolean,
   fmt: (n: number) => string,
+  specialEntries: SpecialEntry[] = [],
+  vndPerJpy: number = 1,
 ): TableRow[] {
   const first = rows[0];
   const out: TableRow[] = [];
@@ -63,7 +103,11 @@ export function buildSingleTableRows(
       depth: 1,
       label: t(lang, "specialIncomeLabel"),
       cells: rows.map((r) => cell(r.specialIncomeYen, fmt)),
+      expandable: true,
     });
+    if (isExpanded("income.specialIncome")) {
+      out.push(...specialSubRows(rows, "income.specialIncome", 2, "income", specialEntries, vndPerJpy, fmt));
+    }
   }
 
   push({
@@ -120,7 +164,11 @@ export function buildSingleTableRows(
       depth: 1,
       label: t(lang, "specialExpenseLabel"),
       cells: rows.map((r) => cell(r.specialExpenseYen, fmt)),
+      expandable: true,
     });
+    if (isExpanded("expense.specialExpense")) {
+      out.push(...specialSubRows(rows, "expense.specialExpense", 2, "expense", specialEntries, vndPerJpy, fmt));
+    }
   }
 
   push({
@@ -156,6 +204,8 @@ export function buildCompareTableRows(
   lang: Lang,
   isExpanded: (key: string) => boolean,
   fmt: (n: number) => string,
+  specialEntries: SpecialEntry[] = [],
+  vndPerJpy: number = 1,
 ): TableRow[] {
   const out: TableRow[] = [];
   const push = (r: Omit<TableRow, "expanded" | "bold" | "expandable"> & Partial<Pick<TableRow, "bold" | "expandable">>) =>
@@ -181,12 +231,17 @@ export function buildCompareTableRows(
       push({ key: `${ik}.wife`, depth: 2, label: t(lang, "wife"), cells: scn.rows.map((r) => cell(r.wifeYen, fmt)) });
       push({ key: `${ik}.side`, depth: 2, label: t(lang, "side"), cells: scn.rows.map((r) => cell(r.sideYen, fmt)) });
       push({ key: `${ik}.allowance`, depth: 2, label: t(lang, "childAllowance"), cells: scn.rows.map((r) => cell(r.allowanceYen, fmt)) });
+      const ikSpecial = `${ik}.specialIncome`;
       push({
-        key: `${ik}.specialIncome`,
+        key: ikSpecial,
         depth: 2,
         label: t(lang, "specialIncomeLabel"),
         cells: scn.rows.map((r) => cell(r.specialIncomeYen, fmt)),
+        expandable: true,
       });
+      if (isExpanded(ikSpecial)) {
+        out.push(...specialSubRows(scn.rows, ikSpecial, 3, "income", specialEntries, vndPerJpy, fmt));
+      }
     }
 
     const ek = `${key}.expense`;
@@ -223,12 +278,17 @@ export function buildCompareTableRows(
         label: t(lang, "events"),
         cells: scn.rows.map((r) => cell(r.eventsTotalYen - r.specialExpenseYen, fmt)),
       });
+      const ekSpecial = `${ek}.specialExpense`;
       push({
-        key: `${ek}.specialExpense`,
+        key: ekSpecial,
         depth: 2,
         label: t(lang, "specialExpenseLabel"),
         cells: scn.rows.map((r) => cell(r.specialExpenseYen, fmt)),
+        expandable: true,
       });
+      if (isExpanded(ekSpecial)) {
+        out.push(...specialSubRows(scn.rows, ekSpecial, 3, "expense", specialEntries, vndPerJpy, fmt));
+      }
     }
 
     push({ key: `${key}.cash`, depth: 1, label: t(lang, "cash"), cells: scn.rows.map((r) => cell(r.cashCumYen, fmt, true)) });

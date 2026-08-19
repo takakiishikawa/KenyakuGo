@@ -114,16 +114,20 @@ export default function SimulationPage() {
   );
 
   // 「展開する」は 総収入/総支出/総貯蓄 とその直下(固定費/変動費など)までを開く。
-  // 固定費/変動費のさらに下(カテゴリ単位の内訳)は自動では開かず、クリックした
-  // ときだけ開く(一気に全カテゴリが開いて長くなりすぎるのを防ぐため)。
-  const NO_AUTO_EXPAND_KEYS = useMemo(() => new Set(["expense.fixed", "expense.variable"]), []);
+  // 固定費/変動費・特別収入/特別支出のさらに下(項目単位の内訳)は自動では
+  // 開かず、クリックしたときだけ開く(一気に全項目が開いて長くなりすぎるのを
+  // 防ぐため)。比較モードはキーに `scn.<id>.` が前置されるため、末尾一致で判定する。
+  const NO_AUTO_EXPAND_SUFFIXES = useMemo(
+    () => ["expense.fixed", "expense.variable", "income.specialIncome", "expense.specialExpense"],
+    [],
+  );
   const isExpanded = useCallback(
     (key: string) => {
       if (expandedRows[key] !== undefined) return expandedRows[key];
-      if (NO_AUTO_EXPAND_KEYS.has(key)) return false;
+      if (NO_AUTO_EXPAND_SUFFIXES.some((suffix) => key === suffix || key.endsWith(`.${suffix}`))) return false;
       return expandAllFlag;
     },
-    [expandedRows, expandAllFlag, NO_AUTO_EXPAND_KEYS],
+    [expandedRows, expandAllFlag, NO_AUTO_EXPAND_SUFFIXES],
   );
   const toggleRow = useCallback(
     (key: string) => setExpandedRows((prev) => ({ ...prev, [key]: !isExpanded(key) })),
@@ -191,12 +195,12 @@ export default function SimulationPage() {
   const formatAmount = useCallback((yen: number) => formatYen(yen, currency, vndPerJpy), [currency, vndPerJpy]);
 
   const singleTableRows = useMemo(
-    () => buildSingleTableRows(rowsForView, lang, isExpanded, formatAmount),
-    [rowsForView, lang, isExpanded, formatAmount],
+    () => buildSingleTableRows(rowsForView, lang, isExpanded, formatAmount, specialEntries, vndPerJpy),
+    [rowsForView, lang, isExpanded, formatAmount, specialEntries, vndPerJpy],
   );
   const compareTableRows = useMemo(
-    () => buildCompareTableRows(compareRows, lang, isExpanded, formatAmount),
-    [compareRows, lang, isExpanded, formatAmount],
+    () => buildCompareTableRows(compareRows, lang, isExpanded, formatAmount, specialEntries, vndPerJpy),
+    [compareRows, lang, isExpanded, formatAmount, specialEntries, vndPerJpy],
   );
 
   const chartBundle = useMemo(() => {

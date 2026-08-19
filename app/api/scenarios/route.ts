@@ -23,7 +23,7 @@ export async function GET() {
       .order("created_at", { ascending: true }),
     getJpyToVndRate(),
     computeActualSpendThisYear(db),
-    db.from("investment_entries").select("amount_vnd, invested_on").order("invested_on", { ascending: true }),
+    db.from("investment_entries").select("amount_vnd, invested_on, note").order("invested_on", { ascending: true }),
   ]);
 
   if (scenariosRes.error) {
@@ -40,6 +40,7 @@ export async function GET() {
   const investmentEntries = (investmentsRes.data ?? []).map((e) => ({
     amountVnd: e.amount_vnd as number,
     investedOn: e.invested_on as string,
+    name: (e.note as string | null) ?? null,
   }));
 
   return NextResponse.json({

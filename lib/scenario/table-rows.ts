@@ -1,4 +1,4 @@
-import { specialEntryYen, type ScenarioRow } from "./compute";
+import { specialEntryYen, type InvestmentEntryInput, type ScenarioRow } from "./compute";
 import { catLabel, t, type Lang } from "./dictionary";
 import type { SpecialEntry } from "@/lib/simulation";
 

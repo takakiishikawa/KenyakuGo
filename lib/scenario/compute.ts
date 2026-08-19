@@ -598,6 +598,7 @@ export function computeScenarioYears(
 export interface InvestmentEntryInput {
   amountVnd: number;
   investedOn: string; // "YYYY-MM-DD"
+  name: string | null;
 }
 
 // 年次の1行を、指定年の12ヶ月ぶんに単純按分して展開する。イベントだけは

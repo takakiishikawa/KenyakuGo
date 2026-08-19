@@ -348,9 +348,14 @@ export function ScenarioSettingsDialog({
   const [newScenarioName, setNewScenarioName] = useState("");
   const [addCatName, setAddCatName] = useState("");
   const [addCatBudget, setAddCatBudget] = useState("");
+  // 副業収入の「なし・あり」トグル。金額(amountYen>0)だけでは「あり」を選んで
+  // まだ金額を入力していない一瞬だけ表示が消えてしまうため、配偶者と同じ
+  // トグル操作感にするために表示状態だけを別で持つ。
+  const [sideOpen, setSideOpen] = useState(scenario.config.income.side.amountYen > 0);
 
   useEffect(() => {
     setDraft(cloneConfig(scenario.config));
+    setSideOpen(scenario.config.income.side.amountYen > 0);
   }, [scenario.id, scenario.config]);
 
   const fixedCats = useMemo(() => categories.filter((c) => c.is_fixed), [categories]);
@@ -853,9 +858,40 @@ export function ScenarioSettingsDialog({
                   (収入タブには置かない)。 */}
               {incomeSub === "side" && (
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-sm font-semibold" style={{ color: DC.textPrimary }}>
-                    {t(lang, "sideIncome")}
-                  </span>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-sm font-semibold" style={{ color: DC.textPrimary }}>
+                      {t(lang, "sideIncome")}
+                    </span>
+                    <div className="flex gap-0.5 p-0.5 rounded-lg" style={{ backgroundColor: DC.track }}>
+                      {[
+                        { v: false, l: t(lang, "spouseNo") },
+                        { v: true, l: t(lang, "spouseYes") },
+                      ].map((o) => (
+                        <button
+                          key={String(o.v)}
+                          type="button"
+                          onClick={() => {
+                            setSideOpen(o.v);
+                            if (!o.v) {
+                              commit({
+                                ...draft,
+                                income: { ...draft.income, side: { amountYen: 0, startYear: null, endYear: null } },
+                              });
+                            }
+                          }}
+                          className="px-3 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
+                          style={{
+                            backgroundColor: sideOpen === o.v ? DC.primary : "transparent",
+                            color: sideOpen === o.v ? "#fff" : DC.textSecondary,
+                          }}
+                        >
+                          {o.l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {sideOpen && (
+                  <>
                   <div className="flex items-center gap-2 flex-wrap pl-1">
                     <YenInput
                       value={draft.income.side.amountYen}
@@ -916,6 +952,8 @@ export function ScenarioSettingsDialog({
                       </SelectContent>
                     </Select>
                   </div>
+                  </>
+                  )}
                 </div>
               )}
               {incomeSub === "allowance" && (

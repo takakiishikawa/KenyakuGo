@@ -105,14 +105,15 @@ export function buildSingleTableRows(
     // 投資益は収入の内訳には出さず、貯蓄→投資の行にその期間の増分として表示する
     // (収入の内訳に混ざっていると「収支」と「運用の増減」が紛らわしいため)。
     push({ key: "income.allowance", depth: 1, label: t(lang, "childAllowance"), cells: rows.map((r) => cell(r.allowanceYen, fmt)) });
-    // 同棲時の一時収入。以前はincomeTotalYenの計算に含めているのに行が無く、
-    // 同棲開始年だけ「内訳の合計 ≠ 総収入」になるバグになっていた。
-    push({ key: "income.moveInBonus", depth: 1, label: t(lang, "moveInBonus"), cells: rows.map((r) => cell(r.moveInBonusYen, fmt)) });
+    // 同棲時の一時収入はテーブル上では特別収入の行に合算する(設定モーダルでは
+    // 引き続き別項目のまま)。incomeTotalYenの計算にも含まれているので、行を
+    // 消すだけだと「内訳の合計 ≠ 総収入」に戻ってしまう(以前あったバグ)ため、
+    // specialIncomeの表示額に足し込むことで内訳の合計を保つ。
     push({
       key: "income.specialIncome",
       depth: 1,
       label: t(lang, "specialIncomeLabel"),
-      cells: rows.map((r) => cell(r.specialIncomeYen, fmt)),
+      cells: rows.map((r) => cell(r.specialIncomeYen + r.moveInBonusYen, fmt)),
       expandable: true,
     });
     if (isExpanded("income.specialIncome")) {
@@ -249,18 +250,14 @@ export function buildCompareTableRows(
       push({ key: `${ik}.wife`, depth: 2, label: t(lang, "wife"), cells: scn.rows.map((r) => cell(r.wifeYen, fmt)) });
       push({ key: `${ik}.side`, depth: 2, label: t(lang, "side"), cells: scn.rows.map((r) => cell(r.sideYen, fmt)) });
       push({ key: `${ik}.allowance`, depth: 2, label: t(lang, "childAllowance"), cells: scn.rows.map((r) => cell(r.allowanceYen, fmt)) });
-      push({
-        key: `${ik}.moveInBonus`,
-        depth: 2,
-        label: t(lang, "moveInBonus"),
-        cells: scn.rows.map((r) => cell(r.moveInBonusYen, fmt)),
-      });
+      // 同棲時の一時収入はテーブル上では特別収入の行に合算する(設定モーダルでは
+      // 引き続き別項目のまま)。
       const ikSpecial = `${ik}.specialIncome`;
       push({
         key: ikSpecial,
         depth: 2,
         label: t(lang, "specialIncomeLabel"),
-        cells: scn.rows.map((r) => cell(r.specialIncomeYen, fmt)),
+        cells: scn.rows.map((r) => cell(r.specialIncomeYen + r.moveInBonusYen, fmt)),
         expandable: true,
       });
       if (isExpanded(ikSpecial)) {

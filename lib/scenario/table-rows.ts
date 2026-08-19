@@ -55,8 +55,8 @@ export function buildSingleTableRows(
     push({ key: "income.husband", depth: 1, label: t(lang, "husband"), cells: rows.map((r) => cell(r.husbandYen, fmt)) });
     push({ key: "income.wife", depth: 1, label: t(lang, "wife"), cells: rows.map((r) => cell(r.wifeYen, fmt)) });
     push({ key: "income.side", depth: 1, label: t(lang, "side"), cells: rows.map((r) => cell(r.sideYen, fmt)) });
-    push({ key: "income.allowance", depth: 1, label: t(lang, "childAllowance"), cells: rows.map((r) => cell(r.allowanceYen, fmt)) });
     push({ key: "income.investProfit", depth: 1, label: t(lang, "investProfit"), cells: rows.map((r) => cell(r.investProfitYen, fmt)) });
+    push({ key: "income.allowance", depth: 1, label: t(lang, "childAllowance"), cells: rows.map((r) => cell(r.allowanceYen, fmt)) });
     push({
       key: "income.specialIncome",
       depth: 1,
@@ -112,25 +112,14 @@ export function buildSingleTableRows(
       key: "expense.events",
       depth: 1,
       label: t(lang, "events"),
-      cells: rows.map((r) => cell(r.eventsTotalYen, fmt)),
-      expandable: true,
+      cells: rows.map((r) => cell(r.eventsTotalYen - r.specialExpenseYen, fmt)),
     });
-    if (isExpanded("expense.events")) {
-      // eventsTotalYen = 結婚式・旅行 + 特別支出(special_entries)。特別支出は
-      // 実データと連動する独立行として出す(以前はイベント合計に埋もれて見えなかった)。
-      push({
-        key: "expense.events.other",
-        depth: 2,
-        label: t(lang, "eventsOther"),
-        cells: rows.map((r) => cell(r.eventsTotalYen - r.specialExpenseYen, fmt)),
-      });
-      push({
-        key: "expense.events.special",
-        depth: 2,
-        label: t(lang, "specialExpenseLabel"),
-        cells: rows.map((r) => cell(r.specialExpenseYen, fmt)),
-      });
-    }
+    push({
+      key: "expense.specialExpense",
+      depth: 1,
+      label: t(lang, "specialExpenseLabel"),
+      cells: rows.map((r) => cell(r.specialExpenseYen, fmt)),
+    });
   }
 
   push({
@@ -185,13 +174,13 @@ export function buildCompareTableRows(
       push({ key: `${ik}.husband`, depth: 2, label: t(lang, "husband"), cells: scn.rows.map((r) => cell(r.husbandYen, fmt)) });
       push({ key: `${ik}.wife`, depth: 2, label: t(lang, "wife"), cells: scn.rows.map((r) => cell(r.wifeYen, fmt)) });
       push({ key: `${ik}.side`, depth: 2, label: t(lang, "side"), cells: scn.rows.map((r) => cell(r.sideYen, fmt)) });
-      push({ key: `${ik}.allowance`, depth: 2, label: t(lang, "childAllowance"), cells: scn.rows.map((r) => cell(r.allowanceYen, fmt)) });
       push({
         key: `${ik}.investProfit`,
         depth: 2,
         label: t(lang, "investProfit"),
         cells: scn.rows.map((r) => cell(r.investProfitYen, fmt)),
       });
+      push({ key: `${ik}.allowance`, depth: 2, label: t(lang, "childAllowance"), cells: scn.rows.map((r) => cell(r.allowanceYen, fmt)) });
       push({
         key: `${ik}.specialIncome`,
         depth: 2,
@@ -228,22 +217,18 @@ export function buildCompareTableRows(
         }
       }
       push({ key: `${ek}.education`, depth: 2, label: t(lang, "education"), cells: scn.rows.map((r) => cell(r.educationTotalYen, fmt)) });
-      const evk = `${ek}.events`;
-      push({ key: evk, depth: 2, label: t(lang, "events"), cells: scn.rows.map((r) => cell(r.eventsTotalYen, fmt)), expandable: true });
-      if (isExpanded(evk)) {
-        push({
-          key: `${evk}.other`,
-          depth: 3,
-          label: t(lang, "eventsOther"),
-          cells: scn.rows.map((r) => cell(r.eventsTotalYen - r.specialExpenseYen, fmt)),
-        });
-        push({
-          key: `${evk}.special`,
-          depth: 3,
-          label: t(lang, "specialExpenseLabel"),
-          cells: scn.rows.map((r) => cell(r.specialExpenseYen, fmt)),
-        });
-      }
+      push({
+        key: `${ek}.events`,
+        depth: 2,
+        label: t(lang, "events"),
+        cells: scn.rows.map((r) => cell(r.eventsTotalYen - r.specialExpenseYen, fmt)),
+      });
+      push({
+        key: `${ek}.specialExpense`,
+        depth: 2,
+        label: t(lang, "specialExpenseLabel"),
+        cells: scn.rows.map((r) => cell(r.specialExpenseYen, fmt)),
+      });
     }
 
     push({ key: `${key}.cash`, depth: 1, label: t(lang, "cash"), cells: scn.rows.map((r) => cell(r.cashCumYen, fmt, true)) });

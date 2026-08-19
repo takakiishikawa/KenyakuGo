@@ -335,6 +335,19 @@ export default function SimulationPage() {
     [fetchSpecialEntries],
   );
 
+  const onRenameSpecialEntry = useCallback(
+    async (id: string, name: string) => {
+      const res = await fetch(`/api/simulation/special-entries/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (res.ok) await fetchSpecialEntries();
+      else toast.error("Could not rename");
+    },
+    [fetchSpecialEntries],
+  );
+
   if (loading || !primary || !editTarget) {
     return (
       <div className="mt-6 flex flex-col gap-3">
@@ -514,6 +527,7 @@ export default function SimulationPage() {
         specialEntries={specialEntries}
         onAddSpecialEntry={onAddSpecialEntry}
         onDeleteSpecialEntry={onDeleteSpecialEntry}
+        onRenameSpecialEntry={onRenameSpecialEntry}
         lang={lang}
         currency={currency}
         vndPerJpy={vndPerJpy}

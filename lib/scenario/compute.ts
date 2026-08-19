@@ -564,6 +564,12 @@ export function expandMonthly(
     row.allowanceYen -
     row.investProfitYen -
     row.specialIncomeYen;
+  // 貯蓄の累計は「年末の累計から、残り月数ぶんを年間平均netFlowで引く」という
+  // 線形補間だったが、ボーナス月やイベント月のように月ごとのnetFlowが大きく
+  // 違う場合、隣り合う月の差がその月のdelta表示(実際のnetFlowYen)と一致しない
+  // バグになっていた(例: ある月の貯蓄額が前月+その月のdeltaにならない)。
+  // 前年末の累計を起点に、各月の実際のnetFlowYenをそのまま積み上げる。
+  let cumYen = row.savingsCumTotalYen - row.netFlowYen;
   return Array.from({ length: 12 }, (_, idx) => {
     const m = idx + 1;
     const husbandYenThisMonth = netMonthYen(config.income.husband, focusYear, m, yearsFromStart, "husband", config.family.kids);
@@ -612,8 +618,8 @@ export function expandMonthly(
       specialIncomeThisMonth +
       divide(otherIncomeAnnualYen);
     const netFlowYen = incomeTotalYen - expenseTotalYen;
-    const remainingMonths = 12 - m;
-    const savingsCumTotalYen = row.savingsCumTotalYen - (row.netFlowYen * remainingMonths) / 12;
+    cumYen += netFlowYen;
+    const savingsCumTotalYen = cumYen;
 
     // 投資残高は「均等按分」ではなく、月を追うごとに増えていくように出す。
     // - 今年の経過済み月: その月までの実際の投資額の累計をそのまま使う。

@@ -34,6 +34,7 @@ const MONTH_LABELS_JA = ["1月", "2月", "3月", "4月", "5月", "6月", "7月",
 const MONTH_LABELS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 type ConfigTab = "family" | "income" | "spending" | "savingsTab";
+type IncomeSub = "salary" | "side" | "allowance" | "special";
 type SpendingSub = "life" | "education" | "events" | "specialExpense";
 type LifeSub = "fixed" | "variable";
 
@@ -115,12 +116,66 @@ function formatSpecialAmount(amount: number, entryCurrency: "JPY" | "VND", displ
   return displayCurrency === "JPY" ? formatJPY(yen) : formatVND(yen * VND_PER_JPY);
 }
 
+// 特別収入・特別支出の名前ラベル。クリックで編集モードに入り、Enter/blurで保存する
+// (シナリオ管理ポップアップのシナリオ名・カテゴリ名の編集と同じ操作感に揃えてある)。
+function SpecialEntryNameLabel({
+  name,
+  onRename,
+  lang,
+}: {
+  name: string;
+  onRename: (name: string) => void;
+  lang: Lang;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [nameInput, setNameInput] = useState(name);
+
+  const commit = () => {
+    const trimmed = nameInput.trim();
+    if (trimmed && trimmed !== name) onRename(trimmed);
+    else setNameInput(name);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <Input
+        value={nameInput}
+        onChange={(e) => setNameInput(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") {
+            setNameInput(name);
+            setEditing(false);
+          }
+        }}
+        className="h-7 text-sm flex-1 min-w-24"
+        autoFocus
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      title={t(lang, "rename")}
+      className="flex-1 min-w-24 text-sm truncate text-left cursor-pointer rounded transition-all hover:bg-muted"
+      style={{ color: DC.textPrimary }}
+    >
+      {name}
+    </button>
+  );
+}
+
 function SpecialEntrySection({
   kind,
   title,
   entries,
   onAdd,
   onDelete,
+  onRename,
   lang,
   currency,
   monthLabels,
@@ -130,6 +185,7 @@ function SpecialEntrySection({
   entries: SpecialEntry[];
   onAdd: (kind: "income" | "expense", month: string, name: string, amount: number, currency: "JPY" | "VND") => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onRename: (id: string, name: string) => Promise<void>;
   lang: Lang;
   currency: DisplayCurrency;
   monthLabels: string[];
@@ -161,9 +217,7 @@ function SpecialEntrySection({
       </span>
       {filtered.map((e) => (
         <div key={e.id} className="flex items-center gap-1.5 flex-wrap rounded-lg border p-2" style={{ borderColor: DC.trackAlt }}>
-          <span className="flex-1 min-w-24 text-sm truncate" style={{ color: DC.textPrimary }}>
-            {e.name}
-          </span>
+          <SpecialEntryNameLabel name={e.name} onRename={(name) => onRename(e.id, name)} lang={lang} />
           <span className="text-sm font-num" style={{ color: DC.textSecondary }}>
             {formatSpecialAmount(e.amount, e.currency, currency)}
           </span>
@@ -247,6 +301,7 @@ export function ScenarioSettingsDialog({
   specialEntries,
   onAddSpecialEntry,
   onDeleteSpecialEntry,
+  onRenameSpecialEntry,
   lang,
   currency,
   vndPerJpy,
@@ -273,11 +328,13 @@ export function ScenarioSettingsDialog({
   specialEntries: SpecialEntry[];
   onAddSpecialEntry: (kind: "income" | "expense", month: string, name: string, amount: number, currency: "JPY" | "VND") => Promise<void>;
   onDeleteSpecialEntry: (id: string) => Promise<void>;
+  onRenameSpecialEntry: (id: string, name: string) => Promise<void>;
   lang: Lang;
   currency: DisplayCurrency;
   vndPerJpy: number;
 }) {
   const [configTab, setConfigTab] = useState<ConfigTab>("family");
+  const [incomeSub, setIncomeSub] = useState<IncomeSub>("salary");
   const [spendingSub, setSpendingSub] = useState<SpendingSub>("life");
   const [lifeSub, setLifeSub] = useState<LifeSub>("fixed");
   // 同棲後(post)がデフォルト: 実際のスケジュール設定(category_budget_overrides)は
@@ -845,6 +902,7 @@ export function ScenarioSettingsDialog({
                 entries={specialEntries}
                 onAdd={onAddSpecialEntry}
                 onDelete={onDeleteSpecialEntry}
+                onRename={onRenameSpecialEntry}
                 lang={lang}
                 currency={currency}
                 monthLabels={monthLabels}
@@ -1196,6 +1254,7 @@ export function ScenarioSettingsDialog({
                     entries={specialEntries}
                     onAdd={onAddSpecialEntry}
                     onDelete={onDeleteSpecialEntry}
+                    onRename={onRenameSpecialEntry}
                     lang={lang}
                     currency={currency}
                     monthLabels={monthLabels}

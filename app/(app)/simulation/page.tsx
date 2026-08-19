@@ -118,7 +118,7 @@ export default function SimulationPage() {
   // 開かず、クリックしたときだけ開く(一気に全項目が開いて長くなりすぎるのを
   // 防ぐため)。比較モードはキーに `scn.<id>.` が前置されるため、末尾一致で判定する。
   const NO_AUTO_EXPAND_SUFFIXES = useMemo(
-    () => ["expense.fixed", "expense.variable", "income.specialIncome", "expense.specialExpense"],
+    () => ["expense.fixed", "expense.variable", "income.specialIncome", "expense.specialExpense", "savings.invest"],
     [],
   );
   const isExpanded = useCallback(
@@ -195,12 +195,12 @@ export default function SimulationPage() {
   const formatAmount = useCallback((yen: number) => formatYen(yen, currency, vndPerJpy), [currency, vndPerJpy]);
 
   const singleTableRows = useMemo(
-    () => buildSingleTableRows(rowsForView, lang, isExpanded, formatAmount, specialEntries, vndPerJpy),
-    [rowsForView, lang, isExpanded, formatAmount, specialEntries, vndPerJpy],
+    () => buildSingleTableRows(rowsForView, lang, isExpanded, formatAmount, specialEntries, vndPerJpy, investmentEntries),
+    [rowsForView, lang, isExpanded, formatAmount, specialEntries, vndPerJpy, investmentEntries],
   );
   const compareTableRows = useMemo(
-    () => buildCompareTableRows(compareRows, lang, isExpanded, formatAmount, specialEntries, vndPerJpy),
-    [compareRows, lang, isExpanded, formatAmount, specialEntries, vndPerJpy],
+    () => buildCompareTableRows(compareRows, lang, isExpanded, formatAmount, specialEntries, vndPerJpy, investmentEntries),
+    [compareRows, lang, isExpanded, formatAmount, specialEntries, vndPerJpy, investmentEntries],
   );
 
   const chartBundle = useMemo(() => {

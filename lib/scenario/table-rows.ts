@@ -77,6 +77,56 @@ function specialSubRows(
   }));
 }
 
+// yearLabelが表す期間の最終日("YYYY-MM-DD")。investedOn(同じ形式)と文字列比較
+// するだけで「その期間末までに投資したか」を判定できる。
+function periodEndDate(yearLabel: string): string {
+  const monthly = /^(\d{4})\/(\d{2})$/.exec(yearLabel);
+  if (monthly) {
+    const [, y, m] = monthly;
+    const lastDay = new Date(Number(y), Number(m), 0).getDate();
+    return `${y}-${m}-${String(lastDay).padStart(2, "0")}`;
+  }
+  return `${yearLabel}-12-31`;
+}
+
+// 名前つきで記録した投資を、特別収入と同じ考え方で「項目名」単位のサブ行として
+// 投資行の下に展開する(同じ名前は1行に合算)。ただし投資行自体は累計(元本の
+// 積み上がり)なので、サブ行もその期間末までの累計にする(特別収入のような
+// 期間ごとのフローではない) — こうしないと、サブ行を全部足しても親の投資行の
+// 金額と合わなくなる。名前を付けていない記録はどのサブ行にも出ない(合計は
+// 親の投資行にはすでに含まれている)。
+function investmentSubRows(
+  rows: ScenarioRow[],
+  parentKey: string,
+  depth: number,
+  investmentEntries: InvestmentEntryInput[],
+  vndPerJpy: number,
+  fmt: (n: number) => string,
+): TableRow[] {
+  const named = investmentEntries.filter((e) => e.name && e.name.trim());
+  const normalize = (name: string) => name.trim().toLowerCase();
+  const labelByKey = new Map<string, string>();
+  for (const e of named) {
+    const key = normalize(e.name as string);
+    if (!labelByKey.has(key)) labelByKey.set(key, (e.name as string).trim());
+  }
+  return Array.from(labelByKey.entries()).map(([normalizedName, label]) => ({
+    key: `${parentKey}.${normalizedName}`,
+    depth,
+    label,
+    bold: false,
+    expandable: false,
+    expanded: false,
+    cells: rows.map((r) => {
+      const endDate = periodEndDate(r.yearLabel);
+      const total = named
+        .filter((e) => normalize(e.name as string) === normalizedName && e.investedOn <= endDate)
+        .reduce((s, e) => s + e.amountVnd / vndPerJpy, 0);
+      return cell(total, fmt);
+    }),
+  }));
+}
+
 // 3階層: 総収入/総支出/総貯蓄 → 内訳 → (支出のみ)カテゴリ単位。
 export function buildSingleTableRows(
   rows: ScenarioRow[],
@@ -85,6 +135,7 @@ export function buildSingleTableRows(
   fmt: (n: number) => string,
   specialEntries: SpecialEntry[] = [],
   vndPerJpy: number = 1,
+  investmentEntries: InvestmentEntryInput[] = [],
 ): TableRow[] {
   const first = rows[0];
   const out: TableRow[] = [];
@@ -201,7 +252,11 @@ export function buildSingleTableRows(
       depth: 1,
       label: t(lang, "invest"),
       cells: rows.map((r) => cell(r.investBalYen - r.profitCumYen, fmt)),
+      expandable: true,
     });
+    if (isExpanded("savings.invest")) {
+      out.push(...investmentSubRows(rows, "savings.invest", 2, investmentEntries, vndPerJpy, fmt));
+    }
     // 含み損益は累計を主表示にし、その期間の増減(想定利率から毎月/毎年計算)を
     // 貯蓄行と同じ「金額 + その期間の増減」の書き方で見せる。
     push({
@@ -225,6 +280,7 @@ export function buildCompareTableRows(
   fmt: (n: number) => string,
   specialEntries: SpecialEntry[] = [],
   vndPerJpy: number = 1,
+  investmentEntries: InvestmentEntryInput[] = [],
 ): TableRow[] {
   const out: TableRow[] = [];
   const push = (r: Omit<TableRow, "expanded" | "bold" | "expandable"> & Partial<Pick<TableRow, "bold" | "expandable">>) =>
@@ -313,12 +369,17 @@ export function buildCompareTableRows(
     }
 
     push({ key: `${key}.cash`, depth: 1, label: t(lang, "cash"), cells: scn.rows.map((r) => cell(r.cashCumYen, fmt, true)) });
+    const investKey = `${key}.invest`;
     push({
-      key: `${key}.invest`,
+      key: investKey,
       depth: 1,
       label: t(lang, "invest"),
       cells: scn.rows.map((r) => cell(r.investBalYen - r.profitCumYen, fmt)),
+      expandable: true,
     });
+    if (isExpanded(investKey)) {
+      out.push(...investmentSubRows(scn.rows, investKey, 2, investmentEntries, vndPerJpy, fmt));
+    }
     push({
       key: `${key}.profit`,
       depth: 1,

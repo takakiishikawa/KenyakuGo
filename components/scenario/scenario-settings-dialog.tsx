@@ -474,7 +474,7 @@ export function ScenarioSettingsDialog({
         </DialogHeader>
 
         <div className="px-5 py-4 max-h-[80vh] overflow-y-auto flex flex-col gap-3.5">
-          {isCompare && (
+          {scenarios.length > 1 && (
             <div className="flex items-center gap-2">
               <span className="text-xs" style={{ color: DC.textSecondary }}>
                 {t(lang, "editTarget")}

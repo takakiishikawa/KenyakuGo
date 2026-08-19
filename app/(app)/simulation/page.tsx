@@ -439,11 +439,13 @@ export default function SimulationPage() {
               <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em]" style={{ color: DC.textFaint }}>
                 {t(lang, "totalSavings")} ({focusYear})
               </span>
-              <span className="font-display text-2xl font-bold" style={{ color: DC.textPrimary }}>
-                {formatAmount(yearRow.savingsCumTotalYen)}
-              </span>
-              <span className="text-xs font-medium" style={{ color: DC.textSecondary }}>
-                {formatAmount(yearRow.incomeTotalYen)} − {formatAmount(yearRow.expenseTotalYen)} = {formatAmount(yearRow.netFlowYen)}
+              <span className="flex items-baseline gap-2 flex-wrap">
+                <span className="font-display text-2xl font-bold" style={{ color: DC.textPrimary }}>
+                  {formatAmount(yearRow.savingsCumTotalYen)}
+                </span>
+                <span className="text-xs font-medium" style={{ color: DC.textSecondary }}>
+                  ({formatAmount(yearRow.incomeTotalYen)} − {formatAmount(yearRow.expenseTotalYen)})
+                </span>
               </span>
             </Card>
           );

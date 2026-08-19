@@ -262,10 +262,10 @@ function TransactionsPageInner() {
                 <span className="w-[74px] shrink-0 whitespace-nowrap text-[11.5px]" style={{ color: DC.textFaint }}>
                   {formatDateShort(tx.date)}
                 </span>
-                <span className="flex-1 min-w-[120px] text-[13px] font-semibold truncate" style={{ color: DC.textPrimary }}>
+                <span className="flex-1 min-w-[120px] text-[13px] font-normal truncate" style={{ color: DC.textPrimary }}>
                   {tx.store}
                 </span>
-                <span className="w-24 shrink-0 text-right text-[13px] font-bold font-num" style={{ color: DC.textPrimary }}>
+                <span className="w-24 shrink-0 text-right text-[13px] font-normal font-num" style={{ color: DC.textPrimary }}>
                   {formatAmount(tx.amount)}
                 </span>
                 {uncategorized ? (

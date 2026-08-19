@@ -108,7 +108,7 @@ export function ScenarioTable({
                       key={i}
                       className="text-right whitespace-nowrap"
                       style={{
-                        backgroundColor: isCurrent ? DC.trackAlt : DC.headerBg,
+                        backgroundColor: DC.headerBg,
                         color: isCurrent ? DC.primaryHover : DC.textPrimary,
                         fontSize: 11.5,
                         fontWeight: 700,

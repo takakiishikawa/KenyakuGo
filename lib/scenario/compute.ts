@@ -1,4 +1,4 @@
-import type { CategoryBudgetOverride } from "@/lib/category-budget";
+import { findEffectiveOverride, type CategoryBudgetOverride } from "@/lib/category-budget";
 import { getCategoryHex } from "@/lib/category-colors";
 import { eduCostForAge } from "./education-costs";
 import type { ScenarioConfig } from "./types";
@@ -259,6 +259,19 @@ function categoryMonthlyActualOrBudgetYen(
       const key = `${nowYear}-${String(m).padStart(2, "0")}`;
       const actualVnd = monthlyActualVnd?.[key] ?? 0;
       return actualVnd / vndPerJpy;
+    }
+    // 未経過月: 期間限定(end_month指定)のスケジュールがその月をカバーして
+    // いれば、恒久変更より優先して使う(ダッシュボード/予算ページの
+    // resolveBudgetsForMonthと同じ優先順位: 期間限定 > 恒久変更 > 素の予算)。
+    // projectCategoryMonthlyYenは恒久変更しか見ていない(15年先の投影に
+    // 一時的な変更を持ち込まないための仕様)ため、それだけでは今年の期間限定
+    // スケジュールがテーブルに反映されないバグになっていた。
+    if (cohabiting) {
+      const key = `${nowYear}-${String(m).padStart(2, "0")}`;
+      const winner = findEffectiveOverride(overridesForCategory, key);
+      if (winner && winner.end_month !== null) {
+        return winner.budget / vndPerJpy;
+      }
     }
     return budgetMonthlyYen;
   });

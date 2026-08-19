@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import type { ChartBundle } from "@/lib/scenario/chart";
 import { DC } from "@/lib/scenario/design-colors";
 
@@ -32,6 +33,9 @@ export function ScenarioChart({
   const xStep = (W - padL - padR) / (n - 1 || 1);
   const xScale = (i: number) => padL + i * xStep;
 
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
   let maxV = 0;
   let minV = 0;
   if (stacked) {
@@ -52,6 +56,9 @@ export function ScenarioChart({
   const yScale = (v: number) => H - padB - ((v - minV) / (maxV - minV)) * (H - padB - padT);
 
   const paths: { d?: string; line?: string; fill?: string; stroke: string }[] = [];
+  // hover時に各系列の値を正しい高さ(積み上げなら積み上げ後の位置)にマーカー表示
+  // するため、系列ごと・インデックスごとのY座標も一緒に持っておく。
+  const seriesPointY: number[][] = [];
   if (stacked) {
     const cum = new Array(n).fill(0);
     for (const s of series) {
@@ -60,6 +67,7 @@ export function ScenarioChart({
         cum[i] += v;
         return y;
       });
+      seriesPointY.push(top);
       let d = `M${xScale(0)},${yScale(cum[0] - s.values[0])}`;
       for (let i = 0; i < n; i++) d += ` L${xScale(i)},${top[i]}`;
       for (let i = n - 1; i >= 0; i--) d += ` L${xScale(i)},${yScale(cum[i] - s.values[i])}`;
@@ -70,6 +78,7 @@ export function ScenarioChart({
     for (const s of series) {
       const d = s.values.map((v, i) => `${xScale(i)},${yScale(v)}`).join(" L");
       paths.push({ line: `M${d}`, stroke: s.color });
+      seriesPointY.push(s.values.map((v) => yScale(v)));
     }
   }
 
@@ -79,6 +88,18 @@ export function ScenarioChart({
   });
   const xTicks = years.map((y, i) => ({ label: y, x: xScale(i) }));
   const showEveryNthTick = Math.max(1, Math.ceil(n / 16));
+
+  const handleMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    if (!svg || n === 0) return;
+    const rect = svg.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const svgX = ((e.clientX - rect.left) / rect.width) * W;
+    const idx = Math.round((svgX - padL) / xStep);
+    setHoverIdx(Math.min(n - 1, Math.max(0, idx)));
+  };
+
+  const tooltipOnRight = hoverIdx !== null && xScale(hoverIdx) < W * 0.6;
 
   return (
     <div className="flex flex-col gap-3">
@@ -90,30 +111,93 @@ export function ScenarioChart({
           </div>
         ))}
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full block" style={{ height: "min(60vh, 420px)", minHeight: 280 }}>
-        {gridLines.map((gl, i) => (
-          <g key={i}>
-            <line x1={padL} y1={gl.y} x2={W - padR} y2={gl.y} stroke={DC.cardBorder} strokeWidth={1} />
-            <text x={padL - 10} y={gl.y} textAnchor="end" dominantBaseline="middle" fontSize={11} fill={DC.textFaint}>
-              {gl.label}
-            </text>
-          </g>
-        ))}
-        {paths.map((p, i) =>
-          p.d ? (
-            <path key={i} d={p.d} fill={p.fill} stroke={p.stroke} strokeWidth={1} />
-          ) : (
-            <path key={i} d={p.line} fill="none" stroke={p.stroke} strokeWidth={2.5} />
-          ),
-        )}
-        {xTicks
-          .filter((_, i) => i % showEveryNthTick === 0)
-          .map((xt) => (
-            <text key={xt.x} x={xt.x} y={H - 6} textAnchor="middle" fontSize={10.5} fill={DC.textFaint}>
-              {xt.label}
-            </text>
+      <div className="relative">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${W} ${H}`}
+          className="w-full block"
+          style={{ height: "min(60vh, 420px)", minHeight: 280 }}
+          onMouseMove={handleMove}
+          onMouseLeave={() => setHoverIdx(null)}
+        >
+          {gridLines.map((gl, i) => (
+            <g key={i}>
+              <line x1={padL} y1={gl.y} x2={W - padR} y2={gl.y} stroke={DC.cardBorder} strokeWidth={1} />
+              <text x={padL - 10} y={gl.y} textAnchor="end" dominantBaseline="middle" fontSize={11} fill={DC.textFaint}>
+                {gl.label}
+              </text>
+            </g>
           ))}
-      </svg>
+          {paths.map((p, i) =>
+            p.d ? (
+              <path key={i} d={p.d} fill={p.fill} stroke={p.stroke} strokeWidth={1} />
+            ) : (
+              <path key={i} d={p.line} fill="none" stroke={p.stroke} strokeWidth={2.5} />
+            ),
+          )}
+          {xTicks
+            .filter((_, i) => i % showEveryNthTick === 0)
+            .map((xt) => (
+              <text key={xt.x} x={xt.x} y={H - 6} textAnchor="middle" fontSize={10.5} fill={DC.textFaint}>
+                {xt.label}
+              </text>
+            ))}
+          {hoverIdx !== null && (
+            <g>
+              <line
+                x1={xScale(hoverIdx)}
+                y1={padT}
+                x2={xScale(hoverIdx)}
+                y2={H - padB}
+                stroke={DC.textFaint}
+                strokeWidth={1}
+                strokeDasharray="3 3"
+              />
+              {series.map((s, si) => (
+                <circle
+                  key={s.label}
+                  cx={xScale(hoverIdx)}
+                  cy={seriesPointY[si][hoverIdx]}
+                  r={3.5}
+                  fill={DC.cardBg}
+                  stroke={s.color}
+                  strokeWidth={2}
+                />
+              ))}
+            </g>
+          )}
+          {/* hover検出用の透明なオーバーレイ。プロット全域をカバーし、系列の
+              線の上に乗らなくてもグラフのどこにマウスがあっても反応する。 */}
+          <rect x={padL} y={padT} width={W - padL - padR} height={H - padT - padB} fill="transparent" />
+        </svg>
+        {hoverIdx !== null && (
+          <div
+            className="absolute pointer-events-none flex flex-col gap-1 rounded-lg border px-2.5 py-2 text-[11.5px] shadow-sm"
+            style={{
+              left: `${(xScale(hoverIdx) / W) * 100}%`,
+              top: 4,
+              transform: tooltipOnRight ? "translateX(12px)" : "translateX(calc(-100% - 12px))",
+              backgroundColor: DC.cardBg,
+              borderColor: DC.cardBorder,
+              color: DC.textPrimary,
+              minWidth: 140,
+            }}
+          >
+            <span className="font-semibold" style={{ color: DC.textSecondary }}>
+              {years[hoverIdx]}
+            </span>
+            {series.map((s, si) => (
+              <div key={s.label} className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                  {s.label}
+                </span>
+                <span className="font-num font-semibold">{formatAmount(s.values[hoverIdx] ?? 0)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

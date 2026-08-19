@@ -63,7 +63,7 @@ export function buildChartSeries(rows: ScenarioRow[], kind: ChartKind, lang: Lan
         series: [
           { label: t(lang, "totalIncome"), color: "#16A34A", values: rows.map((r) => r.incomeTotalYen) },
           { label: t(lang, "totalExpense"), color: "#B8621B", values: rows.map((r) => r.expenseTotalYen) },
-          { label: `${t(lang, "totalSavings")} (flow)`, color: "#BE5B85", values: rows.map((r) => r.netFlowYen) },
+          { label: t(lang, "totalSavings"), color: "#BE5B85", values: rows.map((r) => r.netFlowYen) },
         ],
       };
     case "income":

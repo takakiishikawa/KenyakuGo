@@ -154,15 +154,9 @@ export function buildSingleTableRows(
     push({ key: "income.wife", depth: 1, label: t(lang, "wife"), cells: rows.map((r) => cell(r.wifeYen, fmt)) });
     push({ key: "income.side", depth: 1, label: t(lang, "side"), cells: rows.map((r) => cell(r.sideYen, fmt)) });
     push({ key: "income.allowance", depth: 1, label: t(lang, "childAllowance"), cells: rows.map((r) => cell(r.allowanceYen, fmt)) });
-    // 投資益(その期間の含み益の増分)。以前は内訳に出さず総収入にだけ含めていた
-    // ため、他の内訳が全部¥0の月でも「総収入 ≠ 本人給与等の合計」になり、
-    // 差額の理由が分からず不具合に見えてしまっていた。ここに出す。
-    push({
-      key: "income.investProfit",
-      depth: 1,
-      label: t(lang, "investProfit"),
-      cells: rows.map((r) => cell(r.investProfitYen, fmt)),
-    });
+    // 投資益は収入の内訳には出さない(incomeTotalYenの計算自体に含めていない。
+    // 実際に手元に入ってくるお金ではないため。貯蓄→投資の行にその期間の
+    // 増分として表示する)。
     // 同棲時の一時収入はテーブル上では特別収入の行に合算する(設定モーダルでは
     // 引き続き別項目のまま)。incomeTotalYenの計算にも含まれているので、行を
     // 消すだけだと「内訳の合計 ≠ 総収入」に戻ってしまう(以前あったバグ)ため、
@@ -244,9 +238,9 @@ export function buildSingleTableRows(
     key: "savings",
     depth: 0,
     label: t(lang, "totalSavings"),
-    // netFlowYen(投資益込みの総収入-総支出)が、そのままその期間の貯蓄の増減と
-    // 一致する(収支の計算上、他に貯蓄額を動かす要因が無いため)。
-    cells: rows.map((r) => cellWithDelta(r.savingsCumTotalYen, r.netFlowYen, fmt, true)),
+    // 貯蓄の増減 = netFlowYen(収支、投資益は含まない) + investProfitYen(投資益は
+    // 収入には数えないが、貯蓄額自体は含み益ぶんも増えるため足す)。
+    cells: rows.map((r) => cellWithDelta(r.savingsCumTotalYen, r.netFlowYen + r.investProfitYen, fmt, true)),
     bold: true,
     expandable: true,
   });
@@ -300,7 +294,7 @@ export function buildCompareTableRows(
       key,
       depth: 0,
       label: scn.name,
-      cells: scn.rows.map((r) => cellWithDelta(r.savingsCumTotalYen, r.netFlowYen, fmt, true)),
+      cells: scn.rows.map((r) => cellWithDelta(r.savingsCumTotalYen, r.netFlowYen + r.investProfitYen, fmt, true)),
       bold: true,
       expandable: true,
     });
@@ -313,12 +307,7 @@ export function buildCompareTableRows(
       push({ key: `${ik}.wife`, depth: 2, label: t(lang, "wife"), cells: scn.rows.map((r) => cell(r.wifeYen, fmt)) });
       push({ key: `${ik}.side`, depth: 2, label: t(lang, "side"), cells: scn.rows.map((r) => cell(r.sideYen, fmt)) });
       push({ key: `${ik}.allowance`, depth: 2, label: t(lang, "childAllowance"), cells: scn.rows.map((r) => cell(r.allowanceYen, fmt)) });
-      push({
-        key: `${ik}.investProfit`,
-        depth: 2,
-        label: t(lang, "investProfit"),
-        cells: scn.rows.map((r) => cell(r.investProfitYen, fmt)),
-      });
+      // 投資益は収入の内訳には出さない(incomeTotalYenの計算自体に含めていない)。
       // 同棲時の一時収入はテーブル上では特別収入の行に合算する(設定モーダルでは
       // 引き続き別項目のまま)。
       const ikSpecial = `${ik}.specialIncome`;

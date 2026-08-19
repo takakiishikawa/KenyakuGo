@@ -180,7 +180,9 @@ export function ScenarioChart({
               backgroundColor: DC.cardBg,
               borderColor: DC.cardBorder,
               color: DC.textPrimary,
+              width: "max-content",
               minWidth: 140,
+              maxWidth: 240,
             }}
           >
             <span className="font-semibold" style={{ color: DC.textSecondary }}>
@@ -188,8 +190,8 @@ export function ScenarioChart({
             </span>
             {total && (
               <div className="flex items-center justify-between gap-3 pb-1 mb-0.5 border-b" style={{ borderColor: DC.trackAlt }}>
-                <span className="font-semibold">{total.label}</span>
-                <span className="font-num font-semibold">{formatAmount(total.values[hoverIdx] ?? 0)}</span>
+                <span className="font-semibold whitespace-nowrap shrink-0">{total.label}</span>
+                <span className="font-num font-semibold whitespace-nowrap">{formatAmount(total.values[hoverIdx] ?? 0)}</span>
               </div>
             )}
             {series
@@ -202,12 +204,12 @@ export function ScenarioChart({
                 return (
                   <div key={s.label} className="flex flex-col gap-0.5">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex items-center gap-1.5 whitespace-nowrap shrink-0">
                         <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                         {s.label}
                       </span>
                       <span
-                        className="font-num font-semibold"
+                        className="font-num font-semibold whitespace-nowrap"
                         style={s.signed ? { color: positive ? DC.success : DC.danger } : undefined}
                       >
                         {s.signed && positive ? "+" : ""}

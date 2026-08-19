@@ -350,9 +350,32 @@ export default function SimulationPage() {
 
   if (loading || !primary || !editTarget) {
     return (
-      <div className="mt-6 flex flex-col gap-3">
-        <Skeleton className="h-10 w-full rounded-lg" />
-        <Skeleton className="h-64 w-full rounded-2xl" />
+      <div className="mt-6 flex flex-col gap-3.5">
+        <div className="flex items-center justify-between flex-wrap gap-2.5">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-32 rounded-lg" />
+            <Skeleton className="h-8 w-28 rounded-lg" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-24 rounded-lg" />
+            <Skeleton className="h-8 w-8 rounded-lg" />
+            <Skeleton className="h-8 w-8 rounded-lg" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} className="h-[72px] w-full rounded-2xl" />
+          ))}
+        </div>
+        <div className="rounded-2xl border overflow-hidden" style={{ borderColor: DC.cardBorder }}>
+          <Skeleton className="h-11 w-full rounded-none" />
+          {Array.from({ length: 7 }, (_, i) => (
+            <div key={i} className="flex items-center gap-3 px-4 py-3 border-t" style={{ borderColor: DC.trackAlt }}>
+              <Skeleton className="h-3.5 w-28 rounded" />
+              <Skeleton className="h-3.5 flex-1 rounded" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

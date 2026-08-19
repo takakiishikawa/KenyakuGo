@@ -1,9 +1,16 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AlertCircle, Search, Sparkles } from "lucide-react";
 import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
   Select,
   SelectContent,
   SelectItem,
@@ -180,6 +187,22 @@ function TransactionsPageInner() {
 
   return (
     <div className="flex flex-col gap-3.5 max-w-[900px]">
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild className="text-xs" style={{ color: DC.textSecondary }}>
+              <Link href="/">{t(lang, "dashboard")}</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage className="text-xs" style={{ color: DC.textPrimary }}>
+              {t(lang, "dashTransactionsTitle")}
+            </BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
       <div
         className="flex items-center gap-2 rounded-[10px] border px-3.5 py-2.5 max-w-[340px]"
         style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}

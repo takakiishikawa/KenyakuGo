@@ -1,7 +1,11 @@
 import { formatVND, formatJPY } from "@/lib/format";
 import type { DisplayCurrency } from "@/components/currency-switch";
 
-export const VND_PER_JPY = 162;
+// 固定レート。以前はSimulation側だけ為替APIのライブレートを使っていたため、
+// 同じ円/VND金額でもDashboard/Transactions/Budgetとページごとに違う数字に
+// 変換される・日々レートが変わって表示がブレる、という不具合があった。
+// 金額の変換は全画面この1つの定数だけを使う(ライブ為替取得はしない)。
+export const VND_PER_JPY = 165;
 
 export function makeFormatAmount(displayCurrency: DisplayCurrency) {
   return (vndAmount: number) =>

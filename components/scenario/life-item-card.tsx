@@ -241,10 +241,11 @@ export function LifeItemCard({
   const sep = currency === "VND" ? "." : ",";
   const [amountText, setAmountText] = useState(String(toDisplay(preAmount.monthlyYen)));
   const Icon = getCategoryIcon(category.name);
-  // 固定費は同棲後(CategoryBudgetCard)と同じく、カテゴリ固有色ではなく
-  // 統一の落ち着いた色にする(以前は同棲前だけカテゴリ色になっていて食い違っていた)。
-  const iconColor = category.is_fixed ? "#6B5D45" : getCategoryHex(category.name);
-  const iconBg = category.is_fixed ? DC.track : getCategoryColorTint(category.name);
+  // 固定費・変動費とも同棲後(CategoryBudgetCard)と同じくカテゴリごとの
+  // ブランドカラーを使う(以前は固定費だけ統一の落ち着いた色にしていて
+  // 変動費と見た目が食い違っていた)。
+  const iconColor = getCategoryHex(category.name);
+  const iconBg = getCategoryColorTint(category.name);
   const label = catLabel(lang, category.name);
 
   useEffect(() => {

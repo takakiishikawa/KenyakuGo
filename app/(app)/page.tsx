@@ -505,14 +505,16 @@ export default function Dashboard() {
               </div>
             )}
             <div className="flex items-center gap-2 shrink-0">
-              <a
-                href="/transactions"
-                title={t(lang, "dashTransactionsTitle")}
-                className="flex items-center justify-center h-9 w-9 rounded-[10px] transition-all hover:brightness-95 active:scale-[0.98]"
-                style={{ backgroundColor: "var(--kg-track)", color: "var(--color-text-secondary)" }}
-              >
-                <List size={15} />
-              </a>
+              {uncategorizedCount === 0 && (
+                <a
+                  href="/transactions"
+                  title={t(lang, "dashTransactionsTitle")}
+                  className="flex items-center justify-center h-9 w-9 rounded-[10px] transition-all hover:brightness-95 active:scale-[0.98]"
+                  style={{ backgroundColor: "var(--kg-track)", color: "var(--color-text-secondary)" }}
+                >
+                  <List size={15} />
+                </a>
+              )}
               {uncategorizedCount > 0 && (
                 <a
                   href="/transactions?filter=needs_category"

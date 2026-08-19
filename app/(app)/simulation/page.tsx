@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListTree, Settings2 } from "lucide-react";
 import { Card, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, toast } from "@takaki/go-design-system";
 import { formatJPY, formatVND } from "@/lib/format";
+import { VND_PER_JPY } from "@/lib/currency";
 import { usePreferences } from "@/lib/preferences";
 import type { CategoryBudgetOverride } from "@/lib/category-budget";
 import type { CategoryForCard } from "@/components/category-budget-card";
@@ -38,7 +39,7 @@ export default function SimulationPage() {
   const { lang, currency } = usePreferences();
 
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
-  const [vndPerJpy, setVndPerJpy] = useState(162);
+  const [vndPerJpy, setVndPerJpy] = useState(VND_PER_JPY);
   const [actualByCategoryVnd, setActualByCategoryVnd] = useState<Record<string, number>>({});
   const [actualByCategoryMonthVnd, setActualByCategoryMonthVnd] = useState<Record<string, Record<string, number>>>({});
   const [investmentEntries, setInvestmentEntries] = useState<InvestmentEntryInput[]>([]);
@@ -203,9 +204,6 @@ export default function SimulationPage() {
     return buildChartSeries(rowsForView, chartKind, lang);
   }, [compareMode, compareRows, rowsForView, chartKind, lang]);
 
-  // 月次表示中は「今見ている年」の年末残高、年次表示中は最終年(15年後)の残高、
-  // というふうにrowsForViewの最後の列がそのまま「今表示している範囲の最終値」になる。
-  const latestVisibleRow = rowsForView[rowsForView.length - 1];
   const milestoneYears = [1, 3, 5, 10];
 
   // --- シナリオCRUD ---
@@ -425,23 +423,31 @@ export default function SimulationPage() {
         </div>
       )}
 
-      {isSingle && timeMode === "monthly" && latestVisibleRow && (
-        <Card
-          className="rounded-2xl px-5 py-4 flex flex-col gap-1"
-          style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}
-        >
-          <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em]" style={{ color: DC.textFaint }}>
-            {t(lang, "totalSavings")} ({latestVisibleRow.yearLabel})
-          </span>
-          <span className="font-display text-2xl font-bold" style={{ color: DC.textPrimary }}>
-            {formatAmount(latestVisibleRow.savingsCumTotalYen)}
-          </span>
-          <span className="text-xs font-medium" style={{ color: DC.textSecondary }}>
-            {formatAmount(latestVisibleRow.incomeTotalYen)} − {formatAmount(latestVisibleRow.expenseTotalYen)} ={" "}
-            {formatAmount(latestVisibleRow.netFlowYen)}
-          </span>
-        </Card>
-      )}
+      {isSingle &&
+        timeMode === "monthly" &&
+        (() => {
+          // 月次表示中でも、このサマリーカードは「その年ぶんの総貯蓄」を出す
+          // (月次展開の12月ぶんの行(近似値)ではなく、年次のcomputeScenarioYears
+          // が直接出した年間値を使う。ラベルも「2026/12」ではなく「2026」)。
+          const yearRow = primaryYearRows.find((y) => y.year === focusYear);
+          if (!yearRow) return null;
+          return (
+            <Card
+              className="rounded-2xl px-5 py-4 flex flex-col gap-1"
+              style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}
+            >
+              <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em]" style={{ color: DC.textFaint }}>
+                {t(lang, "totalSavings")} ({focusYear})
+              </span>
+              <span className="font-display text-2xl font-bold" style={{ color: DC.textPrimary }}>
+                {formatAmount(yearRow.savingsCumTotalYen)}
+              </span>
+              <span className="text-xs font-medium" style={{ color: DC.textSecondary }}>
+                {formatAmount(yearRow.incomeTotalYen)} − {formatAmount(yearRow.expenseTotalYen)} = {formatAmount(yearRow.netFlowYen)}
+              </span>
+            </Card>
+          );
+        })()}
 
       {isTableView ? (
         <ScenarioTable

@@ -107,6 +107,7 @@ export interface ScenarioYearRow {
   variableByCategoryMonthly?: Record<string, number[]>;
   educationTotalYen: number;
   eventsTotalYen: number;
+  specialExpenseYen: number;
   expenseTotalYen: number;
   netFlowYen: number;
   cashCumYen: number;
@@ -498,6 +499,7 @@ export function computeScenarioYears(
       variableByCategoryMonthly,
       educationTotalYen,
       eventsTotalYen,
+      specialExpenseYen,
       expenseTotalYen,
       netFlowYen,
       cashCumYen: cashCum,
@@ -650,6 +652,7 @@ export function expandMonthly(
       variableTotalYen,
       educationTotalYen: divide(row.educationTotalYen),
       eventsTotalYen: eventsThisMonth,
+      specialExpenseYen: specialExpenseThisMonth,
       expenseTotalYen,
       netFlowYen,
       cashCumYen,

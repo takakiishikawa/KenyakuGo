@@ -247,7 +247,7 @@ function TransactionsPageInner() {
               <div
                 key={tx.id}
                 className="group flex items-center gap-3 px-4.5 py-3 border-b last:border-b-0 flex-wrap"
-                style={{ borderColor: DC.trackAlt, backgroundColor: uncategorized ? DC.primaryTint : DC.cardBg }}
+                style={{ borderColor: DC.trackAlt, backgroundColor: DC.cardBg }}
               >
                 <span className="w-14 shrink-0 text-[11.5px]" style={{ color: DC.textFaint }}>
                   {formatDateShort(tx.date)}

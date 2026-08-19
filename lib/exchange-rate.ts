@@ -1,24 +1,11 @@
-// Static fallback used only if the live rate fetch fails (e.g. offline dev,
-// upstream outage) so the simulation never breaks entirely.
-const FALLBACK_VND_PER_JPY = 165;
+import { VND_PER_JPY } from "@/lib/currency";
 
-// Today's JPY -> VND rate, cached for 24h via Next's fetch cache (the free
-// open.er-api.com feed updates roughly daily, so re-fetching more often
-// wouldn't gain accuracy).
+// 以前はここで為替APIからライブレートを取得していたが、Dashboard/Transactions/
+// Budget側は元から lib/currency.ts の固定レートを使っており、Simulationだけ
+// 日々変わるライブレートを使っていたため、同じ円/VND金額が画面によって
+// 違う数字に変換される・日をまたぐと表示がブレる、という不具合の原因になっていた。
+// 全画面で lib/currency.ts の固定レート1本に統一する(呼び出し側の互換のため
+// async のシグネチャは維持)。
 export async function getJpyToVndRate(): Promise<number> {
-  try {
-    const res = await fetch("https://open.er-api.com/v6/latest/JPY", {
-      next: { revalidate: 86400 },
-    });
-    if (!res.ok) throw new Error(`exchange rate fetch failed: ${res.status}`);
-    const data = await res.json();
-    const rate = data?.rates?.VND;
-    if (typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) {
-      throw new Error("exchange rate response missing a usable VND rate");
-    }
-    return rate;
-  } catch (err) {
-    console.error("[exchange-rate] Falling back to static JPY->VND rate:", err);
-    return FALLBACK_VND_PER_JPY;
-  }
+  return VND_PER_JPY;
 }

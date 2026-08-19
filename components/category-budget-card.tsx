@@ -69,10 +69,12 @@ function overrideLabel(o: CategoryBudgetOverride, isActive: boolean, lang: Lang)
   return isActive ? `${t(lang, "now")}: ${range}` : range;
 }
 
-function CategoryIcon({ name, fixed }: { name: string; fixed?: boolean }) {
+// 以前は固定費だけ統一の落ち着いた色(#6B5D45)にしていたが、変動費と見た目が
+// 揃わないため、固定費も他と同じくカテゴリごとのブランドカラーを使う。
+function CategoryIcon({ name }: { name: string; fixed?: boolean }) {
   const { text } = getCategoryColors(name);
   const Icon = getCategoryIcon(name);
-  return <Icon size={14} style={{ color: fixed ? "#6B5D45" : text }} className="shrink-0" />;
+  return <Icon size={14} style={{ color: text }} className="shrink-0" />;
 }
 
 function ScheduleOverridePopover({
@@ -284,9 +286,9 @@ export function CategoryBudgetCard({
       <div className="flex items-center gap-2.5">
         <div
           className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg"
-          style={{ backgroundColor: cat.is_fixed ? DC.track : getCategoryColorTint(cat.name) }}
+          style={{ backgroundColor: getCategoryColorTint(cat.name) }}
         >
-          <CategoryIcon name={cat.name} fixed={cat.is_fixed} />
+          <CategoryIcon name={cat.name} />
         </div>
         {editingName ? (
           <>

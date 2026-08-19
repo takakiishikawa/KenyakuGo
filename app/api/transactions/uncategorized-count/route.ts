@@ -7,17 +7,16 @@ export async function GET() {
   if (result instanceof NextResponse) return result;
   const { db } = result;
 
-  const { data, error } = await db
+  // Transactionsページの「未分類」バッジ(needsCategory)と同じ判定基準に揃える:
+  // 未レビューかつフォールバックカテゴリの取引「件数」をそのまま返す
+  // (以前は店名のユニーク数を返していたため、実際の未分類件数とズレていた)。
+  const { count, error } = await db
     .from("transactions")
-    .select("store")
+    .select("id", { count: "exact", head: true })
     .eq("category", FALLBACK_CATEGORY)
-    .eq("reviewed", false)
-    .gt("amount", 0);
+    .eq("reviewed", false);
 
   if (error) return NextResponse.json({ count: 0 });
 
-  const stores = new Set(
-    (data ?? []).map((r) => r.store?.trim()).filter(Boolean),
-  );
-  return NextResponse.json({ count: stores.size });
+  return NextResponse.json({ count: count ?? 0 });
 }

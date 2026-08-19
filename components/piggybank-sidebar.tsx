@@ -84,12 +84,13 @@ export function PiggyBankSidebar() {
         style={{ backgroundColor: DARK_BG }}
       >
         <SidebarTooltip label="PiggyBank">
-          <div
-            className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center mb-[22px] shrink-0"
+          <Link
+            href="/"
+            className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center mb-[22px] shrink-0 cursor-pointer transition-all hover:brightness-110 active:scale-95"
             style={{ backgroundColor: ACCENT }}
           >
             <PiggyBank size={18} color="#ffffff" />
-          </div>
+          </Link>
         </SidebarTooltip>
 
         <div className="flex flex-col gap-1.5 flex-1">

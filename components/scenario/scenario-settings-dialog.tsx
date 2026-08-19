@@ -17,6 +17,7 @@ import {
 } from "@takaki/go-design-system";
 import type { DisplayCurrency } from "@/components/currency-switch";
 import { formatJPY, formatVND } from "@/lib/format";
+import { toVndAmount, withThousands as withThousandsVnd } from "@/lib/currency";
 import type { CategoryBudgetOverride } from "@/lib/category-budget";
 import { CategoryBudgetCard, type CategoryForCard } from "@/components/category-budget-card";
 import { LifeItemCard } from "@/components/scenario/life-item-card";
@@ -990,19 +991,23 @@ export function ScenarioSettingsDialog({
                           placeholder={t(lang, "newCategoryName")}
                           className="h-8 text-sm flex-1"
                         />
-                        <YenInput
-                          value={addCatBudget === "" ? 0 : Number(addCatBudget)}
-                          onChange={(n) => setAddCatBudget(n === 0 ? "" : String(n))}
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={withThousandsVnd(addCatBudget, currency)}
+                          onChange={(e) => setAddCatBudget(e.target.value.replace(/[^0-9]/g, ""))}
+                          placeholder="0"
                           className="h-8 text-sm w-24 text-right font-num"
-                          currency={currency}
-                          vndPerJpy={vndPerJpy}
                         />
                         <Button
                           size="sm"
                           onClick={async () => {
                             const val = parseInt(addCatBudget, 10);
                             if (!addCatName.trim()) return;
-                            await onCategoryAdd(addCatName.trim(), isNaN(val) ? 0 : val, lifeSub === "fixed");
+                            // カテゴリのbudgetは常にVND建てで保存するため、入力中の通貨から変換する
+                            // (以前は円モードの入力値をそのままVNDとして保存してしまい、桁が大きくズレていた)。
+                            const budgetVnd = toVndAmount(isNaN(val) ? 0 : val, currency);
+                            await onCategoryAdd(addCatName.trim(), budgetVnd, lifeSub === "fixed");
                             setAddCatName("");
                             setAddCatBudget("");
                           }}
@@ -1037,19 +1042,23 @@ export function ScenarioSettingsDialog({
                           placeholder={t(lang, "newCategoryName")}
                           className="h-8 text-sm flex-1"
                         />
-                        <YenInput
-                          value={addCatBudget === "" ? 0 : Number(addCatBudget)}
-                          onChange={(n) => setAddCatBudget(n === 0 ? "" : String(n))}
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={withThousandsVnd(addCatBudget, currency)}
+                          onChange={(e) => setAddCatBudget(e.target.value.replace(/[^0-9]/g, ""))}
+                          placeholder="0"
                           className="h-8 text-sm w-24 text-right font-num"
-                          currency={currency}
-                          vndPerJpy={vndPerJpy}
                         />
                         <Button
                           size="sm"
                           onClick={async () => {
                             const val = parseInt(addCatBudget, 10);
                             if (!addCatName.trim()) return;
-                            await onCategoryAdd(addCatName.trim(), isNaN(val) ? 0 : val, lifeSub === "fixed");
+                            // カテゴリのbudgetは常にVND建てで保存するため、入力中の通貨から変換する
+                            // (以前は円モードの入力値をそのままVNDとして保存してしまい、桁が大きくズレていた)。
+                            const budgetVnd = toVndAmount(isNaN(val) ? 0 : val, currency);
+                            await onCategoryAdd(addCatName.trim(), budgetVnd, lifeSub === "fixed");
                             setAddCatName("");
                             setAddCatBudget("");
                           }}

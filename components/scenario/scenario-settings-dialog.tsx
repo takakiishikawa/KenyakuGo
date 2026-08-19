@@ -337,11 +337,8 @@ export function ScenarioSettingsDialog({
   const [incomeSub, setIncomeSub] = useState<IncomeSub>("salary");
   const [spendingSub, setSpendingSub] = useState<SpendingSub>("life");
   const [lifeSub, setLifeSub] = useState<LifeSub>("fixed");
-  // 同棲後(post)がデフォルト: 実際のスケジュール設定(category_budget_overrides)は
-  // 同棲後のカテゴリカードにしか無く、同棲前は別枠の空の予約リストを持つため、
-  // 同棲前をデフォルトにすると「設定していたスケジュールが消えたように見える」
-  // (実際は消えていない、同棲後タブに表示される)。
-  const [lifePhase, setLifePhase] = useState<"pre" | "post">("post");
+  // 同棲前(pre)がデフォルト。
+  const [lifePhase, setLifePhase] = useState<"pre" | "post">("pre");
   const [draft, setDraft] = useState<ScenarioConfig>(() => cloneConfig(scenario.config));
   const [savePromptOpen, setSavePromptOpen] = useState(false);
   const [newScenarioName, setNewScenarioName] = useState("");
@@ -697,7 +694,33 @@ export function ScenarioSettingsDialog({
                   {tf(lang, "grossAnnualHousehold", { amount: formatYenPreview(householdGrossAnnualYen) })}
                 </span>
               </div>
-              {(
+
+              <div className="flex gap-0.5 p-0.5 rounded-lg w-fit" style={{ backgroundColor: DC.track }}>
+                {(
+                  [
+                    { k: "salary" as const, l: t(lang, "incomeSalaryTab") },
+                    { k: "side" as const, l: t(lang, "incomeSideTab") },
+                    { k: "allowance" as const, l: t(lang, "publicAllowance") },
+                    { k: "special" as const, l: t(lang, "specialIncomeLabel") },
+                  ]
+                ).map((s) => (
+                  <button
+                    key={s.k}
+                    type="button"
+                    onClick={() => setIncomeSub(s.k)}
+                    className="px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all"
+                    style={{
+                      backgroundColor: incomeSub === s.k ? DC.primary : "transparent",
+                      color: incomeSub === s.k ? "#fff" : DC.textPrimary,
+                    }}
+                  >
+                    {s.l}
+                  </button>
+                ))}
+              </div>
+
+              {incomeSub === "salary" &&
+              (
                 [
                   { key: "husband" as const, label: t(lang, "husbandIncome") },
                   { key: "wife" as const, label: t(lang, "wifeIncome") },
@@ -739,33 +762,11 @@ export function ScenarioSettingsDialog({
                     </span>
                   </div>
                   <div className="flex flex-col gap-1.5 pl-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm w-14 shrink-0" style={{ color: DC.textSecondary }}>
-                        {t(lang, "netBonus")}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          commit({
-                            ...draft,
-                            income: {
-                              ...draft.income,
-                              [row.key]: {
-                                ...draft.income[row.key],
-                                netBonuses: [...draft.income[row.key].netBonuses, { id: `bn${Date.now()}`, amountYen: 0, month: 6 }],
-                              },
-                            },
-                          })
-                        }
-                        title={t(lang, "addBonus")}
-                        className="flex items-center justify-center p-1 rounded-md cursor-pointer transition-all hover:brightness-95"
-                        style={{ backgroundColor: DC.track, color: DC.textSecondary }}
-                      >
-                        <Plus size={12} />
-                      </button>
-                    </div>
+                    <span className="text-sm w-14 shrink-0" style={{ color: DC.textSecondary }}>
+                      {t(lang, "netBonus")}
+                    </span>
                     {draft.income[row.key].netBonuses.map((bonus, bIdx) => (
-                      <div key={bonus.id} className="flex items-center gap-1.5 flex-wrap pl-[68px]">
+                      <div key={bonus.id} className="flex items-center gap-1.5 flex-wrap">
                         <YenInput
                           value={bonus.amountYen}
                           onChange={(n) => {
@@ -811,102 +812,129 @@ export function ScenarioSettingsDialog({
                               },
                             })
                           }
-                          className="p-1 rounded transition-all hover:bg-muted"
+                          className="p-1 rounded transition-all hover:bg-muted active:scale-90 active:bg-muted/70"
                           style={{ color: DC.textFaint }}
                         >
                           <X size={12} />
                         </button>
                       </div>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        commit({
+                          ...draft,
+                          income: {
+                            ...draft.income,
+                            [row.key]: {
+                              ...draft.income[row.key],
+                              netBonuses: [...draft.income[row.key].netBonuses, { id: `bn${Date.now()}`, amountYen: 0, month: 6 }],
+                            },
+                          },
+                        })
+                      }
+                      title={t(lang, "addBonus")}
+                      className="flex items-center justify-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95 w-fit"
+                      style={{ backgroundColor: DC.track, color: DC.textSecondary }}
+                    >
+                      <Plus size={12} />
+                      {t(lang, "addBonus")}
+                    </button>
                   </div>
                 </div>
               ))}
               {/* 産休・育休は子どもに紐づく前提なので、家族タブの子ども行で設定する
                   (収入タブには置かない)。 */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-sm font-semibold" style={{ color: DC.textPrimary }}>
-                  {t(lang, "sideIncome")}
-                </span>
-                <div className="flex items-center gap-2 flex-wrap pl-1">
-                  <YenInput
-                    value={draft.income.side.amountYen}
-                    onChange={(n) => setDraft({ ...draft, income: { ...draft.income, side: { ...draft.income.side, amountYen: n } } })}
-                    onCommit={() => commit(draft)}
-                    className="h-8 w-28 text-sm text-right font-num"
-                    currency={currency}
-                    vndPerJpy={vndPerJpy}
-                  />
-                </div>
-                <div className="flex items-center gap-2 flex-wrap pl-1">
-                  <span className="text-sm shrink-0" style={{ color: DC.textSecondary }}>
-                    {t(lang, "sideIncomePeriod")}
+              {incomeSub === "side" && (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-sm font-semibold" style={{ color: DC.textPrimary }}>
+                    {t(lang, "sideIncome")}
                   </span>
-                  <Select
-                    value={draft.income.side.startYear === null ? "unset" : String(draft.income.side.startYear)}
-                    onValueChange={(v) =>
-                      commit({
-                        ...draft,
-                        income: { ...draft.income, side: { ...draft.income.side, startYear: v === "unset" ? null : Number(v) } },
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-sm w-28">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unset">{t(lang, "unspecified")}</SelectItem>
-                      {YEAR_OPTIONS.map((y) => (
-                        <SelectItem key={y} value={String(y)}>
-                          {y}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <span className="text-xs" style={{ color: DC.textSecondary }}>
-                    {t(lang, "to")}
-                  </span>
-                  <Select
-                    value={draft.income.side.endYear === null ? "unset" : String(draft.income.side.endYear)}
-                    onValueChange={(v) =>
-                      commit({
-                        ...draft,
-                        income: { ...draft.income, side: { ...draft.income.side, endYear: v === "unset" ? null : Number(v) } },
-                      })
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-sm w-28">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unset">{t(lang, "unspecified")}</SelectItem>
-                      {YEAR_OPTIONS.map((y) => (
-                        <SelectItem key={y} value={String(y)}>
-                          {y}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2 flex-wrap pl-1">
+                    <YenInput
+                      value={draft.income.side.amountYen}
+                      onChange={(n) => setDraft({ ...draft, income: { ...draft.income, side: { ...draft.income.side, amountYen: n } } })}
+                      onCommit={() => commit(draft)}
+                      className="h-8 w-28 text-sm text-right font-num"
+                      currency={currency}
+                      vndPerJpy={vndPerJpy}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap pl-1">
+                    <span className="text-sm shrink-0" style={{ color: DC.textSecondary }}>
+                      {t(lang, "sideIncomePeriod")}
+                    </span>
+                    <Select
+                      value={draft.income.side.startYear === null ? "unset" : String(draft.income.side.startYear)}
+                      onValueChange={(v) =>
+                        commit({
+                          ...draft,
+                          income: { ...draft.income, side: { ...draft.income.side, startYear: v === "unset" ? null : Number(v) } },
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-sm w-28">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unset">{t(lang, "unspecified")}</SelectItem>
+                        {YEAR_OPTIONS.map((y) => (
+                          <SelectItem key={y} value={String(y)}>
+                            {y}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <span className="text-xs" style={{ color: DC.textSecondary }}>
+                      {t(lang, "to")}
+                    </span>
+                    <Select
+                      value={draft.income.side.endYear === null ? "unset" : String(draft.income.side.endYear)}
+                      onValueChange={(v) =>
+                        commit({
+                          ...draft,
+                          income: { ...draft.income, side: { ...draft.income.side, endYear: v === "unset" ? null : Number(v) } },
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-sm w-28">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unset">{t(lang, "unspecified")}</SelectItem>
+                        {YEAR_OPTIONS.map((y) => (
+                          <SelectItem key={y} value={String(y)}>
+                            {y}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-sm font-semibold" style={{ color: DC.textPrimary }}>
-                  {t(lang, "publicAllowance")}
-                </span>
-                <span className="text-xs pl-1" style={{ color: DC.textSecondary }}>
-                  {t(lang, "publicAllowanceDetail")}
-                </span>
-              </div>
-              <SpecialEntrySection
-                kind="income"
-                title={t(lang, "specialIncomeLabel")}
-                entries={specialEntries}
-                onAdd={onAddSpecialEntry}
-                onDelete={onDeleteSpecialEntry}
-                onRename={onRenameSpecialEntry}
-                lang={lang}
-                currency={currency}
-                monthLabels={monthLabels}
-              />
+              )}
+              {incomeSub === "allowance" && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold" style={{ color: DC.textPrimary }}>
+                    {t(lang, "publicAllowance")}
+                  </span>
+                  <span className="text-xs pl-1" style={{ color: DC.textSecondary }}>
+                    {t(lang, "publicAllowanceDetail")}
+                  </span>
+                </div>
+              )}
+              {incomeSub === "special" && (
+                <SpecialEntrySection
+                  kind="income"
+                  title={t(lang, "specialIncomeLabel")}
+                  entries={specialEntries}
+                  onAdd={onAddSpecialEntry}
+                  onDelete={onDeleteSpecialEntry}
+                  onRename={onRenameSpecialEntry}
+                  lang={lang}
+                  currency={currency}
+                  monthLabels={monthLabels}
+                />
+              )}
             </div>
           )}
 

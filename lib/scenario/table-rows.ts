@@ -55,7 +55,8 @@ export function buildSingleTableRows(
     push({ key: "income.husband", depth: 1, label: t(lang, "husband"), cells: rows.map((r) => cell(r.husbandYen, fmt)) });
     push({ key: "income.wife", depth: 1, label: t(lang, "wife"), cells: rows.map((r) => cell(r.wifeYen, fmt)) });
     push({ key: "income.side", depth: 1, label: t(lang, "side"), cells: rows.map((r) => cell(r.sideYen, fmt)) });
-    push({ key: "income.investProfit", depth: 1, label: t(lang, "investProfit"), cells: rows.map((r) => cell(r.investProfitYen, fmt)) });
+    // 投資益は収入の内訳には出さず、貯蓄→投資の行にその期間の増分として表示する
+    // (収入の内訳に混ざっていると「収支」と「運用の増減」が紛らわしいため)。
     push({ key: "income.allowance", depth: 1, label: t(lang, "childAllowance"), cells: rows.map((r) => cell(r.allowanceYen, fmt)) });
     push({
       key: "income.specialIncome",
@@ -134,9 +135,14 @@ export function buildSingleTableRows(
   });
   if (isExpanded("savings")) {
     push({ key: "savings.cash", depth: 1, label: t(lang, "cash"), cells: rows.map((r) => cell(r.cashCumYen, fmt, true)) });
-    // 利益(投資益)は総収入の内訳(投資益)として計上済みなので、ここでは
-    // 元本と別出しにせず運用残高をそのまま表示する。
-    push({ key: "savings.invest", depth: 1, label: t(lang, "invest"), cells: rows.map((r) => cell(r.investBalYen, fmt)) });
+    // 投資残高の増減(投資益、想定利率から毎月/毎年計算)を、貯蓄の行と同じ
+    // 「金額 + その期間の増減」の書き方で見せる。
+    push({
+      key: "savings.invest",
+      depth: 1,
+      label: t(lang, "invest"),
+      cells: rows.map((r) => cellWithDelta(r.investBalYen, r.investProfitYen, fmt)),
+    });
   }
 
   return out;
@@ -174,12 +180,6 @@ export function buildCompareTableRows(
       push({ key: `${ik}.husband`, depth: 2, label: t(lang, "husband"), cells: scn.rows.map((r) => cell(r.husbandYen, fmt)) });
       push({ key: `${ik}.wife`, depth: 2, label: t(lang, "wife"), cells: scn.rows.map((r) => cell(r.wifeYen, fmt)) });
       push({ key: `${ik}.side`, depth: 2, label: t(lang, "side"), cells: scn.rows.map((r) => cell(r.sideYen, fmt)) });
-      push({
-        key: `${ik}.investProfit`,
-        depth: 2,
-        label: t(lang, "investProfit"),
-        cells: scn.rows.map((r) => cell(r.investProfitYen, fmt)),
-      });
       push({ key: `${ik}.allowance`, depth: 2, label: t(lang, "childAllowance"), cells: scn.rows.map((r) => cell(r.allowanceYen, fmt)) });
       push({
         key: `${ik}.specialIncome`,
@@ -232,7 +232,12 @@ export function buildCompareTableRows(
     }
 
     push({ key: `${key}.cash`, depth: 1, label: t(lang, "cash"), cells: scn.rows.map((r) => cell(r.cashCumYen, fmt, true)) });
-    push({ key: `${key}.invest`, depth: 1, label: t(lang, "invest"), cells: scn.rows.map((r) => cell(r.investBalYen, fmt)) });
+    push({
+      key: `${key}.invest`,
+      depth: 1,
+      label: t(lang, "invest"),
+      cells: scn.rows.map((r) => cellWithDelta(r.investBalYen, r.investProfitYen, fmt)),
+    });
   }
 
   return out;

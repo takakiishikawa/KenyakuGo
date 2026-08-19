@@ -215,6 +215,7 @@ export function CategoryBudgetCard({
   onScheduleOverride,
   onDeleteOverride,
   onDelete,
+  readOnlyName = false,
   lang,
 }: {
   cat: CategoryForCard;
@@ -229,6 +230,10 @@ export function CategoryBudgetCard({
   onScheduleOverride: (categoryId: string, month: string, endMonth: string | null, budget: number) => Promise<void>;
   onDeleteOverride: (categoryId: string, overrideId: string) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
+  // カテゴリの追加・名前変更・削除はシナリオ管理ダイアログのカテゴリタブに
+  // 統合したため、シミュレーション設定(暮らしタブ)側では名前をクリックしても
+  // 編集できないようにする(予算額・スケジュールのみ操作可能)。
+  readOnlyName?: boolean;
   lang: Lang;
 }) {
   const [editingName, setEditingName] = useState(false);
@@ -328,15 +333,21 @@ export function CategoryBudgetCard({
           </>
         ) : (
           <>
-            <button
-              type="button"
-              onClick={() => setEditingName(true)}
-              title={t(lang, "clickToRename")}
-              className="text-[13.5px] font-semibold truncate min-w-0 flex-1 text-left cursor-pointer transition-all hover:underline decoration-dotted underline-offset-2 active:opacity-70"
-              style={{ color: DC.textPrimary }}
-            >
-              {catLabel(lang, cat.name)}
-            </button>
+            {readOnlyName ? (
+              <span className="text-[13.5px] font-semibold truncate min-w-0 flex-1" style={{ color: DC.textPrimary }}>
+                {catLabel(lang, cat.name)}
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditingName(true)}
+                title={t(lang, "clickToRename")}
+                className="text-[13.5px] font-semibold truncate min-w-0 flex-1 text-left cursor-pointer transition-all hover:underline decoration-dotted underline-offset-2 active:opacity-70"
+                style={{ color: DC.textPrimary }}
+              >
+                {catLabel(lang, cat.name)}
+              </button>
+            )}
             <Input
               type="text"
               inputMode="numeric"

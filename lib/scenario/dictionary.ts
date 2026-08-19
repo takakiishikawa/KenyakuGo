@@ -446,6 +446,7 @@ const CAT_JA: Record<string, string> = {
   Learning: "学習",
   Entertainment: "エンタメ",
   "Daily Goods": "日用品",
+  English: "英語",
   Transfer: "転送",
   Cash: "現金",
   Groceries: "食料品",

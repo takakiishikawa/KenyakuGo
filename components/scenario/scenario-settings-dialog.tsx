@@ -1083,45 +1083,9 @@ export function ScenarioSettingsDialog({
                                 },
                               })
                             }
-                            onDelete={() => onCategoryDelete(cat.id)}
                           />
                         );
                       })}
-
-                      <div
-                        className="flex items-center gap-2 rounded-xl border border-dashed py-3 px-3.5"
-                        style={{ borderColor: DC.cardBorder }}
-                      >
-                        <Input
-                          value={addCatName}
-                          onChange={(e) => setAddCatName(e.target.value)}
-                          placeholder={t(lang, "newCategoryName")}
-                          className="h-8 text-sm flex-1"
-                        />
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          value={withThousandsVnd(addCatBudget, currency)}
-                          onChange={(e) => setAddCatBudget(e.target.value.replace(/[^0-9]/g, ""))}
-                          placeholder="0"
-                          className="h-8 text-sm w-24 text-right font-num"
-                        />
-                        <Button
-                          size="sm"
-                          onClick={async () => {
-                            const val = parseInt(addCatBudget, 10);
-                            if (!addCatName.trim()) return;
-                            // カテゴリのbudgetは常にVND建てで保存するため、入力中の通貨から変換する
-                            // (以前は円モードの入力値をそのままVNDとして保存してしまい、桁が大きくズレていた)。
-                            const budgetVnd = toVndAmount(isNaN(val) ? 0 : val, currency);
-                            await onCategoryAdd(addCatName.trim(), budgetVnd, lifeSub === "fixed");
-                            setAddCatName("");
-                            setAddCatBudget("");
-                          }}
-                        >
-                          <Plus size={13} />
-                        </Button>
-                      </div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -1134,45 +1098,10 @@ export function ScenarioSettingsDialog({
                           onUpdate={onCategoryUpdate}
                           onScheduleOverride={onScheduleOverride}
                           onDeleteOverride={onDeleteOverride}
-                          onDelete={onCategoryDelete}
+                          readOnlyName
                           lang={lang}
                         />
                       ))}
-
-                      <div
-                        className="flex items-center gap-2 rounded-xl border border-dashed py-3 px-3.5"
-                        style={{ borderColor: DC.cardBorder }}
-                      >
-                        <Input
-                          value={addCatName}
-                          onChange={(e) => setAddCatName(e.target.value)}
-                          placeholder={t(lang, "newCategoryName")}
-                          className="h-8 text-sm flex-1"
-                        />
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          value={withThousandsVnd(addCatBudget, currency)}
-                          onChange={(e) => setAddCatBudget(e.target.value.replace(/[^0-9]/g, ""))}
-                          placeholder="0"
-                          className="h-8 text-sm w-24 text-right font-num"
-                        />
-                        <Button
-                          size="sm"
-                          onClick={async () => {
-                            const val = parseInt(addCatBudget, 10);
-                            if (!addCatName.trim()) return;
-                            // カテゴリのbudgetは常にVND建てで保存するため、入力中の通貨から変換する
-                            // (以前は円モードの入力値をそのままVNDとして保存してしまい、桁が大きくズレていた)。
-                            const budgetVnd = toVndAmount(isNaN(val) ? 0 : val, currency);
-                            await onCategoryAdd(addCatName.trim(), budgetVnd, lifeSub === "fixed");
-                            setAddCatName("");
-                            setAddCatBudget("");
-                          }}
-                        >
-                          <Plus size={13} />
-                        </Button>
-                      </div>
                     </div>
                   )}
                 </div>

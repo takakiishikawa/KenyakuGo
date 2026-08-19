@@ -255,23 +255,29 @@ function categoryMonthlyActualOrBudgetYen(
   });
 }
 
-// 今年ぶんは、予算projectionだけでなく「今日までの実績を年換算した見込み」も
-// 併せて使う。実績が無いカテゴリ(まだ一度も使っていない等)は従来通り予算ベース。
+// 今年ぶんは、予算projectionだけでなく「経過月までの実績」も併せて使う。
+// 以前はここだけ「年初来実績を経過日数で年換算(トレンド外挿)」していたが、
+// 月次内訳(categoryMonthlyActualOrBudgetYen: 経過月=実績そのもの、未経過月=
+// 予算)とは別の計算式だったため、月次テーブルを12ヶ月ぶん合計した値と
+// この年次の値がズレる(=貯蓄サマリーカードとテーブルの数字が食い違う)
+// バグになっていた。月次内訳の合計と必ず一致するよう、
+// 「経過月ぶんの実績 + 残り月数×月額予算」という同じ式に統一する。
+// 実績が無いカテゴリ(まだ一度も使っていない等)は従来通り予算ベース。
 function annualCategoryYen(
   category: { name: string },
-  budgetProjectionAnnualYen: number,
+  monthlyYen: number,
   year: number,
   nowYear: number,
-  dayOfYear: number,
-  daysInThisYear: number,
+  nowMonth: number,
   vndPerJpy: number,
   actualByCategoryVnd: Record<string, number>,
 ): number {
-  if (year !== nowYear) return budgetProjectionAnnualYen;
+  if (year !== nowYear) return monthlyYen * 12;
   const actualVnd = actualByCategoryVnd[category.name];
-  if (!actualVnd || actualVnd <= 0) return budgetProjectionAnnualYen;
-  const annualizedYen = (actualVnd / vndPerJpy) * (daysInThisYear / dayOfYear);
-  return annualizedYen;
+  if (!actualVnd || actualVnd <= 0) return monthlyYen * 12;
+  const actualYtdYen = actualVnd / vndPerJpy;
+  const remainingMonths = 12 - nowMonth;
+  return actualYtdYen + monthlyYen * remainingMonths;
 }
 
 // 児童手当: 0〜2歳 1.5万円/月、3歳〜高校生(18歳)まで 1万円/月。要件5-2。
@@ -302,8 +308,6 @@ export function computeScenarioYears(
 ): ScenarioYearRow[] {
   const nowYear = new Date().getFullYear();
   const nowMonth = new Date().getMonth() + 1;
-  const dayOfYear = Math.ceil((Date.now() - new Date(nowYear, 0, 1).getTime()) / 86_400_000) || 1;
-  const daysInThisYear = 365; // うるう年ぶんの誤差(365/366)は無視できる範囲として扱う
   const years = Array.from({ length: SIMULATION_YEARS_AHEAD + 1 }, (_, i) => startYear + i);
 
   const overridesByCategory = new Map<string, CategoryBudgetOverride[]>();
@@ -371,10 +375,7 @@ export function computeScenarioYears(
             nowYear,
           );
       const renewalYen = renewalFeeYenForYear(c, overridesForCat, year, config.inflationRatePercent, vndPerJpy, nowYear);
-      const budgetAnnualYen = monthlyYen * 12 + renewalYen;
-      const valueYen =
-        annualCategoryYen(c, budgetAnnualYen - renewalYen, year, nowYear, dayOfYear, daysInThisYear, vndPerJpy, actualByCategoryVnd) +
-        renewalYen;
+      const valueYen = annualCategoryYen(c, monthlyYen, year, nowYear, nowMonth, vndPerJpy, actualByCategoryVnd) + renewalYen;
       return { id: c.id, name: c.name, valueYen, color: getCategoryHex(c.name) };
     });
     const fixedTotalYen = fixedByCategory.reduce((s, c) => s + c.valueYen, 0);
@@ -414,7 +415,7 @@ export function computeScenarioYears(
             vndPerJpy,
             nowYear,
           );
-      const valueYen = annualCategoryYen(c, monthlyYen * 12, year, nowYear, dayOfYear, daysInThisYear, vndPerJpy, actualByCategoryVnd);
+      const valueYen = annualCategoryYen(c, monthlyYen, year, nowYear, nowMonth, vndPerJpy, actualByCategoryVnd);
       return { id: c.id, name: c.name, valueYen, color: getCategoryHex(c.name) };
     });
     const variableTotalYen = variableByCategory.reduce((s, c) => s + c.valueYen, 0);

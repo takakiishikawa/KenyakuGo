@@ -16,7 +16,7 @@ export const DICT = {
     settingsBtn: "シミュレーション設定",
     scenarios: "シナリオ管理",
     expandAll: "展開する",
-    collapseAll: "すべて折りたたむ",
+    collapseAll: "折りたたむ",
     save: "保存",
     close: "閉じる",
     apply: "この条件を適用",

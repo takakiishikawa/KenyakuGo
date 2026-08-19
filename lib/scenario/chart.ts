@@ -13,11 +13,11 @@ export type ChartKind =
 export const CHART_KINDS: ChartKind[] = [
   "overview",
   "income",
+  "expenseTotal",
+  "savings",
   "life",
   "education",
   "events",
-  "expenseTotal",
-  "savings",
 ];
 
 export interface ChartSeries {

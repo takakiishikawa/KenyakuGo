@@ -311,15 +311,17 @@ export function ScenarioListDialog({
           </div>
         ) : (
           <div className="px-5 py-2 max-h-[60vh] overflow-y-auto">
-            {shownCats.map((cat) => (
-              <CategoryMasterRow
-                key={cat.id}
-                cat={cat}
-                onRename={(id, name) => onCategoryUpdate(id, { name })}
-                onDelete={onCategoryDelete}
-                lang={lang}
-              />
-            ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+              {shownCats.map((cat) => (
+                <CategoryMasterRow
+                  key={cat.id}
+                  cat={cat}
+                  onRename={(id, name) => onCategoryUpdate(id, { name })}
+                  onDelete={onCategoryDelete}
+                  lang={lang}
+                />
+              ))}
+            </div>
             <div className="flex items-center gap-2 py-2.5">
               <Input
                 value={addCatName}

@@ -167,6 +167,8 @@ export const DICT = {
     // ダッシュボード: 投資記録
     investRecordBtn: "投資を記録",
     investAmountLabel: "投資額",
+    investNameLabel: "名前",
+    investNamePlaceholder: "例: NISA積立",
     investDateLabel: "日付",
     investTotalLabel: "累計投資額",
     investSaved: "投資を記録しました",
@@ -363,6 +365,8 @@ export const DICT = {
     // Dashboard: investment record
     investRecordBtn: "Record investment",
     investAmountLabel: "Amount",
+    investNameLabel: "Name",
+    investNamePlaceholder: "e.g. NISA contribution",
     investDateLabel: "Date",
     investTotalLabel: "Total invested",
     investSaved: "Investment recorded",

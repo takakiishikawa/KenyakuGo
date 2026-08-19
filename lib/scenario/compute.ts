@@ -499,9 +499,12 @@ export function computeScenarioYears(
     // のイベントとして、汎用のevents配列とは別に計算する。UIにON/OFFチェックボックスは
     // 置かない(1ステップ余分になるため)ので、金額0円=未計上として扱う。
     const weddingYen = config.wedding.amountYen > 0 && config.wedding.year === year ? config.wedding.amountYen : 0;
+    // 旅行の金額は「1回あたり」。年間の総額はそれ×年間の回数。
     const travelYen =
       config.travel.amountYen > 0 && year >= config.travel.startYear
-        ? config.travel.amountYen * Math.pow(1 + config.inflationRatePercent / 100, year - config.travel.startYear)
+        ? config.travel.amountYen *
+          config.travel.timesPerYear *
+          Math.pow(1 + config.inflationRatePercent / 100, year - config.travel.startYear)
         : 0;
     // 特別支出はspecial_entries(実データ)と連動する。
     const specialExpenseYen = specialEntries

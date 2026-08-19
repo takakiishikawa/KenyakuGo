@@ -89,8 +89,12 @@ const weddingEventSchema = z.object({
 });
 const travelEventSchema = z.object({
   enabled: z.boolean(),
+  // 1回あたりの金額。年間の総額は amountYen × timesPerYear。
   amountYen: z.number().min(0),
   startYear: z.number().int(),
+  // 年間の回数。2回以上のときは、システムが自動で年内に均等な間隔の月へ
+  // 振り分けて計上する(全部を1ヶ月にまとめたり、12ヶ月に均等按分したりはしない)。
+  timesPerYear: z.number().int().min(1),
 });
 
 // シナリオが持つ、カテゴリ(piggybank.categories)では表現できない前提のみ。
@@ -261,6 +265,7 @@ export function normalizeScenarioConfig(raw: unknown): ScenarioConfig {
         enabled: typeof tr.enabled === "boolean" ? tr.enabled : d.travel.enabled,
         amountYen: typeof tr.amountYen === "number" ? tr.amountYen : d.travel.amountYen,
         startYear: typeof tr.startYear === "number" ? tr.startYear : d.travel.startYear,
+        timesPerYear: typeof tr.timesPerYear === "number" && tr.timesPerYear >= 1 ? tr.timesPerYear : d.travel.timesPerYear,
       };
     })(),
     events: Array.isArray(r.events) ? (r.events as ScenarioConfig["events"]) : d.events,
@@ -284,7 +289,7 @@ export const DEFAULT_SCENARIO_CONFIG: ScenarioConfig = {
   cohabitation: { startYear: new Date().getFullYear(), moveInBonusYen: 0, preAmountByCategory: {} },
   education: {},
   wedding: { enabled: false, year: new Date().getFullYear() + 1, month: 10, amountYen: 2_500_000 },
-  travel: { enabled: false, amountYen: 400_000, startYear: new Date().getFullYear() + 1 },
+  travel: { enabled: false, amountYen: 400_000, startYear: new Date().getFullYear() + 1, timesPerYear: 1 },
   events: [],
   savings: { returnRatePercent: 5, investRatioPercent: 60, initialCashYen: 0, initialInvestYen: 0 },
   inflationRatePercent: 1,

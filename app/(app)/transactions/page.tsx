@@ -113,7 +113,12 @@ function TransactionsPageInner() {
   }, [fetchCategories, fetchTransactions]);
 
   const handleSelectCategory = async (tx: Transaction, category: string) => {
-    if (!category || category === tx.category) return;
+    // フォールバックカテゴリ(Other/その他)は未分類の初期値でもあるため、
+    // 「未分類のまま Other を選び直す」場合は category === tx.category に
+    // なってしまい、以前はここで何もせず終わっていた(選んでも未分類から
+    // 消えないバグ)。まだレビューされていない(needsCategory)場合は、値が
+    // 同じでも実際に保存してreviewedにする。
+    if (!category || (category === tx.category && !needsCategory(tx))) return;
     setSavingId(tx.id);
     const res = await fetch(`/api/transactions/${tx.id}`, {
       method: "PATCH",

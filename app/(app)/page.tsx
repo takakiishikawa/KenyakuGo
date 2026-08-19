@@ -275,6 +275,7 @@ function InvestmentDialog({
   onSaved: () => void;
 }) {
   const [amountInput, setAmountInput] = useState("");
+  const [name, setName] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [saving, setSaving] = useState(false);
 
@@ -286,7 +287,7 @@ function InvestmentDialog({
     const res = await fetch("/api/investments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amountVnd, investedOn: toDateInputValue(date) }),
+      body: JSON.stringify({ amountVnd, investedOn: toDateInputValue(date), note: name.trim() || undefined }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -295,6 +296,7 @@ function InvestmentDialog({
     }
     toast.success(t(lang, "investSaved"));
     setAmountInput("");
+    setName("");
     setDate(new Date());
     onOpenChange(false);
     onSaved();
@@ -319,6 +321,18 @@ function InvestmentDialog({
               onChange={(e) => setAmountInput(e.target.value.replace(/[^0-9]/g, ""))}
               placeholder={`0 (${currency})`}
               className="h-9 font-num"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold" style={{ color: "var(--color-text-secondary)" }}>
+              {t(lang, "investNameLabel")}
+            </span>
+            <Input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t(lang, "investNamePlaceholder")}
+              className="h-9"
             />
           </div>
           <div className="flex flex-col gap-1.5">

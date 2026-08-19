@@ -47,7 +47,7 @@ export function formatDateWithYear(date: string | Date): string {
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}(${dow}) ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-// Transactions一覧の狭い日付列向け。"Aug 17" のような短い表記。
+// Transactions一覧の狭い日付列向け。"Aug 17, 2026" のような短い表記。
 export function formatDateShort(date: string | Date): string {
-  return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }

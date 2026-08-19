@@ -494,14 +494,15 @@ export default function SimulationPage() {
               style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}
             >
               <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em]" style={{ color: DC.textFaint }}>
-                {t(lang, "totalSavings")} ({focusYear})
+                {tf(lang, "savingsAsOfYearEnd", { year: focusYear })}
               </span>
               <span className="flex items-baseline gap-2 flex-wrap">
                 <span className="font-display text-2xl font-bold" style={{ color: DC.textPrimary }}>
                   {formatAmount(yearRow.savingsCumTotalYen)}
                 </span>
                 <span className="text-xs font-medium" style={{ color: DC.textSecondary }}>
-                  ({formatAmount(yearRow.incomeTotalYen)} − {formatAmount(yearRow.expenseTotalYen)})
+                  {t(lang, "annualNetFlowLabel")} {formatAmount(yearRow.incomeTotalYen)} − {formatAmount(yearRow.expenseTotalYen)} ={" "}
+                  {formatAmount(yearRow.netFlowYen)}
                 </span>
               </span>
             </Card>

@@ -474,11 +474,25 @@ export function ScenarioSettingsDialog({
         </DialogHeader>
 
         <div className="px-5 py-4 max-h-[80vh] overflow-y-auto flex flex-col gap-3.5">
-          {scenarios.length > 1 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs" style={{ color: DC.textSecondary }}>
-                {t(lang, "editTarget")}
-              </span>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex gap-1 p-1 rounded-lg w-fit" style={{ backgroundColor: DC.track }}>
+              {tabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setConfigTab(tab.key)}
+                  className="px-3.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
+                  style={{
+                    backgroundColor: configTab === tab.key ? DC.cardBg : "transparent",
+                    color: DC.textPrimary,
+                    boxShadow: configTab === tab.key ? "0 1px 2px rgba(43,38,32,.08)" : undefined,
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            {scenarios.length > 1 && (
               <Select value={editTargetId} onValueChange={onEditTargetChange}>
                 <SelectTrigger className="h-8 text-xs w-48">
                   <SelectValue />
@@ -491,25 +505,7 @@ export function ScenarioSettingsDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          )}
-
-          <div className="flex gap-1 p-1 rounded-lg w-fit" style={{ backgroundColor: DC.track }}>
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setConfigTab(tab.key)}
-                className="px-3.5 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
-                style={{
-                  backgroundColor: configTab === tab.key ? DC.cardBg : "transparent",
-                  color: DC.textPrimary,
-                  boxShadow: configTab === tab.key ? "0 1px 2px rgba(43,38,32,.08)" : undefined,
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
+            )}
           </div>
 
           {configTab === "family" && (

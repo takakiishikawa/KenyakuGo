@@ -20,6 +20,10 @@ function specialEntryYen(e: SpecialEntryInput, vndPerJpy: number): number {
   return e.currency === "JPY" ? e.amount : vndPerJpy > 0 ? e.amount / vndPerJpy : 0;
 }
 
+// 現金の安全ライン: これを下回る見込みの期間は投資に回さず全額現金に残す
+// (年次・月次どちらの積立判定でも共通のルールとして使う)。
+const MIN_CASH_TO_INVEST_YEN = 100_000;
+
 // 産休・育休(基本): 出生年(age===0)は対象親の収入を65%として計算する(法定の
 // 産休67%・育休67〜80%/50%の細かい再現はせず、ざっくり中間の65%で近似)。
 // 延長育休: 年数を指定すると、対象期間の翌年からその年数ぶん(age 1〜
@@ -473,11 +477,10 @@ export function computeScenarioYears(
     const netFlowYen = incomeTotalYen - expenseTotalYen;
     const earnedNetFlowYen = netFlowYen - investProfitYen;
 
-    // 現金の安全ライン: 投資に回した結果、手元の現金が¥100,000を下回るなら
-    // 投資はせず全額現金に残す(現金がマイナス/心もとない状態で積立を続ける
-    // のは不自然なため)。¥100,000以上残る見込みのときだけ、通常どおり
+    // 現金の安全ライン: 投資に回した結果、手元の現金がMIN_CASH_TO_INVEST_YENを
+    // 下回るなら投資はせず全額現金に残す(現金がマイナス/心もとない状態で
+    // 積立を続けるのは不自然なため)。それ以上残る見込みのときだけ、通常どおり
     // investRatioPercentぶんを投資に回す。
-    const MIN_CASH_TO_INVEST_YEN = 100_000;
     const cashIfNoInvestYen = cashCum + earnedNetFlowYen;
     let investDelta = 0;
     let cashDelta = 0;
@@ -582,6 +585,20 @@ export function expandMonthly(
   // バグになっていた(例: ある月の貯蓄額が前月+その月のdeltaにならない)。
   // 前年末の累計を起点に、各月の実際のnetFlowYenをそのまま積み上げる。
   let cumYen = row.savingsCumTotalYen - row.netFlowYen;
+  // 投資残高は「均等按分」ではなく、月を追うごとに増えていくように出す。
+  // - 経過済み月(今年のみ): その月までの実際の投資額の累計をそのまま使う。
+  // - それ以外の月: 前月末の投資残高に想定利率(月割り)で含み益を積み、かつ
+  //   年次と同じ「現金がMIN_CASH_TO_INVEST_YENを下回る見込みなら投資しない」
+  //   ルールをその月の実際の収支で判定しながら1ヶ月ずつ進める(以前は年初/
+  //   年末の2点だけを直線補間していたため、月の途中で現金がマイナスになって
+  //   いても投資額が機械的に増え続けるバグになっていた)。
+  let simInvestBalYen = 0;
+  let simCashCumYen = 0;
+  let simStarted = !isCurrentYearView;
+  if (!isCurrentYearView) {
+    simInvestBalYen = row.investBalStartYen ?? 0;
+    simCashCumYen = cumYen - simInvestBalYen;
+  }
   return Array.from({ length: 12 }, (_, idx) => {
     const m = idx + 1;
     const husbandYenThisMonth = netMonthYen(config.income.husband, focusYear, m, yearsFromStart, "husband", config.family.kids);
@@ -621,39 +638,54 @@ export function expandMonthly(
 
     const nonEventExpense = fixedTotalYen + variableTotalYen + divide(row.educationTotalYen);
     const expenseTotalYen = nonEventExpense + eventsThisMonth;
+
+    const isElapsedReal = isCurrentYearView && m <= nowMonthForInvest;
+    // 未来月で、まだシミュレーションを開始していなければ、ここで実績から
+    // 引き継ぐ(「今」時点の実際の投資額・現金を起点にする)。cumYenはこの
+    // 時点ではまだ先月末時点の値(今月ぶんはこの後で加算する)。
+    if (!isElapsedReal && !simStarted) {
+      simInvestBalYen = realInvestAtNowYen;
+      simCashCumYen = cumYen - realInvestAtNowYen;
+      simStarted = true;
+    }
+    // 経過済み月(今年のみ)は実績データそのものを使うため、含み益という概念を
+    // 持たない(記録された投資額=元本そのまま)。未経過月は前月末残高に想定
+    // 利率を月割りで適用し、含み益を積み上げていく。
+    const investProfitYenThisMonth = isElapsedReal ? 0 : simInvestBalYen * (config.savings.returnRatePercent / 100 / 12);
+
     const incomeTotalYen =
       husbandYenThisMonth +
       wifeYenThisMonth +
       divide(row.sideYen) +
       divide(row.allowanceYen) +
-      divide(row.investProfitYen) +
+      investProfitYenThisMonth +
       specialIncomeThisMonth +
       divide(otherIncomeAnnualYen);
     const netFlowYen = incomeTotalYen - expenseTotalYen;
     cumYen += netFlowYen;
     const savingsCumTotalYen = cumYen;
 
-    // 投資残高は「均等按分」ではなく、月を追うごとに増えていくように出す。
-    // - 今年の経過済み月: その月までの実際の投資額の累計をそのまま使う。
-    // - 今年の未経過月: 「今」の実際の投資額から、年末の想定projectionまで
-    //   残り月数で線形に増やしていく(急に年末額へ飛ぶのを避ける)。
-    // - それ以外の年: その年の期首残高→期末残高を12ヶ月で線形に増やす。
     let investBalYen: number;
-    if (isCurrentYearView && m <= nowMonthForInvest) {
+    let cashCumYen: number;
+    if (isElapsedReal) {
       const cutoff = `${focusYear}-${String(m).padStart(2, "0")}-31`;
       const realInvestVnd = investmentEntries
         .filter((e) => e.investedOn <= cutoff)
         .reduce((s, e) => s + e.amountVnd, 0);
       investBalYen = vndPerJpy > 0 ? realInvestVnd / vndPerJpy : 0;
-    } else if (isCurrentYearView) {
-      const remainingFromNow = 12 - nowMonthForInvest;
-      const progress = remainingFromNow > 0 ? (m - nowMonthForInvest) / remainingFromNow : 1;
-      investBalYen = realInvestAtNowYen + (row.investBalYen - realInvestAtNowYen) * progress;
+      cashCumYen = savingsCumTotalYen - investBalYen;
     } else {
-      const startYen = row.investBalStartYen ?? 0;
-      investBalYen = startYen + (row.investBalYen - startYen) * (m / 12);
+      const earnedNetFlowYen = netFlowYen - investProfitYenThisMonth;
+      const cashIfNoInvestYen = simCashCumYen + earnedNetFlowYen;
+      const investDelta =
+        earnedNetFlowYen >= 0 && cashIfNoInvestYen >= MIN_CASH_TO_INVEST_YEN
+          ? (earnedNetFlowYen * config.savings.investRatioPercent) / 100
+          : 0;
+      simCashCumYen = simCashCumYen + earnedNetFlowYen - investDelta;
+      simInvestBalYen = simInvestBalYen + investDelta + investProfitYenThisMonth;
+      investBalYen = simInvestBalYen;
+      cashCumYen = simCashCumYen;
     }
-    const cashCumYen = savingsCumTotalYen - investBalYen;
 
     return {
       yearLabel: `${focusYear}/${String(m).padStart(2, "0")}`,
@@ -661,7 +693,7 @@ export function expandMonthly(
       wifeYen: wifeYenThisMonth,
       sideYen: divide(row.sideYen),
       allowanceYen: divide(row.allowanceYen),
-      investProfitYen: divide(row.investProfitYen),
+      investProfitYen: investProfitYenThisMonth,
       specialIncomeYen: specialIncomeThisMonth,
       incomeTotalYen,
       fixedByCategory,

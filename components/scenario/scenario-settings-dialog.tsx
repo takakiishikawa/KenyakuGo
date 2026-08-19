@@ -1194,6 +1194,11 @@ export function ScenarioSettingsDialog({
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs" style={{ color: DC.textSecondary }}>
+                        {t(lang, "travelPerTripAmount")}
+                      </span>
                       <YenInput
                         value={draft.travel.amountYen}
                         onChange={(n) => setDraft({ ...draft, travel: { ...draft.travel, amountYen: n } })}
@@ -1202,6 +1207,22 @@ export function ScenarioSettingsDialog({
                         currency={currency}
                         vndPerJpy={vndPerJpy}
                       />
+                      <span className="text-xs" style={{ color: DC.textSecondary }}>
+                        {t(lang, "travelTimesPerYear")}
+                      </span>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={draft.travel.timesPerYear}
+                        onChange={(e) =>
+                          setDraft({ ...draft, travel: { ...draft.travel, timesPerYear: Math.max(1, Number(e.target.value)) } })
+                        }
+                        onBlur={() => commit(draft)}
+                        className="h-8 w-14 text-sm text-right font-num"
+                      />
+                      <span className="text-xs" style={{ color: DC.textSecondary }}>
+                        {t(lang, "travelTimesUnit")}
+                      </span>
                     </div>
                   </div>
 

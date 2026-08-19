@@ -598,6 +598,15 @@ export function expandMonthly(
   const row = yearRows.find((y) => y.year === focusYear) ?? yearRows[0];
   if (!row) return [];
   const divide = (v: number) => v / 12;
+  // 旅行の年間の回数ぶんを、年内に均等な間隔で割り振る月(1〜12)。1回なら7月
+  // (夏)、2回なら4月・10月...という具合に、回数に応じて等間隔になる位置を選ぶ
+  // (要望: 年2回・3回等のとき、1つの月にまとめたり12ヶ月に均等按分したりせず、
+  // システムが自動でその年の対象月に振り分けて計上する)。
+  const travelMonths = new Set(
+    Array.from({ length: Math.max(1, Math.round(config.travel.timesPerYear)) }, (_, i) =>
+      Math.min(12, Math.max(1, Math.floor(((i + 0.5) * 12) / Math.max(1, Math.round(config.travel.timesPerYear))) + 1)),
+    ),
+  );
   const nowYearForInvest = new Date().getFullYear();
   const nowMonthForInvest = new Date().getMonth() + 1;
   const isCurrentYearView = focusYear === nowYearForInvest;
@@ -657,13 +666,15 @@ export function expandMonthly(
       config.family.spouse && cohabitingThisYear
         ? netMonthYen(config.income.wife, focusYear, m, yearsFromStart, "wife", config.family.kids)
         : 0;
-    // 結婚式はその月にまとめて計上。旅行は特定の月を持たないので年額を均等按分する。
+    // 結婚式はその月にまとめて計上。旅行は1回あたりの金額を、年間の回数ぶん
+    // travelMonthsで割り振った月にそのまま計上する(12ヶ月への均等按分はしない)。
     const weddingThisMonth =
       config.wedding.amountYen > 0 && config.wedding.year === focusYear && config.wedding.month === m ? config.wedding.amountYen : 0;
-    const travelThisYear =
+    const travelPerTripYen =
       config.travel.amountYen > 0 && focusYear >= config.travel.startYear
         ? config.travel.amountYen * Math.pow(1 + config.inflationRatePercent / 100, focusYear - config.travel.startYear)
         : 0;
+    const travelThisMonth = travelPerTripYen > 0 && travelMonths.has(m) ? travelPerTripYen : 0;
     const monthKey = `${focusYear}-${String(m).padStart(2, "0")}`;
     const specialExpenseThisMonth = specialEntries
       .filter((e) => e.kind === "expense" && e.month === monthKey)
@@ -671,7 +682,7 @@ export function expandMonthly(
     const specialIncomeThisMonth = specialEntries
       .filter((e) => e.kind === "income" && e.month === monthKey)
       .reduce((s, e) => s + specialEntryYen(e, vndPerJpy), 0);
-    const eventsThisMonth = weddingThisMonth + divide(travelThisYear) + specialExpenseThisMonth;
+    const eventsThisMonth = weddingThisMonth + travelThisMonth + specialExpenseThisMonth;
 
     // 今年ぶんは、経過月=実績・未経過月=予算の月次内訳(fixedByCategoryMonthly等)が
     // あればそれを使う。無ければ(他の年、または同棲前フェーズ)従来通り年額を

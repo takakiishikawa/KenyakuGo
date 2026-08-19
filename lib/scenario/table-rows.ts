@@ -53,17 +53,24 @@ function specialSubRows(
   fmt: (n: number) => string,
 ): TableRow[] {
   const matching = specialEntries.filter((e) => e.kind === kind);
-  const names = Array.from(new Set(matching.map((e) => e.name)));
-  return names.map((name) => ({
-    key: `${parentKey}.${name}`,
+  // 「Japan trip」「Japan Trip」のような大文字小文字・前後の空白だけの違いは
+  // 同じ項目とみなして1行にまとめる(表示名は最初に出てきた表記を使う)。
+  const normalize = (name: string) => name.trim().toLowerCase();
+  const labelByKey = new Map<string, string>();
+  for (const e of matching) {
+    const key = normalize(e.name);
+    if (!labelByKey.has(key)) labelByKey.set(key, e.name.trim());
+  }
+  return Array.from(labelByKey.entries()).map(([normalizedName, label]) => ({
+    key: `${parentKey}.${normalizedName}`,
     depth,
-    label: name,
+    label,
     bold: false,
     expandable: false,
     expanded: false,
     cells: rows.map((r) => {
       const total = matching
-        .filter((e) => e.name === name && matchesPeriod(e.month, r.yearLabel))
+        .filter((e) => normalize(e.name) === normalizedName && matchesPeriod(e.month, r.yearLabel))
         .reduce((s, e) => s + specialEntryYen(e, vndPerJpy), 0);
       return cell(total, fmt);
     }),

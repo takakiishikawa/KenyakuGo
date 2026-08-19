@@ -7,7 +7,7 @@ import { t, type Lang } from "@/lib/scenario/dictionary";
 import { DC } from "@/lib/scenario/design-colors";
 
 const FIRST_COL_WIDTH = 220;
-const YEAR_COL_WIDTH = 118;
+const YEAR_COL_WIDTH = 106;
 
 // position:sticky(top)を横スクロールする要素の中で使うと、CSSの仕様上
 // overflow-x:auto指定が同じ要素のoverflow-yも(見た目上は何も起きなくても)

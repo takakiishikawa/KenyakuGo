@@ -6,7 +6,7 @@ import type { TableRow as ScenarioTableRow } from "@/lib/scenario/table-rows";
 import { t, type Lang } from "@/lib/scenario/dictionary";
 import { DC } from "@/lib/scenario/design-colors";
 
-const FIRST_COL_WIDTH = 220;
+const FIRST_COL_WIDTH = 196;
 const YEAR_COL_WIDTH = 106;
 
 // position:sticky(top)を横スクロールする要素の中で使うと、CSSの仕様上

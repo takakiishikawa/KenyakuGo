@@ -522,7 +522,7 @@ export default function Dashboard() {
               {uncategorizedCount > 0 && (
                 <a
                   href="/transactions?filter=needs_category"
-                  className="flex items-center gap-2 rounded-[10px] px-3.5 py-2 text-xs font-semibold transition-all hover:brightness-95 active:scale-[0.98]"
+                  className="flex items-center gap-2 h-9 rounded-[10px] px-3.5 text-xs font-semibold transition-all hover:brightness-95 active:scale-[0.98]"
                   style={{ backgroundColor: "#F7E1EA", border: "1px solid #F0C7D8", color: "#8C3A5E" }}
                 >
                   <Inbox size={14} className="shrink-0" />
@@ -533,7 +533,7 @@ export default function Dashboard() {
                 type="button"
                 onClick={() => setInvestDialogOpen(true)}
                 title={t(lang, "investRecordBtn")}
-                className="flex items-center gap-2 rounded-[10px] px-3.5 py-2 text-xs font-semibold transition-all hover:brightness-95 active:scale-[0.98]"
+                className="flex items-center gap-2 h-9 rounded-[10px] px-3.5 text-xs font-semibold transition-all hover:brightness-95 active:scale-[0.98]"
                 style={{ backgroundColor: "var(--kg-track)", color: "var(--color-text-secondary)" }}
               >
                 <PiggyBank size={14} className="shrink-0" />

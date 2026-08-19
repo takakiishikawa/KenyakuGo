@@ -105,6 +105,9 @@ export function buildSingleTableRows(
     // 投資益は収入の内訳には出さず、貯蓄→投資の行にその期間の増分として表示する
     // (収入の内訳に混ざっていると「収支」と「運用の増減」が紛らわしいため)。
     push({ key: "income.allowance", depth: 1, label: t(lang, "childAllowance"), cells: rows.map((r) => cell(r.allowanceYen, fmt)) });
+    // 同棲時の一時収入。以前はincomeTotalYenの計算に含めているのに行が無く、
+    // 同棲開始年だけ「内訳の合計 ≠ 総収入」になるバグになっていた。
+    push({ key: "income.moveInBonus", depth: 1, label: t(lang, "moveInBonus"), cells: rows.map((r) => cell(r.moveInBonusYen, fmt)) });
     push({
       key: "income.specialIncome",
       depth: 1,
@@ -189,14 +192,22 @@ export function buildSingleTableRows(
     expandable: true,
   });
   if (isExpanded("savings")) {
+    // 貯蓄 = 現金 + 投資元本(これまで投資に回した額の累計) + 含み損益。
+    // 「投資」は元本のみとし、含み損益は別行にして二重計上を避ける。
     push({ key: "savings.cash", depth: 1, label: t(lang, "cash"), cells: rows.map((r) => cell(r.cashCumYen, fmt, true)) });
-    // 投資残高の増減(投資益、想定利率から毎月/毎年計算)を、貯蓄の行と同じ
-    // 「金額 + その期間の増減」の書き方で見せる。
     push({
       key: "savings.invest",
       depth: 1,
       label: t(lang, "invest"),
-      cells: rows.map((r) => cellWithDelta(r.investBalYen, r.investProfitYen, fmt)),
+      cells: rows.map((r) => cell(r.investBalYen - r.profitCumYen, fmt)),
+    });
+    // 含み損益は累計を主表示にし、その期間の増減(想定利率から毎月/毎年計算)を
+    // 貯蓄行と同じ「金額 + その期間の増減」の書き方で見せる。
+    push({
+      key: "savings.profit",
+      depth: 1,
+      label: t(lang, "investProfit"),
+      cells: rows.map((r) => cellWithDelta(r.profitCumYen, r.investProfitYen, fmt, true)),
     });
   }
 
@@ -238,6 +249,12 @@ export function buildCompareTableRows(
       push({ key: `${ik}.wife`, depth: 2, label: t(lang, "wife"), cells: scn.rows.map((r) => cell(r.wifeYen, fmt)) });
       push({ key: `${ik}.side`, depth: 2, label: t(lang, "side"), cells: scn.rows.map((r) => cell(r.sideYen, fmt)) });
       push({ key: `${ik}.allowance`, depth: 2, label: t(lang, "childAllowance"), cells: scn.rows.map((r) => cell(r.allowanceYen, fmt)) });
+      push({
+        key: `${ik}.moveInBonus`,
+        depth: 2,
+        label: t(lang, "moveInBonus"),
+        cells: scn.rows.map((r) => cell(r.moveInBonusYen, fmt)),
+      });
       const ikSpecial = `${ik}.specialIncome`;
       push({
         key: ikSpecial,
@@ -303,7 +320,13 @@ export function buildCompareTableRows(
       key: `${key}.invest`,
       depth: 1,
       label: t(lang, "invest"),
-      cells: scn.rows.map((r) => cellWithDelta(r.investBalYen, r.investProfitYen, fmt)),
+      cells: scn.rows.map((r) => cell(r.investBalYen - r.profitCumYen, fmt)),
+    });
+    push({
+      key: `${key}.profit`,
+      depth: 1,
+      label: t(lang, "investProfit"),
+      cells: scn.rows.map((r) => cellWithDelta(r.profitCumYen, r.investProfitYen, fmt, true)),
     });
   }
 

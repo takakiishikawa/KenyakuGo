@@ -97,6 +97,10 @@ export interface ScenarioYearRow {
   wifeYen: number;
   sideYen: number;
   allowanceYen: number;
+  // 同棲開始年に一度だけ計上される一時収入(config.cohabitation.moveInBonusYen)。
+  // 以前はincomeTotalYenの計算には含めているのにテーブルの収入内訳に行が無く、
+  // 「収入の内訳を全部足しても総収入と合わない」年ができてしまうバグがあった。
+  moveInBonusYen: number;
   investProfitYen: number;
   specialIncomeYen: number;
   incomeTotalYen: number;
@@ -119,6 +123,9 @@ export interface ScenarioYearRow {
   // この年の1月時点(=前年末)の運用残高。月次表示で、年内の投資残高の増え方を
   // 均等按分ではなく期首→期末の線形補間にするために使う(年次の行にのみ持たせる)。
   investBalStartYen?: number;
+  // この年の1月時点(=前年末)の投資元本累計。月次表示で含み損益(profitCumYen)を
+  // 月ごとに正しく積み上げるための起点として使う(年次の行にのみ持たせる)。
+  investPrincipalCumStartYen?: number;
   profitCumYen: number;
   savingsCumTotalYen: number;
 }
@@ -504,6 +511,7 @@ export function computeScenarioYears(
       cashDelta = earnedNetFlowYen;
     }
     const investBalStartYen = investBal;
+    const investPrincipalCumStartYen = investPrincipalCum;
     investBal = investBal + investDelta + investProfitYen;
     investPrincipalCum += investDelta;
     cashCum += cashDelta;
@@ -516,6 +524,7 @@ export function computeScenarioYears(
       wifeYen,
       sideYen,
       allowanceYen,
+      moveInBonusYen,
       investProfitYen,
       specialIncomeYen,
       incomeTotalYen,
@@ -533,6 +542,7 @@ export function computeScenarioYears(
       cashCumYen: cashCum,
       investBalYen: investBal,
       investBalStartYen,
+      investPrincipalCumStartYen,
       profitCumYen,
       savingsCumTotalYen,
     };
@@ -581,15 +591,16 @@ export function expandMonthly(
   // startYearとして計算している)で、その年の昇給・産休育休の複利年数を求める。
   const yearsFromStart = focusYear - new Date().getFullYear();
   const cohabitingThisYear = focusYear >= config.cohabitation.startYear;
-  // 収入合計のうち、本人/配偶者/副業/子育て支援/投資益/特別収入の按分では
-  // 説明が付かない残り(同棲時の一時収入等)は、従来通り年額を均等按分して
-  // 埋め合わせる。
+  // 収入合計のうち、本人/配偶者/副業/子育て支援/同棲時の一時収入/投資益/
+  // 特別収入の按分では説明が付かない残り(想定外の差分)は、保険として
+  // 年額を均等按分して埋め合わせる(通常はほぼ¥0になるはず)。
   const otherIncomeAnnualYen =
     row.incomeTotalYen -
     row.husbandYen -
     row.wifeYen -
     row.sideYen -
     row.allowanceYen -
+    row.moveInBonusYen -
     row.investProfitYen -
     row.specialIncomeYen;
   // 貯蓄の累計は「年末の累計から、残り月数ぶんを年間平均netFlowで引く」という
@@ -607,9 +618,13 @@ export function expandMonthly(
   //   いても投資額が機械的に増え続けるバグになっていた)。
   let simInvestBalYen = 0;
   let simCashCumYen = 0;
+  // 投資元本(含み損益を含まない、これまで投資に回した額の累計)。含み損益
+  // (profitCumYen)を月ごとに「投資残高 − 投資元本」として正しく出すために使う。
+  let simInvestPrincipalCumYen = 0;
   let simStarted = !isCurrentYearView;
   if (!isCurrentYearView) {
     simInvestBalYen = row.investBalStartYen ?? 0;
+    simInvestPrincipalCumYen = row.investPrincipalCumStartYen ?? 0;
     simCashCumYen = cumYen - simInvestBalYen;
   }
   return Array.from({ length: 12 }, (_, idx) => {
@@ -658,6 +673,9 @@ export function expandMonthly(
     // 時点ではまだ先月末時点の値(今月ぶんはこの後で加算する)。
     if (!isElapsedReal && !simStarted) {
       simInvestBalYen = realInvestAtNowYen;
+      // 実績には含み損益の概念が無い(記録した金額=元本)ため、引き継ぎ時点の
+      // 元本累計は実際の投資額そのものとする。
+      simInvestPrincipalCumYen = realInvestAtNowYen;
       simCashCumYen = cumYen - realInvestAtNowYen;
       simStarted = true;
     }
@@ -671,6 +689,7 @@ export function expandMonthly(
       wifeYenThisMonth +
       divide(row.sideYen) +
       divide(row.allowanceYen) +
+      divide(row.moveInBonusYen) +
       investProfitYenThisMonth +
       specialIncomeThisMonth +
       divide(otherIncomeAnnualYen);
@@ -680,6 +699,7 @@ export function expandMonthly(
 
     let investBalYen: number;
     let cashCumYen: number;
+    let profitCumYen: number;
     if (isElapsedReal) {
       const cutoff = `${focusYear}-${String(m).padStart(2, "0")}-31`;
       const realInvestVnd = investmentEntries
@@ -687,6 +707,8 @@ export function expandMonthly(
         .reduce((s, e) => s + e.amountVnd, 0);
       investBalYen = vndPerJpy > 0 ? realInvestVnd / vndPerJpy : 0;
       cashCumYen = savingsCumTotalYen - investBalYen;
+      // 経過済み月は実績(=元本)そのものなので含み損益は0とする。
+      profitCumYen = 0;
     } else {
       const earnedNetFlowYen = netFlowYen - investProfitYenThisMonth;
       const cashIfNoInvestYen = simCashCumYen + earnedNetFlowYen;
@@ -696,8 +718,10 @@ export function expandMonthly(
           : 0;
       simCashCumYen = simCashCumYen + earnedNetFlowYen - investDelta;
       simInvestBalYen = simInvestBalYen + investDelta + investProfitYenThisMonth;
+      simInvestPrincipalCumYen = simInvestPrincipalCumYen + investDelta;
       investBalYen = simInvestBalYen;
       cashCumYen = simCashCumYen;
+      profitCumYen = simInvestBalYen - simInvestPrincipalCumYen;
     }
 
     return {
@@ -706,6 +730,7 @@ export function expandMonthly(
       wifeYen: wifeYenThisMonth,
       sideYen: divide(row.sideYen),
       allowanceYen: divide(row.allowanceYen),
+      moveInBonusYen: divide(row.moveInBonusYen),
       investProfitYen: investProfitYenThisMonth,
       specialIncomeYen: specialIncomeThisMonth,
       incomeTotalYen,
@@ -720,7 +745,7 @@ export function expandMonthly(
       netFlowYen,
       cashCumYen,
       investBalYen,
-      profitCumYen: row.profitCumYen,
+      profitCumYen,
       savingsCumTotalYen,
     };
   });

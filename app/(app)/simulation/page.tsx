@@ -391,7 +391,7 @@ export default function SimulationPage() {
               { value: "graph", label: t(lang, "graph") },
             ]}
           />
-          <IconButton title={t(lang, "scenarios")} onClick={() => setScenarioListOpen(true)}>
+          <IconButton title={t(lang, "manageDialogTitle")} onClick={() => setScenarioListOpen(true)}>
             <ListTree size={14} />
           </IconButton>
           <IconButton title={t(lang, "settingsBtn")} onClick={() => setEditorOpen(true)} accent>
@@ -524,6 +524,14 @@ export default function SimulationPage() {
         onSelect={setPrimaryScenario}
         onDelete={deleteScenario}
         onRename={renameScenario}
+        categories={categories}
+        overrides={overrides}
+        onCategoryUpdate={onCategoryUpdate}
+        onCategoryAdd={onCategoryAdd}
+        onCategoryDelete={onCategoryDelete}
+        onScheduleOverride={onScheduleOverride}
+        onDeleteOverride={onDeleteOverride}
+        currency={currency}
         lang={lang}
       />
     </div>

@@ -622,6 +622,13 @@ export function ScenarioSettingsDialog({
 
           {configTab === "income" && (
             <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1 text-sm rounded-lg px-2.5 py-2" style={{ backgroundColor: DC.track, color: DC.textSecondary }}>
+                <span>{tf(lang, "grossAnnualHusband", { amount: formatYenPreview(husbandGrossAnnualYen) })}</span>
+                {draft.family.spouse && <span>{tf(lang, "grossAnnualWife", { amount: formatYenPreview(wifeGrossAnnualYen) })}</span>}
+                <span className="font-semibold" style={{ color: DC.textPrimary }}>
+                  {tf(lang, "grossAnnualHousehold", { amount: formatYenPreview(householdGrossAnnualYen) })}
+                </span>
+              </div>
               {(
                 [
                   { key: "husband" as const, label: t(lang, "husbandIncome") },
@@ -821,13 +828,16 @@ export function ScenarioSettingsDialog({
                   {t(lang, "publicAllowanceDetail")}
                 </span>
               </div>
-              <div className="flex flex-col gap-1 text-sm rounded-lg px-2.5 py-2" style={{ backgroundColor: DC.track, color: DC.textSecondary }}>
-                <span>{tf(lang, "grossAnnualHusband", { amount: formatYenPreview(husbandGrossAnnualYen) })}</span>
-                {draft.family.spouse && <span>{tf(lang, "grossAnnualWife", { amount: formatYenPreview(wifeGrossAnnualYen) })}</span>}
-                <span className="font-semibold" style={{ color: DC.textPrimary }}>
-                  {tf(lang, "grossAnnualHousehold", { amount: formatYenPreview(householdGrossAnnualYen) })}
-                </span>
-              </div>
+              <SpecialEntrySection
+                kind="income"
+                title={t(lang, "specialIncomeLabel")}
+                entries={specialEntries}
+                onAdd={onAddSpecialEntry}
+                onDelete={onDeleteSpecialEntry}
+                lang={lang}
+                currency={currency}
+                monthLabels={monthLabels}
+              />
             </div>
           )}
 
@@ -1168,19 +1178,10 @@ export function ScenarioSettingsDialog({
 
               {spendingSub === "specialExpense" && (
                 <div className="flex flex-col gap-4">
+                  {/* 特別収入は収入タブ(公的手当の下)に移動したので、ここは特別支出のみ。 */}
                   <SpecialEntrySection
                     kind="expense"
                     title={t(lang, "specialExpenseTab")}
-                    entries={specialEntries}
-                    onAdd={onAddSpecialEntry}
-                    onDelete={onDeleteSpecialEntry}
-                    lang={lang}
-                    currency={currency}
-                    monthLabels={monthLabels}
-                  />
-                  <SpecialEntrySection
-                    kind="income"
-                    title={t(lang, "specialIncomeLabel")}
                     entries={specialEntries}
                     onAdd={onAddSpecialEntry}
                     onDelete={onDeleteSpecialEntry}

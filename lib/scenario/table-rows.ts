@@ -108,7 +108,29 @@ export function buildSingleTableRows(
       }
     }
     push({ key: "expense.education", depth: 1, label: t(lang, "education"), cells: rows.map((r) => cell(r.educationTotalYen, fmt)) });
-    push({ key: "expense.events", depth: 1, label: t(lang, "events"), cells: rows.map((r) => cell(r.eventsTotalYen, fmt)) });
+    push({
+      key: "expense.events",
+      depth: 1,
+      label: t(lang, "events"),
+      cells: rows.map((r) => cell(r.eventsTotalYen, fmt)),
+      expandable: true,
+    });
+    if (isExpanded("expense.events")) {
+      // eventsTotalYen = 結婚式・旅行 + 特別支出(special_entries)。特別支出は
+      // 実データと連動する独立行として出す(以前はイベント合計に埋もれて見えなかった)。
+      push({
+        key: "expense.events.other",
+        depth: 2,
+        label: t(lang, "eventsOther"),
+        cells: rows.map((r) => cell(r.eventsTotalYen - r.specialExpenseYen, fmt)),
+      });
+      push({
+        key: "expense.events.special",
+        depth: 2,
+        label: t(lang, "specialExpenseLabel"),
+        cells: rows.map((r) => cell(r.specialExpenseYen, fmt)),
+      });
+    }
   }
 
   push({
@@ -206,7 +228,22 @@ export function buildCompareTableRows(
         }
       }
       push({ key: `${ek}.education`, depth: 2, label: t(lang, "education"), cells: scn.rows.map((r) => cell(r.educationTotalYen, fmt)) });
-      push({ key: `${ek}.events`, depth: 2, label: t(lang, "events"), cells: scn.rows.map((r) => cell(r.eventsTotalYen, fmt)) });
+      const evk = `${ek}.events`;
+      push({ key: evk, depth: 2, label: t(lang, "events"), cells: scn.rows.map((r) => cell(r.eventsTotalYen, fmt)), expandable: true });
+      if (isExpanded(evk)) {
+        push({
+          key: `${evk}.other`,
+          depth: 3,
+          label: t(lang, "eventsOther"),
+          cells: scn.rows.map((r) => cell(r.eventsTotalYen - r.specialExpenseYen, fmt)),
+        });
+        push({
+          key: `${evk}.special`,
+          depth: 3,
+          label: t(lang, "specialExpenseLabel"),
+          cells: scn.rows.map((r) => cell(r.specialExpenseYen, fmt)),
+        });
+      }
     }
 
     push({ key: `${key}.cash`, depth: 1, label: t(lang, "cash"), cells: scn.rows.map((r) => cell(r.cashCumYen, fmt, true)) });

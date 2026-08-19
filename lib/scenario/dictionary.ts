@@ -15,6 +15,10 @@ export const DICT = {
     totalSavings: "総貯蓄",
     settingsBtn: "シミュレーション設定",
     scenarios: "シナリオ管理",
+    manageDialogTitle: "管理",
+    manageScenariosTab: "シナリオ",
+    manageCategoriesTab: "カテゴリ",
+    manageAddCategory: "カテゴリを追加",
     expandAll: "展開する",
     collapseAll: "折りたたむ",
     save: "保存",
@@ -25,6 +29,7 @@ export const DICT = {
     life: "暮らし",
     education: "教育",
     events: "イベント",
+    eventsOther: "結婚式・旅行",
     fixed: "固定費",
     variable: "変動費",
     cash: "現金",
@@ -211,6 +216,10 @@ export const DICT = {
     totalSavings: "Total savings",
     settingsBtn: "Simulation settings",
     scenarios: "Scenarios",
+    manageDialogTitle: "Manage",
+    manageScenariosTab: "Scenarios",
+    manageCategoriesTab: "Categories",
+    manageAddCategory: "Add category",
     expandAll: "Expand all",
     collapseAll: "Collapse all",
     save: "Save",
@@ -221,6 +230,7 @@ export const DICT = {
     life: "Life",
     education: "Education",
     events: "Events",
+    eventsOther: "Wedding & travel",
     fixed: "Fixed",
     variable: "Variable",
     cash: "Cash",
@@ -406,6 +416,10 @@ export function tf(lang: Lang, key: DictKey, values: Record<string, string | num
 
 // カテゴリ名(英語、piggybank.categories.name)の日本語表示ラベル。
 // 未知のカテゴリはそのまま返す。
+// カテゴリ名は英語表記でDBに保存されている(2026-07-08の一括移行)ため、
+// ここに無い名前は日本語表示でもそのまま英語で出てしまう。デフォルトの
+// カテゴリはすべて網羅し、ユーザーが独自に追加・改名したカテゴリ名だけは
+// 翻訳のしようがないため英語表記のまま出す(既知の制限)。
 const CAT_JA: Record<string, string> = {
   "Home Cooking": "自炊",
   "Dining Out": "外食",
@@ -419,8 +433,38 @@ const CAT_JA: Record<string, string> = {
   Other: "その他",
   Travel: "旅行",
   Rent: "住居",
+  "Rent/Utilities": "住居・光熱費",
   Insurance: "保険料",
   Medical: "医療費",
+  Phone: "通信",
+  Media: "メディア",
+  Massage: "マッサージ",
+  Gym: "ジム",
+  Pharmacy: "医薬品",
+  Learning: "学習",
+  Entertainment: "エンタメ",
+  "Daily Goods": "日用品",
+  Transfer: "転送",
+  Cash: "現金",
+  Groceries: "食料品",
+  Sports: "スポーツ",
+  Beauty: "美容",
+  Drinks: "飲み会",
+  Shopping: "ショッピング",
+  Health: "健康",
+  Medicine: "薬",
+  Books: "書籍",
+  Games: "ゲーム",
+  Camera: "カメラ",
+  Music: "音楽",
+  Clothing: "衣類",
+  Car: "車",
+  Bicycle: "自転車",
+  Overseas: "海外",
+  Water: "水道",
+  Work: "仕事",
+  Electricity: "電気",
+  Savings: "貯金",
 };
 
 export function catLabel(lang: Lang, name: string): string {

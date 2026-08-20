@@ -152,8 +152,8 @@ export function ScenarioTable({
                     style={{
                       backgroundColor: DC.cardBg,
                       color: DC.textPrimary,
-                      paddingTop: 9,
-                      paddingBottom: 9,
+                      paddingTop: 7,
+                      paddingBottom: 7,
                       paddingRight: 16,
                       paddingLeft: 16 + row.depth * 18,
                       fontSize: 12.5,
@@ -186,7 +186,7 @@ export function ScenarioTable({
                         title={cell.delta ? `${cell.fmt} (${cell.delta.fmt})` : cell.fmt}
                         className="text-right whitespace-nowrap overflow-hidden text-ellipsis"
                         style={{
-                          padding: "9px 10px",
+                          padding: "7px 10px",
                           fontSize: 12.5,
                           fontWeight: row.bold ? 700 : row.depth === 0 ? 600 : 400,
                           color: cell.negative ? DC.danger : DC.textPrimary,

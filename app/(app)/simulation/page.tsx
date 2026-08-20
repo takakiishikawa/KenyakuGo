@@ -462,15 +462,15 @@ export default function SimulationPage() {
       </div>
 
       {isSingle && timeMode === "yearly" && (
-        <div className="flex items-stretch gap-3">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 flex-1">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex flex-wrap gap-3">
             {milestoneYears.map((yrsAhead) => {
               const targetYear = CUR_YEAR + yrsAhead;
               const row = primaryYearRows.find((y) => y.year === targetYear);
               return (
                 <Card
                   key={yrsAhead}
-                  className="rounded-2xl px-4 py-2.5 flex items-baseline gap-2"
+                  className="rounded-2xl px-4 py-2.5 flex items-baseline gap-2 w-fit"
                   style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}
                 >
                   <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] shrink-0" style={{ color: DC.textFaint }}>
@@ -483,14 +483,13 @@ export default function SimulationPage() {
               );
             })}
           </div>
-          {isTableView && (
-            <div className="flex items-center">
-              <ExpandToggleButton expandAll={expandAllFlag} onToggle={toggleExpandAll} lang={lang} />
-            </div>
-          )}
+          {isTableView && <ExpandToggleButton expandAll={expandAllFlag} onToggle={toggleExpandAll} lang={lang} />}
         </div>
       )}
-      {!(isSingle && timeMode === "yearly") && isTableView && (
+      {/* 比較モードにはサマリーカードが無いため、その場合(と、単体×月次で
+          データ読み込み中でカードがまだ無い場合)だけボタンを独立した行に出す
+          (通常は年次・月次どちらもカードの行に埋め込むので、この行は表示しない)。 */}
+      {(!isSingle || (timeMode === "monthly" && rowsForView.length === 0)) && isTableView && (
         <div className="flex items-center justify-end">
           <ExpandToggleButton expandAll={expandAllFlag} onToggle={toggleExpandAll} lang={lang} />
         </div>
@@ -514,19 +513,22 @@ export default function SimulationPage() {
           const netFlowYen = incomeTotalYen - expenseTotalYen;
           return (
             <Card
-              className="rounded-2xl px-5 py-3 flex items-baseline gap-3 flex-wrap"
+              className="rounded-2xl px-5 py-3 flex items-center justify-between gap-3 flex-wrap"
               style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}
             >
-              <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] shrink-0" style={{ color: DC.textFaint }}>
-                {tf(lang, "savingsAsOfYearEnd", { year: focusYear })}
+              <span className="flex items-baseline gap-3 flex-wrap">
+                <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] shrink-0" style={{ color: DC.textFaint }}>
+                  {tf(lang, "savingsAsOfYearEnd", { year: focusYear })}
+                </span>
+                <span className="font-display text-xl font-bold shrink-0" style={{ color: DC.textPrimary }}>
+                  {formatAmount(lastRow.savingsCumTotalYen)}
+                </span>
+                <span className="text-sm font-semibold" style={{ color: netFlowYen >= 0 ? DC.success : DC.danger }}>
+                  {netFlowYen >= 0 ? "+" : ""}
+                  {formatAmount(netFlowYen)}
+                </span>
               </span>
-              <span className="font-display text-xl font-bold shrink-0" style={{ color: DC.textPrimary }}>
-                {formatAmount(lastRow.savingsCumTotalYen)}
-              </span>
-              <span className="text-sm font-semibold" style={{ color: netFlowYen >= 0 ? DC.success : DC.danger }}>
-                {netFlowYen >= 0 ? "+" : ""}
-                {formatAmount(netFlowYen)}
-              </span>
+              {isTableView && <ExpandToggleButton expandAll={expandAllFlag} onToggle={toggleExpandAll} lang={lang} />}
             </Card>
           );
         })()}

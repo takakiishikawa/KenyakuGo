@@ -116,7 +116,7 @@ export function ScenarioChart({
           ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}
           className="w-full block"
-          style={{ height: "min(60vh, 420px)", minHeight: 280 }}
+          style={{ height: "min(75vh, 620px)", minHeight: 280 }}
           onMouseMove={handleMove}
           onMouseLeave={() => setHoverIdx(null)}
         >

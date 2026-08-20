@@ -8,8 +8,8 @@ import { DC } from "@/lib/scenario/design-colors";
 
 // 月次表示で12ヶ月ぶんが横スクロールなしで収まるよう、1列目・年月列とも
 // もう一段階詰める。
-const FIRST_COL_WIDTH = 148;
-const YEAR_COL_WIDTH = 92;
+const FIRST_COL_WIDTH = 124;
+const YEAR_COL_WIDTH = 80;
 
 // position:sticky(top)を横スクロールする要素の中で使うと、CSSの仕様上
 // overflow-x:auto指定が同じ要素のoverflow-yも(見た目上は何も起きなくても)
@@ -114,7 +114,7 @@ export function ScenarioTable({
                         color: isCurrent ? DC.primaryHover : DC.textPrimary,
                         fontSize: 11.5,
                         fontWeight: 700,
-                        padding: "11px 14px",
+                        padding: "11px 8px",
                         borderTop: isCurrent ? `1px solid ${DC.primary}` : undefined,
                         borderLeft: isCurrent ? `1px solid ${DC.primary}` : undefined,
                         borderRight: isCurrent ? `1px solid ${DC.primary}` : undefined,
@@ -181,8 +181,8 @@ export function ScenarioTable({
                         key={i}
                         className="text-right whitespace-nowrap overflow-hidden text-ellipsis"
                         style={{
-                          padding: "9px 14px",
-                          fontSize: 12.5,
+                          padding: "9px 8px",
+                          fontSize: 12,
                           fontWeight: row.bold ? 700 : row.depth === 0 ? 600 : 400,
                           color: cell.negative ? DC.danger : DC.textPrimary,
                           backgroundColor: isCurrent ? "rgba(190,91,133,0.05)" : undefined,

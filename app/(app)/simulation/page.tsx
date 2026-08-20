@@ -476,7 +476,7 @@ export default function SimulationPage() {
                   <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] shrink-0" style={{ color: DC.textFaint }}>
                     {tf(lang, "yearsAheadLabel", { n: yrsAhead })} ({targetYear})
                   </span>
-                  <span className="font-display text-base font-bold whitespace-nowrap" style={{ color: DC.textPrimary }}>
+                  <span className="font-display text-xl font-bold whitespace-nowrap" style={{ color: DC.textPrimary }}>
                     {row ? formatAmount(row.savingsCumTotalYen) : "—"}
                   </span>
                 </Card>
@@ -512,11 +512,11 @@ export default function SimulationPage() {
           const expenseTotalYen = rowsForView.reduce((s, r) => s + r.expenseTotalYen, 0);
           const netFlowYen = incomeTotalYen - expenseTotalYen;
           return (
-            <Card
-              className="rounded-2xl px-5 py-3 flex items-center justify-between gap-3 flex-wrap"
-              style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}
-            >
-              <span className="flex items-baseline gap-3 flex-wrap">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <Card
+                className="rounded-2xl px-5 py-3 flex items-baseline gap-3 flex-wrap w-fit"
+                style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}
+              >
                 <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] shrink-0" style={{ color: DC.textFaint }}>
                   {tf(lang, "savingsAsOfYearEnd", { year: focusYear })}
                 </span>
@@ -527,9 +527,9 @@ export default function SimulationPage() {
                   {netFlowYen >= 0 ? "+" : ""}
                   {formatAmount(netFlowYen)}
                 </span>
-              </span>
+              </Card>
               {isTableView && <ExpandToggleButton expandAll={expandAllFlag} onToggle={toggleExpandAll} lang={lang} />}
-            </Card>
+            </div>
           );
         })()}
 

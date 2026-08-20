@@ -21,12 +21,36 @@ const YEAR_COL_MIN_WIDTH = 92;
 // そのため、ヘッダー行だけを別テーブルとして画面の縦スクロールに乗せ
 // (position:sticky top:0はページのスクロールコンテナ基準で正しく効く)、
 // 本体テーブルの横スクロールに合わせてJSでヘッダー側のscrollLeftを同期する。
+// 「展開する/折りたたむ」ボタン。以前はScenarioTableの直上に固定で表示して
+// いたが、年次×単体モードではサマリーカードの行にまとめたいという要望が
+// あり、呼び出し側(page.tsx)が好きな位置に置けるよう単体のコンポーネントとして
+// 切り出した。
+export function ExpandToggleButton({
+  expandAll,
+  onToggle,
+  lang,
+}: {
+  expandAll: boolean;
+  onToggle: () => void;
+  lang: Lang;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95 shrink-0"
+      style={{ backgroundColor: DC.track, color: DC.textSecondary }}
+    >
+      {expandAll ? <FoldVertical size={12} /> : <UnfoldVertical size={12} />}
+      {expandAll ? t(lang, "collapseAll") : t(lang, "expandAll")}
+    </button>
+  );
+}
+
 export function ScenarioTable({
   rows,
   columnLabels,
   firstColumnLabel,
-  expandAll,
-  onToggleExpandAll,
   onToggleRow,
   lang,
   currentColumnLabel = null,
@@ -34,8 +58,6 @@ export function ScenarioTable({
   rows: ScenarioTableRow[];
   columnLabels: string[];
   firstColumnLabel: string;
-  expandAll: boolean;
-  onToggleExpandAll: () => void;
   onToggleRow: (key: string) => void;
   lang: Lang;
   // 一致する列(月次表示の当月など)をハイライトする。無ければハイライトしない。
@@ -64,18 +86,6 @@ export function ScenarioTable({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-end">
-        <button
-          type="button"
-          onClick={onToggleExpandAll}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all hover:brightness-95 active:scale-95"
-          style={{ backgroundColor: DC.track, color: DC.textSecondary }}
-        >
-          {expandAll ? <FoldVertical size={12} /> : <UnfoldVertical size={12} />}
-          {expandAll ? t(lang, "collapseAll") : t(lang, "expandAll")}
-        </button>
-      </div>
-
       {/* 注意: このラッパーに overflow-hidden を付けると、それが sticky ヘッダーの
           最も近い「overflowが非visibleな祖先」になってしまい、ページの縦スクロールに
           追従しなくなる(実機で確認済みのバグ)。角丸クリップは代わりにヘッダー/本体

@@ -8,7 +8,7 @@ import { VND_PER_JPY } from "@/lib/currency";
 import { usePreferences } from "@/lib/preferences";
 import type { CategoryBudgetOverride } from "@/lib/category-budget";
 import type { CategoryForCard } from "@/components/category-budget-card";
-import { ScenarioTable } from "@/components/scenario/scenario-table";
+import { ScenarioTable, ExpandToggleButton } from "@/components/scenario/scenario-table";
 import { ScenarioChart } from "@/components/scenario/scenario-chart";
 import { ScenarioSettingsDialog } from "@/components/scenario/scenario-settings-dialog";
 import { ScenarioListDialog } from "@/components/scenario/scenario-list-dialog";
@@ -462,25 +462,37 @@ export default function SimulationPage() {
       </div>
 
       {isSingle && timeMode === "yearly" && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {milestoneYears.map((yrsAhead) => {
-            const targetYear = CUR_YEAR + yrsAhead;
-            const row = primaryYearRows.find((y) => y.year === targetYear);
-            return (
-              <Card
-                key={yrsAhead}
-                className="rounded-2xl px-4 py-2.5 flex items-center justify-between gap-2"
-                style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}
-              >
-                <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] shrink-0" style={{ color: DC.textFaint }}>
-                  {tf(lang, "yearsAheadLabel", { n: yrsAhead })} ({targetYear})
-                </span>
-                <span className="font-display text-base font-bold whitespace-nowrap" style={{ color: DC.textPrimary }}>
-                  {row ? formatAmount(row.savingsCumTotalYen) : "—"}
-                </span>
-              </Card>
-            );
-          })}
+        <div className="flex items-stretch gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 flex-1">
+            {milestoneYears.map((yrsAhead) => {
+              const targetYear = CUR_YEAR + yrsAhead;
+              const row = primaryYearRows.find((y) => y.year === targetYear);
+              return (
+                <Card
+                  key={yrsAhead}
+                  className="rounded-2xl px-4 py-2.5 flex items-baseline gap-2"
+                  style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}
+                >
+                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] shrink-0" style={{ color: DC.textFaint }}>
+                    {tf(lang, "yearsAheadLabel", { n: yrsAhead })} ({targetYear})
+                  </span>
+                  <span className="font-display text-base font-bold whitespace-nowrap" style={{ color: DC.textPrimary }}>
+                    {row ? formatAmount(row.savingsCumTotalYen) : "—"}
+                  </span>
+                </Card>
+              );
+            })}
+          </div>
+          {isTableView && (
+            <div className="flex items-center">
+              <ExpandToggleButton expandAll={expandAllFlag} onToggle={toggleExpandAll} lang={lang} />
+            </div>
+          )}
+        </div>
+      )}
+      {!(isSingle && timeMode === "yearly") && isTableView && (
+        <div className="flex items-center justify-end">
+          <ExpandToggleButton expandAll={expandAllFlag} onToggle={toggleExpandAll} lang={lang} />
         </div>
       )}
 
@@ -511,8 +523,8 @@ export default function SimulationPage() {
               <span className="font-display text-xl font-bold shrink-0" style={{ color: DC.textPrimary }}>
                 {formatAmount(lastRow.savingsCumTotalYen)}
               </span>
-              <span className="text-xs font-medium" style={{ color: DC.textSecondary }}>
-                {t(lang, "annualNetFlowLabel")} {formatAmount(incomeTotalYen)} − {formatAmount(expenseTotalYen)} ={" "}
+              <span className="text-sm font-semibold" style={{ color: netFlowYen >= 0 ? DC.success : DC.danger }}>
+                {netFlowYen >= 0 ? "+" : ""}
                 {formatAmount(netFlowYen)}
               </span>
             </Card>
@@ -524,8 +536,6 @@ export default function SimulationPage() {
           rows={isSingle ? singleTableRows : compareTableRows}
           columnLabels={rowsForView.map((r) => r.yearLabel)}
           firstColumnLabel={isSingle ? primary.name : ""}
-          expandAll={expandAllFlag}
-          onToggleExpandAll={toggleExpandAll}
           onToggleRow={toggleRow}
           lang={lang}
           // 月次表示で今年を見ている時だけ、当月の列がひと目でわかるようハイライトする。

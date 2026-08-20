@@ -370,24 +370,38 @@ export function buildCompareTableRows(
       }
     }
 
-    push({ key: `${key}.cash`, depth: 1, label: t(lang, "cash"), cells: scn.rows.map((r) => cell(r.cashCumYen, fmt, true)) });
-    const investKey = `${key}.invest`;
+    // 単体モードと同じ階層(貯蓄 → 現金/投資/含み損益)にする(以前は貯蓄の
+    // 行が無く、現金/投資/含み損益がシナリオ名の直下に並んでいて単体モードと
+    // 構造が食い違っていた)。
+    const savingsKey = `${key}.savings`;
     push({
-      key: investKey,
+      key: savingsKey,
       depth: 1,
-      label: t(lang, "invest"),
-      cells: scn.rows.map((r) => cell(r.investBalYen - r.profitCumYen, fmt)),
+      label: t(lang, "totalSavings"),
+      cells: scn.rows.map((r) => cellWithDelta(r.savingsCumTotalYen, r.netFlowYen + r.investProfitYen, fmt, true)),
+      bold: true,
       expandable: true,
     });
-    if (isExpanded(investKey)) {
-      out.push(...investmentSubRows(scn.rows, investKey, 2, investmentEntries, vndPerJpy, fmt));
+    if (isExpanded(savingsKey)) {
+      push({ key: `${savingsKey}.cash`, depth: 2, label: t(lang, "cash"), cells: scn.rows.map((r) => cell(r.cashCumYen, fmt, true)) });
+      const investKey = `${savingsKey}.invest`;
+      push({
+        key: investKey,
+        depth: 2,
+        label: t(lang, "invest"),
+        cells: scn.rows.map((r) => cell(r.investBalYen - r.profitCumYen, fmt)),
+        expandable: true,
+      });
+      if (isExpanded(investKey)) {
+        out.push(...investmentSubRows(scn.rows, investKey, 3, investmentEntries, vndPerJpy, fmt));
+      }
+      push({
+        key: `${savingsKey}.profit`,
+        depth: 2,
+        label: t(lang, "investProfit"),
+        cells: scn.rows.map((r) => cellWithDelta(r.profitCumYen, r.investProfitYen, fmt, true)),
+      });
     }
-    push({
-      key: `${key}.profit`,
-      depth: 1,
-      label: t(lang, "investProfit"),
-      cells: scn.rows.map((r) => cellWithDelta(r.profitCumYen, r.investProfitYen, fmt, true)),
-    });
   }
 
   return out;

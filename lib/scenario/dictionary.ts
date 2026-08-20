@@ -163,7 +163,7 @@ export const DICT = {
     delete: "削除",
 
     // Transactionsページ
-    txSearchPlaceholder: "店名・カテゴリで検索",
+    txSearchPlaceholder: "名前で検索",
     txUncategorized: "未分類 ({count})",
     txAll: "すべて",
     txChooseCategory: "カテゴリを選択",
@@ -367,7 +367,7 @@ export const DICT = {
     delete: "Delete",
 
     // Transactions page
-    txSearchPlaceholder: "Search by name or category",
+    txSearchPlaceholder: "Search by name",
     txUncategorized: "Uncategorized ({count})",
     txAll: "All",
     txChooseCategory: "Choose category",

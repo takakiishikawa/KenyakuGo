@@ -6,10 +6,13 @@ import type { TableRow as ScenarioTableRow } from "@/lib/scenario/table-rows";
 import { t, type Lang } from "@/lib/scenario/dictionary";
 import { DC } from "@/lib/scenario/design-colors";
 
-// 月次表示で12ヶ月ぶんが横スクロールなしで収まるよう、1列目・年月列とも
-// もう一段階詰める。
-const FIRST_COL_WIDTH = 124;
-const YEAR_COL_WIDTH = 80;
+// 1列目だけ固定幅、年月列は幅を指定しない(table-layout:fixedでは、幅未指定の
+// 列は残りの横幅を均等に分け合う)。テーブル自体をwidth:100%にすることで、
+// 画面が広いときは余白を作らず目一杯使い、YEAR_COL_MIN_WIDTHを下回りそうな
+// 狭い画面でだけ横スクロールに切り替わる(以前は列幅を固定pxで決め打ちして
+// いたため、広い画面では右側に無駄な余白ができていた)。
+const FIRST_COL_WIDTH = 140;
+const YEAR_COL_MIN_WIDTH = 92;
 
 // position:sticky(top)を横スクロールする要素の中で使うと、CSSの仕様上
 // overflow-x:auto指定が同じ要素のoverflow-yも(見た目上は何も起きなくても)
@@ -47,13 +50,14 @@ export function ScenarioTable({
     }
   };
 
-  const tableWidth = FIRST_COL_WIDTH + columnLabels.length * YEAR_COL_WIDTH;
+  const minTableWidth = FIRST_COL_WIDTH + columnLabels.length * YEAR_COL_MIN_WIDTH;
 
+  // 年月列にはwidthを指定しない(table-layout:fixedが残り幅を均等割りしてくれる)。
   const colgroup = (
     <colgroup>
       <col style={{ width: FIRST_COL_WIDTH }} />
       {columnLabels.map((_, i) => (
-        <col key={i} style={{ width: YEAR_COL_WIDTH }} />
+        <col key={i} />
       ))}
     </colgroup>
   );
@@ -84,7 +88,7 @@ export function ScenarioTable({
           className="sticky top-0 z-20 overflow-x-hidden"
           style={{ backgroundColor: DC.headerBg, borderTopLeftRadius: 15, borderTopRightRadius: 15 }}
         >
-          <table style={{ width: tableWidth, borderCollapse: "separate", borderSpacing: 0, tableLayout: "fixed" }}>
+          <table style={{ width: "100%", minWidth: minTableWidth, borderCollapse: "separate", borderSpacing: 0, tableLayout: "fixed" }}>
             {colgroup}
             <thead>
               <tr>
@@ -114,7 +118,7 @@ export function ScenarioTable({
                         color: isCurrent ? DC.primaryHover : DC.textPrimary,
                         fontSize: 11.5,
                         fontWeight: 700,
-                        padding: "11px 8px",
+                        padding: "11px 10px",
                         borderTop: isCurrent ? `1px solid ${DC.primary}` : undefined,
                         borderLeft: isCurrent ? `1px solid ${DC.primary}` : undefined,
                         borderRight: isCurrent ? `1px solid ${DC.primary}` : undefined,
@@ -137,7 +141,7 @@ export function ScenarioTable({
           className="overflow-x-auto"
           style={{ borderBottomLeftRadius: 15, borderBottomRightRadius: 15, overflowY: "hidden" }}
         >
-          <table style={{ width: tableWidth, borderCollapse: "separate", borderSpacing: 0, tableLayout: "fixed" }}>
+          <table style={{ width: "100%", minWidth: minTableWidth, borderCollapse: "separate", borderSpacing: 0, tableLayout: "fixed" }}>
             {colgroup}
             <tbody>
               {rows.map((row, rowIndex) => (
@@ -179,10 +183,11 @@ export function ScenarioTable({
                     return (
                       <td
                         key={i}
+                        title={cell.delta ? `${cell.fmt} (${cell.delta.fmt})` : cell.fmt}
                         className="text-right whitespace-nowrap overflow-hidden text-ellipsis"
                         style={{
-                          padding: "9px 8px",
-                          fontSize: 12,
+                          padding: "9px 10px",
+                          fontSize: 12.5,
                           fontWeight: row.bold ? 700 : row.depth === 0 ? 600 : 400,
                           color: cell.negative ? DC.danger : DC.textPrimary,
                           backgroundColor: isCurrent ? "rgba(190,91,133,0.05)" : undefined,

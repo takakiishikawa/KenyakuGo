@@ -6,8 +6,10 @@ import type { TableRow as ScenarioTableRow } from "@/lib/scenario/table-rows";
 import { t, type Lang } from "@/lib/scenario/dictionary";
 import { DC } from "@/lib/scenario/design-colors";
 
-const FIRST_COL_WIDTH = 196;
-const YEAR_COL_WIDTH = 106;
+// 月次表示で12ヶ月ぶんが横スクロールなしで収まるよう、1列目・年月列とも
+// もう一段階詰める。
+const FIRST_COL_WIDTH = 148;
+const YEAR_COL_WIDTH = 92;
 
 // position:sticky(top)を横スクロールする要素の中で使うと、CSSの仕様上
 // overflow-x:auto指定が同じ要素のoverflow-yも(見た目上は何も起きなくても)

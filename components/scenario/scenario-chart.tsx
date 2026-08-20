@@ -116,7 +116,11 @@ export function ScenarioChart({
           ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}
           className="w-full block"
-          style={{ height: "min(75vh, 620px)", minHeight: 280 }}
+          // ページ全体でスクロールが要らず、かつ下に余分な余白も残らないよう、
+          // 「画面の高さ - 上に乗っているコントロール類のだいたいの高さ」を基準に
+          // 動的に決める(固定のvh/px指定だと画面サイズによって短すぎたり
+          // スクロールが必要になったりしていたため)。
+          style={{ height: "clamp(320px, calc(100vh - 340px), 560px)", minHeight: 280 }}
           onMouseMove={handleMove}
           onMouseLeave={() => setHoverIdx(null)}
         >

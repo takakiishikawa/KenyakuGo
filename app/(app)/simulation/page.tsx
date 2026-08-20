@@ -375,7 +375,7 @@ export default function SimulationPage() {
 
   if (loading || !primary || !editTarget) {
     return (
-      <div className="mt-6 flex flex-col gap-3.5">
+      <div className="flex flex-col gap-3.5">
         <div className="flex items-center justify-between flex-wrap gap-2.5">
           <div className="flex items-center gap-2">
             <Skeleton className="h-8 w-32 rounded-lg" />
@@ -469,13 +469,13 @@ export default function SimulationPage() {
             return (
               <Card
                 key={yrsAhead}
-                className="rounded-2xl px-4 py-3.5 flex flex-col gap-1"
+                className="rounded-2xl px-4 py-2.5 flex items-center justify-between gap-2"
                 style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}
               >
-                <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em]" style={{ color: DC.textFaint }}>
+                <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] shrink-0" style={{ color: DC.textFaint }}>
                   {tf(lang, "yearsAheadLabel", { n: yrsAhead })} ({targetYear})
                 </span>
-                <span className="font-display text-xl font-bold" style={{ color: DC.textPrimary }}>
+                <span className="font-display text-base font-bold whitespace-nowrap" style={{ color: DC.textPrimary }}>
                   {row ? formatAmount(row.savingsCumTotalYen) : "—"}
                 </span>
               </Card>
@@ -502,20 +502,18 @@ export default function SimulationPage() {
           const netFlowYen = incomeTotalYen - expenseTotalYen;
           return (
             <Card
-              className="rounded-2xl px-5 py-4 flex flex-col gap-1"
+              className="rounded-2xl px-5 py-3 flex items-baseline gap-3 flex-wrap"
               style={{ borderColor: DC.cardBorder, backgroundColor: DC.cardBg }}
             >
-              <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em]" style={{ color: DC.textFaint }}>
+              <span className="text-[10.5px] font-semibold uppercase tracking-[0.05em] shrink-0" style={{ color: DC.textFaint }}>
                 {tf(lang, "savingsAsOfYearEnd", { year: focusYear })}
               </span>
-              <span className="flex items-baseline gap-2 flex-wrap">
-                <span className="font-display text-2xl font-bold" style={{ color: DC.textPrimary }}>
-                  {formatAmount(lastRow.savingsCumTotalYen)}
-                </span>
-                <span className="text-xs font-medium" style={{ color: DC.textSecondary }}>
-                  {t(lang, "annualNetFlowLabel")} {formatAmount(incomeTotalYen)} − {formatAmount(expenseTotalYen)} ={" "}
-                  {formatAmount(netFlowYen)}
-                </span>
+              <span className="font-display text-xl font-bold shrink-0" style={{ color: DC.textPrimary }}>
+                {formatAmount(lastRow.savingsCumTotalYen)}
+              </span>
+              <span className="text-xs font-medium" style={{ color: DC.textSecondary }}>
+                {t(lang, "annualNetFlowLabel")} {formatAmount(incomeTotalYen)} − {formatAmount(expenseTotalYen)} ={" "}
+                {formatAmount(netFlowYen)}
               </span>
             </Card>
           );

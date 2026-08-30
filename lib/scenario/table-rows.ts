@@ -245,27 +245,33 @@ export function buildSingleTableRows(
     expandable: true,
   });
   if (isExpanded("savings")) {
-    // 貯蓄 = 現金 + 投資元本(これまで投資に回した額の累計) + 含み損益。
-    // 「投資」は元本のみとし、含み損益は別行にして二重計上を避ける。
+    // 貯蓄 = 現金 + 投資(元本+含み損益の合計)。「投資」行は合計を出し、
+    // その下の階層に内訳(元本/含み損益)を出す。
     push({ key: "savings.cash", depth: 1, label: t(lang, "cash"), cells: rows.map((r) => cell(r.cashCumYen, fmt, true)) });
     push({
       key: "savings.invest",
       depth: 1,
       label: t(lang, "invest"),
-      cells: rows.map((r) => cell(r.investBalYen - r.profitCumYen, fmt)),
+      cells: rows.map((r) => cell(r.investBalYen, fmt)),
       expandable: true,
     });
     if (isExpanded("savings.invest")) {
+      push({
+        key: "savings.invest.principal",
+        depth: 2,
+        label: t(lang, "investPrincipal"),
+        cells: rows.map((r) => cell(r.investBalYen - r.profitCumYen, fmt)),
+      });
+      // 含み損益は累計を主表示にし、その期間の増減(想定利率から毎月/毎年計算)を
+      // 貯蓄行と同じ「金額 + その期間の増減」の書き方で見せる。
+      push({
+        key: "savings.invest.profit",
+        depth: 2,
+        label: t(lang, "investProfit"),
+        cells: rows.map((r) => cellWithDelta(r.profitCumYen, r.investProfitYen, fmt, true)),
+      });
       out.push(...investmentSubRows(rows, "savings.invest", 2, investmentEntries, vndPerJpy, fmt));
     }
-    // 含み損益は累計を主表示にし、その期間の増減(想定利率から毎月/毎年計算)を
-    // 貯蓄行と同じ「金額 + その期間の増減」の書き方で見せる。
-    push({
-      key: "savings.profit",
-      depth: 1,
-      label: t(lang, "investProfit"),
-      cells: rows.map((r) => cellWithDelta(r.profitCumYen, r.investProfitYen, fmt, true)),
-    });
   }
 
   return out;
@@ -389,18 +395,24 @@ export function buildCompareTableRows(
         key: investKey,
         depth: 2,
         label: t(lang, "invest"),
-        cells: scn.rows.map((r) => cell(r.investBalYen - r.profitCumYen, fmt)),
+        cells: scn.rows.map((r) => cell(r.investBalYen, fmt)),
         expandable: true,
       });
       if (isExpanded(investKey)) {
+        push({
+          key: `${investKey}.principal`,
+          depth: 3,
+          label: t(lang, "investPrincipal"),
+          cells: scn.rows.map((r) => cell(r.investBalYen - r.profitCumYen, fmt)),
+        });
+        push({
+          key: `${investKey}.profit`,
+          depth: 3,
+          label: t(lang, "investProfit"),
+          cells: scn.rows.map((r) => cellWithDelta(r.profitCumYen, r.investProfitYen, fmt, true)),
+        });
         out.push(...investmentSubRows(scn.rows, investKey, 3, investmentEntries, vndPerJpy, fmt));
       }
-      push({
-        key: `${savingsKey}.profit`,
-        depth: 2,
-        label: t(lang, "investProfit"),
-        cells: scn.rows.map((r) => cellWithDelta(r.profitCumYen, r.investProfitYen, fmt, true)),
-      });
     }
   }
 

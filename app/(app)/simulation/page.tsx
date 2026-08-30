@@ -150,9 +150,10 @@ export default function SimulationPage() {
             actualByCategoryVnd,
             actualByCategoryMonthVnd,
             specialEntries,
+            investmentEntries,
           )
         : [],
-    [primary, categories, overrides, vndPerJpy, actualByCategoryVnd, actualByCategoryMonthVnd, specialEntries],
+    [primary, categories, overrides, vndPerJpy, actualByCategoryVnd, actualByCategoryMonthVnd, specialEntries, investmentEntries],
   );
   const rowsForView: ScenarioRow[] = useMemo(() => {
     if (!primary) return [];
@@ -172,6 +173,7 @@ export default function SimulationPage() {
         actualByCategoryVnd,
         actualByCategoryMonthVnd,
         specialEntries,
+        investmentEntries,
       );
       const rows =
         timeMode === "yearly"

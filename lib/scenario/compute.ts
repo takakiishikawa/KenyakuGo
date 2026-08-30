@@ -136,12 +136,17 @@ export interface ScenarioYearRow {
   netFlowYen: number;
   cashCumYen: number;
   investBalYen: number;
-  // この年の1月時点(=前年末)の運用残高。月次表示で、年内の投資残高の増え方を
-  // 均等按分ではなく期首→期末の線形補間にするために使う(年次の行にのみ持たせる)。
+  // この年の1月時点(=前年末)の運用残高。simulateYearMonths(年次・月次共通の
+  // 月次複利エンジン)がこの年の1月分から複利計算を始めるための起点として使う
+  // (年次の行にのみ持たせる)。
   investBalStartYen?: number;
-  // この年の1月時点(=前年末)の投資元本累計。月次表示で含み損益(profitCumYen)を
-  // 月ごとに正しく積み上げるための起点として使う(年次の行にのみ持たせる)。
+  // この年の1月時点(=前年末)の投資元本累計。simulateYearMonthsが含み損益
+  // (profitCumYen)を月ごとに正しく積み上げるための起点として使う(年次の行に
+  // のみ持たせる)。
   investPrincipalCumStartYen?: number;
+  // この年の1月時点(=前年末)の現金残高。simulateYearMonthsがこの年の1月分の
+  // 貯蓄累計を正しい値から積み上げるための起点として使う(年次の行にのみ持たせる)。
+  cashCumStartYen?: number;
   profitCumYen: number;
   savingsCumTotalYen: number;
 }
@@ -370,6 +375,10 @@ export function computeScenarioYears(
   actualByCategoryMonthVnd: Record<string, Record<string, number>> = {},
   // piggybank.special_entries(特別支出・特別収入の実データ)。
   specialEntries: SpecialEntryInput[] = [],
+  // ダッシュボードの「投資を記録」で登録した、実際の投資記録(InvestmentEntryInput)。
+  // 今年ぶんの投資残高をsimulateYearMonths経由で月次表示(expandMonthly)と
+  // 全く同じロジックで計算するために必要(経過済み月は実績、未経過月は複利)。
+  investmentEntries: InvestmentEntryInput[] = [],
 ): ScenarioYearRow[] {
   const nowYear = new Date().getFullYear();
   const nowMonth = new Date().getMonth() + 1;
@@ -409,12 +418,6 @@ export function computeScenarioYears(
       (sum, kid) => sum + childAllowanceYenForYear(kid.birthYear, year),
       0,
     );
-    // 投資益は前年末時点の運用残高に対して定率(returnRatePercent)で計算し、
-    // 総収入の内訳として計上する(以前は総貯蓄側にだけ黙って積み上がり、
-    // 「収入-支出」と貯蓄の増分が一致しないという指摘があったため)。
-    // 今年の新規積立分(investDelta)自体には今年ぶんの運用益を付けない
-    // (積立配分が投資益にも依存する循環を避けるための簡略化)。
-    const investProfitYen = investBal * (config.savings.returnRatePercent / 100);
     const specialIncomeYen = specialEntries
       .filter((e) => e.kind === "income" && e.month.startsWith(`${year}-`))
       .reduce((s, e) => s + specialEntryYen(e, vndPerJpy), 0);
@@ -532,38 +535,48 @@ export function computeScenarioYears(
 
     const expenseTotalYen = fixedTotalYen + variableTotalYen + educationTotalYen + eventsTotalYen;
     // netFlowYen(収支、表示用)は投資益を含まない総収入から計算する(投資益は
-    // 手元に入ってくるお金ではないため)。積立配分(investRatioPercent)は
-    // この「稼いだ」ぶんの黒字にのみ適用し、投資益そのものは全額そのまま
-    // 運用残高に再投資する。
+    // 手元に入ってくるお金ではないため)。
     const netFlowYen = incomeTotalYen - expenseTotalYen;
-    const earnedNetFlowYen = netFlowYen;
 
-    // 現金の安全ライン: 投資に回した結果、手元の現金がMIN_CASH_TO_INVEST_YENを
-    // 下回るなら投資はせず全額現金に残す(現金がマイナス/心もとない状態で
-    // 積立を続けるのは不自然なため)。それ以上残る見込みのときだけ、通常どおり
-    // investRatioPercentぶんを投資に回す。
-    const cashIfNoInvestYen = cashCum + earnedNetFlowYen;
-    let investDelta = 0;
-    let cashDelta = 0;
-    if (earnedNetFlowYen >= 0 && cashIfNoInvestYen >= MIN_CASH_TO_INVEST_YEN) {
-      investDelta = (earnedNetFlowYen * config.savings.investRatioPercent) / 100;
-      cashDelta = earnedNetFlowYen - investDelta;
-    } else {
-      cashDelta = earnedNetFlowYen;
-    }
-    ({ cashDeltaYen: cashDelta, investDeltaYen: investDelta } = applyCashCap(
-      cashCum,
-      cashDelta,
-      investDelta,
-      config.savings.cashCapYen,
-    ));
+    // 投資・現金の積み上げは、月次表示(expandMonthly)と全く同じ複利ロジックを
+    // simulateYearMonthsで共有する(以前は年次だけ「前年末残高に年率を一括適用、
+    // 今年の新規積立分は今年ぶん無利息」という粗い計算をしており、月次表示の
+    // 12月の値と食い違っていた)。12ヶ月ぶん回して、12月末の状態をこの年の
+    // 確定値として採用する。
     const investBalStartYen = investBal;
     const investPrincipalCumStartYen = investPrincipalCum;
-    investBal = investBal + investDelta + investProfitYen;
-    investPrincipalCum += investDelta;
-    cashCum += cashDelta;
-    const profitCumYen = investBal - investPrincipalCum;
-    const savingsCumTotalYen = cashCum + investBal;
+    const cashCumStartYen = cashCum;
+    const monthRows = simulateYearMonths(
+      {
+        incomeTotalYen,
+        husbandYen,
+        wifeYen,
+        sideYen,
+        allowanceYen,
+        moveInBonusYen,
+        specialIncomeYen,
+        fixedByCategory,
+        fixedByCategoryMonthly,
+        variableByCategory,
+        variableByCategoryMonthly,
+        educationTotalYen,
+      },
+      config,
+      year,
+      vndPerJpy,
+      investmentEntries,
+      specialEntries,
+      investBalStartYen,
+      investPrincipalCumStartYen,
+      cashCumStartYen,
+    );
+    const decRow = monthRows[11];
+    const investProfitYen = monthRows.reduce((s, r) => s + r.investProfitYen, 0);
+    investBal = decRow.investBalYen;
+    cashCum = decRow.cashCumYen;
+    investPrincipalCum = investBal - decRow.profitCumYen;
+    const profitCumYen = decRow.profitCumYen;
+    const savingsCumTotalYen = decRow.savingsCumTotalYen;
 
     return {
       year,
@@ -590,6 +603,7 @@ export function computeScenarioYears(
       investBalYen: investBal,
       investBalStartYen,
       investPrincipalCumStartYen,
+      cashCumStartYen,
       profitCumYen,
       savingsCumTotalYen,
     };
@@ -603,25 +617,41 @@ export interface InvestmentEntryInput {
   name: string | null;
 }
 
-// 年次の1行を、指定年の12ヶ月ぶんに単純按分して展開する。イベントだけは
-// 実際の月(event.month)にそのまま計上する(design原案は6月固定だったが、
-// イベントは月を持っているのでそちらを使う方が正確)。
-export function expandMonthly(
-  yearRows: ScenarioYearRow[],
+// simulateYearMonthsが読む、年次行のうち投資・現金以外のフィールド(収入内訳・
+// 固定費/変動費内訳・教育費)。computeScenarioYearsから呼ぶ時点ではその年の
+// investBalYen等(投資残高)はまだ計算前なので、それらを含まない形にしてある。
+type YearRowForMonthlySim = Pick<
+  ScenarioYearRow,
+  | "incomeTotalYen"
+  | "husbandYen"
+  | "wifeYen"
+  | "sideYen"
+  | "allowanceYen"
+  | "moveInBonusYen"
+  | "specialIncomeYen"
+  | "fixedByCategory"
+  | "fixedByCategoryMonthly"
+  | "variableByCategory"
+  | "variableByCategoryMonthly"
+  | "educationTotalYen"
+>;
+
+// 1年ぶん(1月〜12月)の月次シミュレーション。computeScenarioYears(年次の
+// 投資残高をこのロジックで正しく積み上げるため)とexpandMonthly(特定の年を
+// UIに月次展開するため)の両方から呼ばれる共有エンジン。呼び出し元がどちらでも
+// 同じ数式を通るため、年次テーブルの12月と月次表示の12月が食い違うことがない。
+function simulateYearMonths(
+  row: YearRowForMonthlySim,
   config: ScenarioConfig,
   focusYear: number,
-  vndPerJpy: number = 1,
-  // 今年ぶんの月次表示専用: 経過済みの月は、想定利率でのprojectionではなく
-  // 実際に記録した投資額(累計)をそのまま「投資」に使う(未記録ならまだ¥0の
-  // まま)。差額は「現金」側で吸収する(現金→投資へお金が動く、という
-  // 実際のお金の動きに合わせるため)。
-  investmentEntries: InvestmentEntryInput[] = [],
-  // 特別支出・特別収入(special_entries)。年次と違い、月次表示ではその月
-  // (YYYY-MM)に一致するものだけをそのまま計上する(年内の均等按分はしない)。
-  specialEntries: SpecialEntryInput[] = [],
+  vndPerJpy: number,
+  investmentEntries: InvestmentEntryInput[],
+  specialEntries: SpecialEntryInput[],
+  // この年の1月1日時点(=前年12月末)の投資残高・投資元本累計・現金残高。
+  startInvestBalYen: number,
+  startInvestPrincipalCumYen: number,
+  startCashCumYen: number,
 ): ScenarioRow[] {
-  const row = yearRows.find((y) => y.year === focusYear) ?? yearRows[0];
-  if (!row) return [];
   const divide = (v: number) => v / 12;
   // 旅行の年間の回数ぶんを、年内に均等な間隔で割り振る月(1〜12)。1回なら7月
   // (夏)、2回なら4月・10月...という具合に、回数に応じて等間隔になる位置を選ぶ
@@ -663,8 +693,9 @@ export function expandMonthly(
   // 線形補間だったが、ボーナス月やイベント月のように月ごとのnetFlowが大きく
   // 違う場合、隣り合う月の差がその月のdelta表示(実際のnetFlowYen)と一致しない
   // バグになっていた(例: ある月の貯蓄額が前月+その月のdeltaにならない)。
-  // 前年末の累計を起点に、各月の実際のnetFlowYenをそのまま積み上げる。
-  let cumYen = row.savingsCumTotalYen - row.netFlowYen;
+  // 前年(=1月1日時点)の現金+投資残高を起点に、各月の実際のnetFlowYenを
+  // そのまま積み上げる。
+  let cumYen = startCashCumYen + startInvestBalYen;
   // 投資残高は「均等按分」ではなく、月を追うごとに増えていくように出す。
   // - 経過済み月(今年のみ): その月までの実際の投資額の累計をそのまま使う。
   // - それ以外の月: 前月末の投資残高に想定利率(月割り)で含み益を積み、かつ
@@ -679,9 +710,9 @@ export function expandMonthly(
   let simInvestPrincipalCumYen = 0;
   let simStarted = !isCurrentYearView;
   if (!isCurrentYearView) {
-    simInvestBalYen = row.investBalStartYen ?? 0;
-    simInvestPrincipalCumYen = row.investPrincipalCumStartYen ?? 0;
-    simCashCumYen = cumYen - simInvestBalYen;
+    simInvestBalYen = startInvestBalYen;
+    simInvestPrincipalCumYen = startInvestPrincipalCumYen;
+    simCashCumYen = startCashCumYen;
   }
   return Array.from({ length: 12 }, (_, idx) => {
     const m = idx + 1;
@@ -753,7 +784,11 @@ export function expandMonthly(
       divide(otherIncomeAnnualYen);
     const netFlowYen = incomeTotalYen - expenseTotalYen;
     cumYen += netFlowYen;
-    const savingsCumTotalYen = cumYen;
+    // netFlowYen(≒cumYenの増分)は投資益を含まないため、含み益が乗る月は
+    // cumYenだけでは総貯蓄を過小評価してしまう。savingsCumTotalYenは最終的に
+    // 必ず「現金+投資残高」と一致させる(下でinvestBalYen/cashCumYenが
+    // 確定した後に確定させる)。
+    let savingsCumTotalYen = cumYen;
 
     let investBalYen: number;
     let cashCumYen: number;
@@ -787,6 +822,11 @@ export function expandMonthly(
       investBalYen = simInvestBalYen;
       cashCumYen = simCashCumYen;
       profitCumYen = simInvestBalYen - simInvestPrincipalCumYen;
+      // cumYenは投資益(investProfitYenThisMonth)を含まずに積み上げているため、
+      // 含み益が乗った月はここで「現金+投資残高」に上書きして一致させる
+      // (以前はcumYenのまま返しており、総貯蓄行と現金/投資の内訳の合計が
+      // 食い違うバグになっていた)。
+      savingsCumTotalYen = cashCumYen + investBalYen;
     }
 
     return {
@@ -814,6 +854,38 @@ export function expandMonthly(
       savingsCumTotalYen,
     };
   });
+}
+
+// 年次の1行を、指定年の12ヶ月ぶんに展開する薄いラッパー。実体はsimulateYearMonths
+// (computeScenarioYearsと共有)で、この年の1月1日時点(=前年12月末)の
+// 投資残高/投資元本累計/現金残高を年次行から取り出して渡すだけ。
+export function expandMonthly(
+  yearRows: ScenarioYearRow[],
+  config: ScenarioConfig,
+  focusYear: number,
+  vndPerJpy: number = 1,
+  // 今年ぶんの月次表示専用: 経過済みの月は、想定利率でのprojectionではなく
+  // 実際に記録した投資額(累計)をそのまま「投資」に使う(未記録ならまだ¥0の
+  // まま)。差額は「現金」側で吸収する(現金→投資へお金が動く、という
+  // 実際のお金の動きに合わせるため)。
+  investmentEntries: InvestmentEntryInput[] = [],
+  // 特別支出・特別収入(special_entries)。年次と違い、月次表示ではその月
+  // (YYYY-MM)に一致するものだけをそのまま計上する(年内の均等按分はしない)。
+  specialEntries: SpecialEntryInput[] = [],
+): ScenarioRow[] {
+  const row = yearRows.find((y) => y.year === focusYear) ?? yearRows[0];
+  if (!row) return [];
+  return simulateYearMonths(
+    row,
+    config,
+    focusYear,
+    vndPerJpy,
+    investmentEntries,
+    specialEntries,
+    row.investBalStartYen ?? config.savings.initialInvestYen,
+    row.investPrincipalCumStartYen ?? config.savings.initialInvestYen,
+    row.cashCumStartYen ?? config.savings.initialCashYen,
+  );
 }
 
 export function toRows(yearRows: ScenarioYearRow[]): ScenarioRow[] {

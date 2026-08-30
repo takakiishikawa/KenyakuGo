@@ -175,8 +175,7 @@ export function ScenarioTable({
                 <tr key={row.key}>
                   <td
                     onClick={row.expandable ? () => onToggleRow(row.key) : undefined}
-                    title={row.label}
-                    className="sticky left-0 z-10 whitespace-nowrap overflow-hidden text-ellipsis"
+                    className="sticky left-0 z-10"
                     style={{
                       backgroundColor: DC.cardBg,
                       color: DC.textPrimary,
@@ -191,7 +190,13 @@ export function ScenarioTable({
                       cursor: row.expandable ? "pointer" : "default",
                     }}
                   >
-                    <span className="inline-flex items-center gap-1.5">
+                    {/* ラベル自体をmin-w-0の縮小可能な要素にすることで、
+                        text-overflow:ellipsisが実際に効くようにする(親のtdや
+                        アイコンと同じinline-flexの中に入れたままだと、はみ出す
+                        対象がラベルのテキストそのものではなくなり、「…」が出ずに
+                        単に途中でぶつ切りになるだけだった)。アイコンはflexShrink:0
+                        で縮まないようにし、ラベルだけが縮んで省略される。 */}
+                    <span className="flex items-center gap-1.5 w-full min-w-0">
                       {row.expandable && (
                         <ChevronRight
                           size={12}
@@ -199,10 +204,13 @@ export function ScenarioTable({
                             color: DC.textFaint,
                             transform: row.expanded ? "rotate(90deg)" : "rotate(0deg)",
                             transition: "transform 120ms",
+                            flexShrink: 0,
                           }}
                         />
                       )}
-                      {row.label}
+                      <span title={row.label} className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                        {row.label}
+                      </span>
                     </span>
                   </td>
                   {row.cells.map((cell, i) => {

@@ -6,13 +6,27 @@ import type { TableRow as ScenarioTableRow } from "@/lib/scenario/table-rows";
 import { t, type Lang } from "@/lib/scenario/dictionary";
 import { DC } from "@/lib/scenario/design-colors";
 
-// 1列目だけ固定幅、年月列は幅を指定しない(table-layout:fixedでは、幅未指定の
-// 列は残りの横幅を均等に分け合う)。テーブル自体をwidth:100%にすることで、
-// 画面が広いときは余白を作らず目一杯使い、YEAR_COL_MIN_WIDTHを下回りそうな
-// 狭い画面でだけ横スクロールに切り替わる(以前は列幅を固定pxで決め打ちして
-// いたため、広い画面では右側に無駄な余白ができていた)。
+// 1列目だけ固定幅、年月列はその列の実際の値の桁数から幅を見積もって指定する
+// (以前は全列おなじ幅に均等割りしていたため、桁数の多い列(例: 1,000万円超)
+// だけ「¥14,429,…」のように省略されてしまっていた)。テーブル自体をwidth:100%に
+// することで、画面が広いときは余白を作らず目一杯使い、見積もった最小幅を
+// 下回りそうな狭い画面でだけ横スクロールに切り替わる。
 const FIRST_COL_WIDTH = 140;
 const YEAR_COL_MIN_WIDTH = 92;
+// 金額はほぼ等幅の数字+カンマ+¥記号なので、文字数から列幅をpx換算で見積もる
+// (実際のDOM計測はせず、fontSize 12.5pxの目安値で近似する)。
+const CHAR_WIDTH_PX = 7.3;
+const CELL_HORIZONTAL_PADDING_PX = 24;
+
+function estimateColumnWidth(label: string, rows: ScenarioTableRow[], colIndex: number): number {
+  let maxLen = label.length;
+  for (const row of rows) {
+    const cell = row.cells[colIndex];
+    if (!cell) continue;
+    maxLen = Math.max(maxLen, cell.fmt.length, cell.delta?.fmt.length ?? 0);
+  }
+  return Math.max(YEAR_COL_MIN_WIDTH, Math.ceil(maxLen * CHAR_WIDTH_PX) + CELL_HORIZONTAL_PADDING_PX);
+}
 
 // position:sticky(top)を横スクロールする要素の中で使うと、CSSの仕様上
 // overflow-x:auto指定が同じ要素のoverflow-yも(見た目上は何も起きなくても)
@@ -72,14 +86,17 @@ export function ScenarioTable({
     }
   };
 
-  const minTableWidth = FIRST_COL_WIDTH + columnLabels.length * YEAR_COL_MIN_WIDTH;
+  const colWidths = columnLabels.map((label, i) => estimateColumnWidth(label, rows, i));
+  const minTableWidth = FIRST_COL_WIDTH + colWidths.reduce((sum, w) => sum + w, 0);
 
-  // 年月列にはwidthを指定しない(table-layout:fixedが残り幅を均等割りしてくれる)。
+  // 年月列の幅は、その列の値の桁数から見積もった幅(colWidths)を指定する。
+  // table-layout:fixedなので、画面がその合計幅より広ければ均等に引き伸ばされ、
+  // 狭ければこの幅を下限に横スクロールに切り替わる。
   const colgroup = (
     <colgroup>
       <col style={{ width: FIRST_COL_WIDTH }} />
-      {columnLabels.map((_, i) => (
-        <col key={i} />
+      {colWidths.map((w, i) => (
+        <col key={i} style={{ width: w }} />
       ))}
     </colgroup>
   );
@@ -158,6 +175,7 @@ export function ScenarioTable({
                 <tr key={row.key}>
                   <td
                     onClick={row.expandable ? () => onToggleRow(row.key) : undefined}
+                    title={row.label}
                     className="sticky left-0 z-10 whitespace-nowrap overflow-hidden text-ellipsis"
                     style={{
                       backgroundColor: DC.cardBg,

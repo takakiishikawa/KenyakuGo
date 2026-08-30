@@ -262,13 +262,13 @@ export function buildSingleTableRows(
         label: t(lang, "investPrincipal"),
         cells: rows.map((r) => cell(r.investBalYen - r.profitCumYen, fmt)),
       });
-      // 含み損益は累計を主表示にし、その期間の増減(想定利率から毎月/毎年計算)を
-      // 貯蓄行と同じ「金額 + その期間の増減」の書き方で見せる。
+      // 期間の増減(+¥...)は総貯蓄行に既に出ているので、含み損益行では
+      // 累計額だけを見せる(二重表示を避ける)。
       push({
         key: "savings.invest.profit",
         depth: 2,
         label: t(lang, "investProfit"),
-        cells: rows.map((r) => cellWithDelta(r.profitCumYen, r.investProfitYen, fmt, true)),
+        cells: rows.map((r) => cell(r.profitCumYen, fmt, true)),
       });
       out.push(...investmentSubRows(rows, "savings.invest", 2, investmentEntries, vndPerJpy, fmt));
     }
@@ -409,7 +409,7 @@ export function buildCompareTableRows(
           key: `${investKey}.profit`,
           depth: 3,
           label: t(lang, "investProfit"),
-          cells: scn.rows.map((r) => cellWithDelta(r.profitCumYen, r.investProfitYen, fmt, true)),
+          cells: scn.rows.map((r) => cell(r.profitCumYen, fmt, true)),
         });
         out.push(...investmentSubRows(scn.rows, investKey, 3, investmentEntries, vndPerJpy, fmt));
       }

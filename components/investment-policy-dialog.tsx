@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil } from "lucide-react";
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Spinner, Textarea } from "@takaki/go-design-system";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, InlineEdit, Spinner, toast } from "@takaki/go-design-system";
 import { t, type Lang } from "@/lib/scenario/dictionary";
 import { DC } from "@/lib/scenario/design-colors";
 
 // サイドバーからいつでも呼び出せる「投資方針メモ」。運用ルールは頻繁には
 // 変わらないため、専用ページではなくポップアップ(Dialog)としてどの画面
 // からも1クリックで参照でき、その場で編集もできるようにする。
+// 「全体を編集モードにする」のではなく、go-design-systemのInlineEditで
+// 項目をクリックしたその場で編集→フォーカスを外すかEnterで即保存、という
+// 直感的な操作にする(項目ごとに独立して編集・保存できる)。
 // 内容はDB(piggybank.investment_policy、1行のみのシングルトンテーブル)に
 // 保存し、/api/investment-policy 経由で読み書きする。
 
@@ -32,38 +34,40 @@ const EMPTY_POLICY: PolicyData = {
   remarks: "",
 };
 
-function ViewField({ label, value }: { label: string; value: string }) {
+function toPayload(p: PolicyData) {
+  return {
+    account: p.account,
+    strategy: p.strategy,
+    cash: p.cash,
+    universe: p.universe,
+    coreNote: p.core_note,
+    satelliteNote: p.satellite_note,
+    remarks: p.remarks,
+  };
+}
+
+function Field({
+  label,
+  value,
+  hint,
+  onSave,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  onSave: (value: string) => void;
+}) {
   return (
     <div className="py-2.5 border-b last:border-b-0" style={{ borderColor: DC.trackAlt }}>
       <div className="text-[11px] font-semibold tracking-wide mb-1" style={{ color: DC.textFaint }}>
         {label}
       </div>
-      <div className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: DC.textPrimary }}>
-        {value || "—"}
-      </div>
-    </div>
-  );
-}
-
-function EditField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="py-2">
-      <label className="text-[11px] font-semibold tracking-wide mb-1 block" style={{ color: DC.textFaint }}>
-        {label}
-      </label>
-      <Textarea
+      <InlineEdit
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={2}
-        className="text-[13px] resize-none"
+        onChange={onSave}
+        multiline
+        placeholder={hint}
+        className="text-[13px] leading-relaxed -mx-1"
       />
     </div>
   );
@@ -79,75 +83,43 @@ export function InvestmentPolicyDialog({
   lang: Lang;
 }) {
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [data, setData] = useState<PolicyData>(EMPTY_POLICY);
-  const [draft, setDraft] = useState<PolicyData>(EMPTY_POLICY);
 
   useEffect(() => {
     if (!open) return;
-    setEditing(false);
     setLoading(true);
     fetch("/api/investment-policy")
       .then((res) => res.json())
-      .then((json: PolicyData) => {
-        setData(json);
-        setDraft(json);
-      })
+      .then((json: PolicyData) => setData(json))
       .finally(() => setLoading(false));
   }, [open]);
 
-  function startEdit() {
-    setDraft(data);
-    setEditing(true);
-  }
-
-  function cancelEdit() {
-    setDraft(data);
-    setEditing(false);
-  }
-
-  async function save() {
-    setSaving(true);
+  async function saveField(key: keyof PolicyData, value: string) {
+    const prev = data;
+    const next = { ...data, [key]: value };
+    setData(next); // クリックで即編集→即保存という体験に合わせ、まず楽観的に反映
     try {
       const res = await fetch("/api/investment-policy", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          account: draft.account,
-          strategy: draft.strategy,
-          cash: draft.cash,
-          universe: draft.universe,
-          coreNote: draft.core_note,
-          satelliteNote: draft.satellite_note,
-          remarks: draft.remarks,
-        }),
+        body: JSON.stringify(toPayload(next)),
       });
-      if (res.ok) {
-        const json: PolicyData = await res.json();
-        setData(json);
-        setDraft(json);
-        setEditing(false);
-      }
-    } finally {
-      setSaving(false);
+      if (!res.ok) throw new Error("save failed");
+      const json: PolicyData = await res.json();
+      setData(json);
+    } catch {
+      setData(prev);
+      toast.error(t(lang, "investmentPolicySaveFailed"));
     }
   }
+
+  const hint = t(lang, "ipEditHint");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg p-0 overflow-hidden" style={{ backgroundColor: DC.cardBg }}>
-        <DialogHeader
-          className="px-5 py-4 border-b flex-row items-center justify-between space-y-0"
-          style={{ borderColor: DC.cardBorder }}
-        >
+        <DialogHeader className="px-5 py-4 border-b" style={{ borderColor: DC.cardBorder }}>
           <DialogTitle>{t(lang, "investmentPolicy")}</DialogTitle>
-          {!loading && !editing && (
-            <Button type="button" variant="ghost" size="sm" className="gap-1.5" onClick={startEdit}>
-              <Pencil size={13} />
-              {t(lang, "editAction")}
-            </Button>
-          )}
         </DialogHeader>
 
         <div className="px-5 py-1 max-h-[70vh] overflow-y-auto">
@@ -155,61 +127,35 @@ export function InvestmentPolicyDialog({
             <div className="py-10 flex justify-center">
               <Spinner />
             </div>
-          ) : editing ? (
-            <>
-              <EditField
-                label={t(lang, "ipAccountLabel")}
-                value={draft.account}
-                onChange={(v) => setDraft((d) => ({ ...d, account: v }))}
-              />
-              <EditField
-                label={t(lang, "ipStrategyLabel")}
-                value={draft.strategy}
-                onChange={(v) => setDraft((d) => ({ ...d, strategy: v }))}
-              />
-              <EditField
-                label={t(lang, "ipCashLabel")}
-                value={draft.cash}
-                onChange={(v) => setDraft((d) => ({ ...d, cash: v }))}
-              />
-              <EditField
-                label={t(lang, "ipUniverseLabel")}
-                value={draft.universe}
-                onChange={(v) => setDraft((d) => ({ ...d, universe: v }))}
-              />
-              <EditField
-                label={t(lang, "ipCoreTitle")}
-                value={draft.core_note}
-                onChange={(v) => setDraft((d) => ({ ...d, core_note: v }))}
-              />
-              <EditField
-                label={t(lang, "ipSatelliteTitle")}
-                value={draft.satellite_note}
-                onChange={(v) => setDraft((d) => ({ ...d, satellite_note: v }))}
-              />
-              <EditField
-                label={t(lang, "ipRemarksLabel")}
-                value={draft.remarks}
-                onChange={(v) => setDraft((d) => ({ ...d, remarks: v }))}
-              />
-
-              <div className="flex justify-end gap-2 py-3">
-                <Button type="button" variant="ghost" size="sm" onClick={cancelEdit} disabled={saving}>
-                  {t(lang, "cancel")}
-                </Button>
-                <Button type="button" size="sm" onClick={save} disabled={saving}>
-                  {saving ? <Spinner size="sm" /> : t(lang, "save")}
-                </Button>
-              </div>
-            </>
           ) : (
             <>
-              <ViewField label={t(lang, "ipAccountLabel")} value={data.account} />
-              <ViewField label={t(lang, "ipStrategyLabel")} value={data.strategy} />
-              <ViewField label={t(lang, "ipCashLabel")} value={data.cash} />
-              <ViewField label={t(lang, "ipUniverseLabel")} value={data.universe} />
+              <Field
+                label={t(lang, "ipAccountLabel")}
+                value={data.account}
+                hint={hint}
+                onSave={(v) => saveField("account", v)}
+              />
+              <Field
+                label={t(lang, "ipStrategyLabel")}
+                value={data.strategy}
+                hint={hint}
+                onSave={(v) => saveField("strategy", v)}
+              />
+              <Field
+                label={t(lang, "ipCashLabel")}
+                value={data.cash}
+                hint={hint}
+                onSave={(v) => saveField("cash", v)}
+              />
+              <Field
+                label={t(lang, "ipUniverseLabel")}
+                value={data.universe}
+                hint={hint}
+                onSave={(v) => saveField("universe", v)}
+              />
 
-              {/* コア・サテライト配分(70/30)を一目でわかるようにバーで可視化 */}
+              {/* コア・サテライト配分(70/30)を一目でわかるようにバーで可視化。
+                  各配分の説明文はカード内でそのままクリック編集できる。 */}
               <div className="pt-3 pb-2">
                 <div className="flex h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: DC.track }}>
                   <div className="h-full" style={{ width: "70%", backgroundColor: DC.primary }} />
@@ -224,9 +170,13 @@ export function InvestmentPolicyDialog({
                         {t(lang, "ipCoreTitle")}
                       </span>
                     </div>
-                    <p className="text-[12.5px] leading-relaxed whitespace-pre-wrap" style={{ color: DC.textSecondary }}>
-                      {data.core_note || "—"}
-                    </p>
+                    <InlineEdit
+                      value={data.core_note}
+                      onChange={(v) => saveField("core_note", v)}
+                      multiline
+                      placeholder={hint}
+                      className="text-[12.5px] leading-relaxed -mx-1"
+                    />
                   </div>
                   <div className="rounded-lg p-3" style={{ backgroundColor: DC.trackAlt }}>
                     <div className="flex items-center gap-1.5 mb-1">
@@ -235,14 +185,23 @@ export function InvestmentPolicyDialog({
                         {t(lang, "ipSatelliteTitle")}
                       </span>
                     </div>
-                    <p className="text-[12.5px] leading-relaxed whitespace-pre-wrap" style={{ color: DC.textSecondary }}>
-                      {data.satellite_note || "—"}
-                    </p>
+                    <InlineEdit
+                      value={data.satellite_note}
+                      onChange={(v) => saveField("satellite_note", v)}
+                      multiline
+                      placeholder={hint}
+                      className="text-[12.5px] leading-relaxed -mx-1"
+                    />
                   </div>
                 </div>
               </div>
 
-              <ViewField label={t(lang, "ipRemarksLabel")} value={data.remarks} />
+              <Field
+                label={t(lang, "ipRemarksLabel")}
+                value={data.remarks}
+                hint={hint}
+                onSave={(v) => saveField("remarks", v)}
+              />
               <div className="h-3" />
             </>
           )}

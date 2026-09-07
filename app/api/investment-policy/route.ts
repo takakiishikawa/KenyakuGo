@@ -1,21 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthDb } from "@/lib/supabase/auth-db";
+import { DEFAULT_INVESTMENT_POLICY } from "@/lib/investment-policy-defaults";
 
 // 投資方針メモ(口座・戦略・現金・投資対象・コア/サテライト配分・備考)。
 // サイドバーのポップアップから参照・編集する単一レコード(1行のみ)。
 const SELECT_COLUMNS = "account, strategy, cash, universe, core_note, satellite_note, remarks, updated_at";
-
-const EMPTY_POLICY = {
-  account: "",
-  strategy: "",
-  cash: "",
-  universe: "",
-  core_note: "",
-  satellite_note: "",
-  remarks: "",
-  updated_at: null,
-};
 
 export async function GET() {
   const result = await getAuthDb();
@@ -28,11 +18,13 @@ export async function GET() {
     .eq("id", true)
     .maybeSingle();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  // migration未適用(テーブル未作成)や行がまだ無い場合は、元のメモの内容を
+  // そのままフォールバック表示する(以後、実際に保存された行があればそちらを使う)。
+  if (error || !data) {
+    return NextResponse.json({ ...DEFAULT_INVESTMENT_POLICY, updated_at: null });
   }
 
-  return NextResponse.json(data ?? EMPTY_POLICY);
+  return NextResponse.json(data);
 }
 
 const putSchema = z.object({

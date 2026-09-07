@@ -208,7 +208,7 @@ export const DICT = {
 
     // 投資方針ダイアログ
     investmentPolicy: "投資方針",
-    editAction: "編集",
+    investmentPolicySaveFailed: "保存に失敗しました",
     ipAccountLabel: "口座",
     ipStrategyLabel: "戦略",
     ipCashLabel: "現金",
@@ -216,6 +216,7 @@ export const DICT = {
     ipCoreTitle: "コア(70%)",
     ipSatelliteTitle: "サテライト(30%)",
     ipRemarksLabel: "備考",
+    ipEditHint: "クリックして編集",
 
     // サイドバー
     sidebarSwitchLang: "言語を切り替え",
@@ -424,7 +425,7 @@ export const DICT = {
 
     // Investment policy dialog
     investmentPolicy: "Investment Policy",
-    editAction: "Edit",
+    investmentPolicySaveFailed: "Failed to save",
     ipAccountLabel: "Account",
     ipStrategyLabel: "Strategy",
     ipCashLabel: "Cash",
@@ -432,6 +433,7 @@ export const DICT = {
     ipCoreTitle: "Core (70%)",
     ipSatelliteTitle: "Satellite (30%)",
     ipRemarksLabel: "Notes",
+    ipEditHint: "Click to edit",
 
     // Sidebar
     sidebarSwitchLang: "Switch language",

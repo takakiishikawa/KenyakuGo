@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { PiggyBank, LayoutGrid, Target, LogOut, LogIn } from "lucide-react";
+import { PiggyBank, LayoutGrid, Target, Landmark, LogOut, LogIn } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@takaki/go-design-system";
 import { usePreferences } from "@/lib/preferences";
 import { t } from "@/lib/scenario/dictionary";
+import { InvestmentPolicyDialog } from "@/components/investment-policy-dialog";
 
 // hoverしたら各メニュー名・プロダクト名がツールチップで見えるように、
 // レール上の全アイテムを共通のラッパーで包む(既存の title 属性による素の
@@ -45,6 +46,7 @@ export function PiggyBankSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [policyOpen, setPolicyOpen] = useState(false);
   const { currency, lang, toggleCurrency, toggleLang } = usePreferences();
 
   useEffect(() => {
@@ -108,6 +110,18 @@ export function PiggyBankSidebar() {
               </SidebarTooltip>
             );
           })}
+
+          {/* 投資方針はページ遷移ではなくポップアップで、どの画面からも1クリックで
+              いつでも参照できるようにする */}
+          <SidebarTooltip label={t(lang, "investmentPolicy")}>
+            <button
+              type="button"
+              onClick={() => setPolicyOpen(true)}
+              className="w-12 h-[42px] rounded-[10px] flex items-center justify-center cursor-pointer transition-all hover:brightness-110 active:scale-95"
+            >
+              <Landmark size={18} color={INACTIVE} />
+            </button>
+          </SidebarTooltip>
         </div>
 
         <SidebarTooltip label={t(lang, "sidebarSwitchLang")}>
@@ -155,6 +169,7 @@ export function PiggyBankSidebar() {
           </SidebarTooltip>
         )}
       </div>
+      <InvestmentPolicyDialog open={policyOpen} onOpenChange={setPolicyOpen} lang={lang} />
     </TooltipProvider>
   );
 }

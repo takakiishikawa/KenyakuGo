@@ -206,6 +206,24 @@ export const DICT = {
     specialExpenseActiveTitle: "特別支出(ダッシュボード対象外・シミュレーションで集計)。クリックで解除",
     specialExpenseInactiveTitle: "特別支出としてマーク(ダッシュボード対象外・シミュレーションで集計)",
 
+    // 投資方針ダイアログ
+    investmentPolicy: "投資方針",
+    ipAccountLabel: "口座",
+    ipAccountValue: "IBKR(ベトナム居住者としてIB LLCで開設)に一本化",
+    ipStrategyLabel: "戦略",
+    ipStrategyValue: "コア・サテライト。毎月定額の自動積立",
+    ipCashLabel: "現金",
+    ipCashValue: "100万円のみ残し、残りは全額投資",
+    ipUniverseLabel: "投資対象",
+    ipUniverseValue: "インデックス投資のみ。FX・先物・信用取引はしない",
+    ipCoreTitle: "コア(70%)",
+    ipCoreValue: "オルカン・S&Pを1:1",
+    ipSatelliteTitle: "サテライト(30%)",
+    ipSatelliteValue: "東南アジア株の投資信託。中国・韓国・ミャンマーは除外。値動きは荒くてよい",
+    ipRemittanceLabel: "送金",
+    ipRemittanceValue:
+      "銀行→IBKRの入金は自動化不可、都度手動。毎月少額送金は手数料負けするため、数ヶ月に1回まとめて送金する",
+
     // サイドバー
     sidebarSwitchLang: "言語を切り替え",
     sidebarJpy: "日本円",
@@ -410,6 +428,25 @@ export const DICT = {
     specialExpenseLabel: "Special expense",
     specialExpenseActiveTitle: "Special expense — excluded from dashboard, tracked in Simulation. Click to undo",
     specialExpenseInactiveTitle: "Mark as special expense — excludes from dashboard, tracked in Simulation",
+
+    // Investment policy dialog
+    investmentPolicy: "Investment Policy",
+    ipAccountLabel: "Account",
+    ipAccountValue: "Consolidated into IBKR (opened as IB LLC, as a Vietnam resident)",
+    ipStrategyLabel: "Strategy",
+    ipStrategyValue: "Core-satellite. Fixed-amount automatic monthly contributions",
+    ipCashLabel: "Cash",
+    ipCashValue: "Keep only ¥1,000,000 in cash; invest the rest in full",
+    ipUniverseLabel: "Investment universe",
+    ipUniverseValue: "Index investing only. No FX, futures, or margin trading",
+    ipCoreTitle: "Core (70%)",
+    ipCoreValue: "All-Country World Index and S&P 500, 1:1",
+    ipSatelliteTitle: "Satellite (30%)",
+    ipSatelliteValue:
+      "Southeast Asian equity mutual funds. Excludes China, South Korea, and Myanmar. Volatility here is fine",
+    ipRemittanceLabel: "Remittance",
+    ipRemittanceValue:
+      "Bank → IBKR transfers can't be automated and are done manually each time. Small monthly transfers lose too much to fees, so remit a lump sum every few months instead",
 
     // Sidebar
     sidebarSwitchLang: "Switch language",
